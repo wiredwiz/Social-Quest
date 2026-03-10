@@ -189,53 +189,6 @@ local guildPage = {
 		get =	function(t,k) return SocialQuest.db.char.guild.announce[k]; end,
 		set =	function(t,k,v) SocialQuest.db.char.guild.announce[k] = v; end
 	},
-};
-
-local customPage = {
-	enabled ={
-		type = "toggle",
-		name = "Announce on a custom channel",
-		desc = "Toggles announcements of quest events to a custom channel.",
-		order = 10,
-		get = function() return SocialQuest.db.char.custom.enabled; end,
-		set = function()
-				SocialQuest.db.char.custom.enabled = not SocialQuest.db.char.custom.enabled;
-				if SocialQuest.db.char.enabled and SocialQuest.db.char.custom.enabled then
-					SocialQuest:JoinCustomChannel();
-				else
-					SocialQuest:LeaveCustomChannel();
-				end
-			  end
-	},
-	channelName ={
-		type = "input",
-		name = "Name of custom channel",
-		desc = "Name of the custom channel to broadcast messages on.",
-		pattern = ".+SQ",
-		usage = "Channel name must end in SQ",
-		order = 20,
-		get = function() return SocialQuest.db.char.custom.channelName; end,
-		set = function(t,v)	SocialQuest.db.char.custom.channelName = v; end
-	},
-	password ={
-		type = "input",
-		name = "Password",
-		desc = "Password of the custom channel (leave blank if there is none).",
-		order = 20,
-		get = function() return SocialQuest.db.char.custom.password; end,
-		set = function(t,v)	SocialQuest.db.char.custom.password = v; end
-	},
-	announceMessages ={
-		type = "multiselect",
-		name = "Quest events to announce",
-		desc = "Toggles whether each quest event type will be announced in the custom channel",
-		order = 30,
-		values = questEventValues,
-		get =	function(t,k) return SocialQuest.db.char.custom.announce[k]; end,
-		set =	function(t,k,v) SocialQuest.db.char.custom.announce[k] = v; end
-	},
-};
-
 local generalPage = {
 --[[	neverAutoAcceptEnabled ={
       type = "toggle",

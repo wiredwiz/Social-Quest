@@ -4,10 +4,10 @@
 ## Notes: An addon to help party/guild members coordinate quests together easier
 ## X-Category: Interface Enhancements
 ## SavedVariablesPerCharacter: SOCIALQUEST_CONFIG
-## Dependencies: Ace3,AbsoluteQuestLog,Sea
+## Dependencies: Ace3
 ## Author: Thad Ryker
-## Interface: 30000
-## Version: 1.00
+## Interface: 20505
+## Version: 1.01
 Colors.lua
 SocialQuest.lua
 SocialQuest.options.lua

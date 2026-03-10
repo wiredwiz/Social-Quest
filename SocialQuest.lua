@@ -9,6 +9,15 @@ local SQ_REQUEST = "SQ_REQ";
 local SQ_FOLLOWED_START = "SQ_FOLLOWED_START";
 local SQ_FOLLOWED_STOP = "SQ_FOLLOWED_STOP";
 
+local AQ_QUEST_COMPLETED = "complete";
+local AQ_QUEST_PROGRESS_UPDATED = "progress";
+local AQ_QUEST_ABANDONED = "abandon";
+local AQ_QUEST_ACCEPTED = "accept";
+local AQ_QUEST_FAILED = "fail";
+local AQ_QUEST_FINISHED = "finish";
+
+local lastChatSend = 0;
+
 local defaults = {};
 defaults.char = {};
 defaults.char.enabled = true;
@@ -89,20 +98,15 @@ defaults.char.follow.announceFollowing = true;
 defaults.char.follow.announceFollowed = true;
 
 local function IsInRaid()
-	return (GetNumRaidMembers() ~= 0);
+	return (GetNumGroupMembers() > 1 and UnitInRaid("player"));
 end
 
 local function IsInParty()
-	return (GetNumPartyMembers() ~= 0);
+	return (GetNumGroupMembers() > 0 and not UnitInRaid("player"));
 end
 
 local function IsInBG()
 	return UnitInBattleground("player");
-end
-
-local function ChannelExists(channel)
-	local index = GetChannelName(channel);
-	return (index ~= 0);
 end
 
 local function GetChannelToUse()
@@ -128,27 +132,18 @@ end
 
 local function GuildSendOK(e)
 	return (SocialQuest.db.char.enabled and
-			((IsInGuild() and SocialQuest.db.char.guild.enabled) and (not (e) or SocialQuest.db.char.guild.announce[e])));
-end
-
-local function CustomSendOK(e)
-	return (SocialQuest.db.char.enabled and
-			(SocialQuest.db.char.custom.enabled and (not (e) or SocialQuest.db.char.custom.announce[e])));
+			((GetGuildInfo() ~= nil and SocialQuest.db.char.guild.enabled) and (not (e) or SocialQuest.db.char.guild.announce[e])));
 end
 
 local function SQ_SendChatMessage(...)
 	local message, type = ...;
+	if GetTime() - lastChatSend < 1 then return; end
+	lastChatSend = GetTime();
 	if StandardSendOK(type) then
 		SendChatMessage(message,GetChannelToUse());
 	end
 	if GuildSendOK(type) then
 		SendChatMessage(message,"GUILD");
-	end
-	if CustomSendOK(type) then
-		local id,name = GetChannelName(SocialQuest.db.char.custom.channelName);
-		if (name) then
-			SendChatMessage(message,"CHANNEL",nil,tostring(id));
-		end
 	end
 end
 
@@ -174,30 +169,29 @@ local function GetGlobalDisplayName(friendName,friendRealm)
 	return string.format(nameTemplate,friendName,friendRealm);
 end
 
-local function EveryoneHasFinished(questName)	
+local function EveryoneHasFinished(questName)
 	local maxGroupNum,unitText;
 	if IsInRaid() then
-		maxGroupNum = GetNumRaidMembers();
+		maxGroupNum = GetNumGroupMembers();
 		unitText = "raid";
 	elseif IsInParty() then
-		maxGroupNum = GetNumPartyMembers();
+		maxGroupNum = GetNumGroupMembers();
 		unitText = "party";
 	else
 		return true;
 	end
-	if (not AbsoluteQuestLog.Quests) then
-		return false;
-	end
-	questData = AbsoluteQuestLog.Quests[questName];
+	local questDB = BuildQuestData();
+	local questData = questDB[questName];
 	if (questData) then
 		if (questData.complete ~= 1) then
 			return false;
 		end
 	end
 	for i=1,maxGroupNum do
-		if (GetUnitName("player") ~= GetUnitName(unitText..i)) then
+		if (UnitName("player") ~= UnitName(unitText..i)) then
 			local pName,pRealm = UnitName(unitText..i);
-			questTree = SocialQuest.PlayerQuests[GetGlobalName(pName,pRealm)];
+			local person = GetGlobalName(pName,pRealm);
+			local questTree = SocialQuest.PlayerQuests[person];
 			if (questTree) then
 				questData = questTree[questName];
 				if (questData) then
@@ -213,16 +207,75 @@ local function EveryoneHasFinished(questName)
 	return true;
 end
 
-local function trim(s)
-	if (not s) then
-		return s;
+local function GetQuestIDFromLink(link)
+	if not link then return nil; end
+	local questID = link:match("Hquest:(%d+)");
+	return tonumber(questID);
+end
+
+local function GetQuestLogIndex(questID)
+	for i = 1, C_QuestLog.GetNumQuestLogEntries() do
+		local info = C_QuestLog.GetInfo(i);
+		if info and info.questID == questID then return i; end
 	end
-	return (string.gsub(s, "^%s*(.-)%s*$", "%1"));
+	return nil;
+end
+
+local function BuildQuestData()
+	local quests = {};
+	for i = 1, C_QuestLog.GetNumQuestLogEntries() do
+		local info = C_QuestLog.GetInfo(i);
+		if info and info.title then
+			local objectives = C_QuestLog.GetQuestObjectives(info.questID) or {};
+			quests[info.title] = {
+				id = info.questID,
+				complete = info.isComplete,
+				objectives = objectives
+			};
+		end
+	end
+	return quests;
 end
 
 
-function SocialQuest:QuestUpdate(updateType,...)
-	local questInfo, objective = ...;	
+function SocialQuest:QuestUpdate(event, ...)
+	local updateType, questInfo, objective;
+	if event == "QUEST_ACCEPTED" then
+		local questLogIndex = ...;
+		local info = C_QuestLog.GetInfo(questLogIndex);
+		if not info then return; end
+		updateType = AQ_QUEST_ACCEPTED;
+		questInfo = {cleanTitle = info.title, link = GetQuestLink(info.questID), objectives = C_QuestLog.GetQuestObjectives(info.questID) or {}};
+		objective = nil;
+	elseif event == "QUEST_COMPLETE" then
+		local questLogIndex = ...;
+		local info = C_QuestLog.GetInfo(questLogIndex);
+		if not info then return; end
+		updateType = AQ_QUEST_FINISHED;
+		questInfo = {cleanTitle = info.title, link = GetQuestLink(info.questID), objectives = C_QuestLog.GetQuestObjectives(info.questID) or {}};
+		objective = nil;
+	elseif event == "QUEST_TURNED_IN" then
+		local questID = ...;
+		local title = C_QuestLog.GetTitleForQuestID(questID) or "Unknown Quest";
+		updateType = AQ_QUEST_COMPLETED;
+		questInfo = {cleanTitle = title, link = GetQuestLink(questID), objectives = {}};
+		objective = nil;
+	elseif event == "QUEST_FAILED" then
+		local questLogIndex = ...;
+		local info = C_QuestLog.GetInfo(questLogIndex);
+		if not info then return; end
+		updateType = AQ_QUEST_FAILED;
+		questInfo = {cleanTitle = info.title, link = GetQuestLink(info.questID), objectives = C_QuestLog.GetQuestObjectives(info.questID) or {}};
+		objective = nil;
+	elseif event == "QUEST_REMOVED" then
+		local questID = ...;
+		local title = C_QuestLog.GetTitleForQuestID(questID) or "Unknown Quest";
+		updateType = AQ_QUEST_ABANDONED;
+		questInfo = {cleanTitle = title, link = GetQuestLink(questID), objectives = {}};
+		objective = nil;
+	end
+	if not updateType then return; end
+
 	local playerName,playerRealm = UnitName("player");
 	local channelName = GetChannelToUse();
 	if (SocialQuest.db.char.enabled) and
@@ -234,30 +287,28 @@ function SocialQuest:QuestUpdate(updateType,...)
 		if (objective) then
 			updateMessage = objective.text;
 		end
-		local updateData = SocialQuest:Serialize(updateType,questInfo.cleanTitle,questInfo.link,updateMessage,questInfo,channelName);
+		local questData = BuildQuestData()[questInfo.cleanTitle] or {};
+		local updateData = SocialQuest:Serialize(updateType,questInfo.cleanTitle,questInfo.link,updateMessage,questData,channelName);
 		SocialQuest:SendCommMessage(SQ_ANNOUNCE_UPDATE, updateData, channelName);
 		SocialQuest.LastUpdate = updateData;
 		SQ_PrintDebugData('Quest update comm message sent');
 	end
-	if updateType == AbsoluteQuestLog.AQ_QUEST_COMPLETED then
+	if updateType == AQ_QUEST_COMPLETED then
 		SQ_SendChatMessage("turned in quest "..questInfo.link,"complete");
 		SQ_PrintDebugData("turned in quest "..questInfo.link,"complete");
-	elseif updateType == AbsoluteQuestLog.AQ_QUEST_PROGRESS_UPDATED then
-		SQ_SendChatMessage(questInfo.link.." "..objective.text,"progress");
-		SQ_PrintDebugData(questInfo.link.." "..objective.text,"progress");
-	elseif updateType == AbsoluteQuestLog.AQ_QUEST_ABANDONED then
+	elseif updateType == AQ_QUEST_ABANDONED then
 		SQ_SendChatMessage("abandoned quest "..questInfo.link,"abandon");
 		SQ_PrintDebugData("abandoned quest "..questInfo.link,"abandon");
-	elseif updateType == AbsoluteQuestLog.AQ_QUEST_ACCEPTED then
+	elseif updateType == AQ_QUEST_ACCEPTED then
 		SQ_SendChatMessage("accepted quest "..questInfo.link,"accept");
 		SQ_PrintDebugData("accepted quest "..questInfo.link,"accept");
-	elseif updateType == AbsoluteQuestLog.AQ_QUEST_FAILED then
+	elseif updateType == AQ_QUEST_FAILED then
 		SQ_SendChatMessage("failed quest "..questInfo.link,"fail");
 		SQ_PrintDebugData("failed quest "..questInfo.link,"fail");
-	elseif updateType == AbsoluteQuestLog.AQ_QUEST_FINISHED then
+	elseif updateType == AQ_QUEST_FINISHED then
 		SQ_SendChatMessage("completed quest "..questInfo.link,"finish");
 		if (IsInParty() or IsInRaid()) and EveryoneHasFinished(questInfo.cleanTitle) then
-			Sea.io.bannerc(PURPLE_FONT_COLOR,"Everyone has completed "..questInfo.cleanTitle);
+			SocialQuest:ShowBanner("Everyone has completed "..questInfo.cleanTitle, PURPLE_FONT_COLOR);
 		end
 		SQ_PrintDebugData("completed quest "..questInfo.link,"finish");
 	end
@@ -299,99 +350,65 @@ function SocialQuest:CreateQuestTooltip(toolTip,uniqueID)
 	if (not uniqueID) then
 		return nil;
 	end
-	local questInfo = AbsoluteQuestLog:GetQuestHistory(uniqueID);
-	local isOnQuest = false;
-	local hasCompletedQuest = AbsoluteQuestLog:HasCompletedQuest(uniqueID);
-	
-	if (not questInfo) then
-		if hasCompletedQuest then
-			-- we have history with no detail so we should just augment the existing tip
-			SocialQuest:InsertIntoQuestTooltip(toolTip,2,"You have completed this quest",RED_FONT_COLOR)
-			return nil;
-		else
-			-- we know nothing of this quest, let wow do what it normally does
-			return nil;
-		end
+	local logIndex = GetQuestLogIndex(uniqueID);
+	if not logIndex then
+		return nil;
 	end
-	
-	local liveQuestInfo = AbsoluteQuestLog:GetQuestByID(uniqueID);
+	local liveQuestInfo = C_QuestLog.GetInfo(logIndex);
+	if not liveQuestInfo then
+		return nil;
+	end
 
-	if (liveQuestInfo) then
-		isOnQuest = true;
-	end
-	
 	-- Now we build a tooltip from what we know of the quest
 	toolTip:ClearLines();
-	toolTip:AddLine(questInfo.cleanTitle,GOLD_FONT_COLOR.r,GOLD_FONT_COLOR.g,GOLD_FONT_COLOR.b);
-	if (isOnQuest) then
-		if (liveQuestInfo.complete) then
-			toolTip:AddLine("You need to turn in this quest",ROYALBLUE_FONT_COLOR.r,ROYALBLUE_FONT_COLOR.g,ROYALBLUE_FONT_COLOR.b);
-		else
-			toolTip:AddLine("You are on this quest",GREEN_FONT_COLOR.r,GREEN_FONT_COLOR.g,GREEN_FONT_COLOR.b);
-		end
-	elseif (hasCompletedQuest) then
-		toolTip:AddLine("You have completed this quest",RED_FONT_COLOR.r,RED_FONT_COLOR.g,RED_FONT_COLOR.b);
+	toolTip:AddLine(liveQuestInfo.title,GOLD_FONT_COLOR.r,GOLD_FONT_COLOR.g,GOLD_FONT_COLOR.b);
+	if (liveQuestInfo.isComplete) then
+		toolTip:AddLine("You need to turn in this quest",ROYALBLUE_FONT_COLOR.r,ROYALBLUE_FONT_COLOR.g,ROYALBLUE_FONT_COLOR.b);
+	else
+		toolTip:AddLine("You are on this quest",GREEN_FONT_COLOR.r,GREEN_FONT_COLOR.g,GREEN_FONT_COLOR.b);
 	end
 	toolTip:AddLine(" ");
-	toolTip:AddLine(questInfo.objective,1,1,1,1);
-	
-	local objectives = questInfo.objectives;
-	if (isOnQuest) then
-		objectives = liveQuestInfo.objectives;
-	end
+	toolTip:AddLine(liveQuestInfo.description,1,1,1,1);
+
+	local objectives = C_QuestLog.GetQuestObjectives(uniqueID) or {};
 	if (objectives) and (#objectives > 0) then
 		toolTip:AddLine(" ");
 		toolTip:AddLine("Requirements:",GOLD_FONT_COLOR.r,GOLD_FONT_COLOR.g,GOLD_FONT_COLOR.b);
 		for i=1,#objectives do
-			objective = objectives[i];
+			local objective = objectives[i];
 			local color = WHITE_FONT_COLOR;
-			-- print this player's progress if we can
-			if (isOnQuest) then
-				if (objective.finished) then
-					color = ROYALBLUE_FONT_COLOR;
-				end
-				if (trim(objective.info.name) ~= "") then
-					toolTip:AddLine(" - "..objective.info.name.." ("..objective.info.done.."/"..objective.info.total..")",color.r,color.g,color.b);
-				else
-					toolTip:AddLine(" - "..objective.text,color.r,color.g,color.b);
-				end
-			else
-				if (trim(objective.info.name) ~= "") then
-					toolTip:AddLine(" - "..objective.info.name.." x "..objective.info.total,color.r,color.g,color.b);
-				else
-					toolTip:AddLine(" - "..objective.text,color.r,color.g,color.b);
-				end
+			if (objective.finished) then
+				color = ROYALBLUE_FONT_COLOR;
+			end
+			if (trim(objective.text) ~= "") then
+				toolTip:AddLine(" - "..objective.text,color.r,color.g,color.b);
 			end
 			-- now scan other party members with SocialQuest data and integrate it
-			local partySize = GetNumPartyMembers();
-			if (partySize ~= 0) then
+			local partySize = GetNumGroupMembers();
+			if (partySize > 1) then
 				for p=1,partySize do
-					local pName,pRealm = UnitName("party"..p);
-					local person = GetGlobalName(pName,pRealm);
-					questData = SocialQuest.PlayerQuests[person];
-					-- do we have a quest log for this party member
-					if (questData) then
-						local pQuestInfo = questData[questInfo.cleanTitle];
-						-- now that we have the party member's quest log, do they have an entry for this quest?
-						if (pQuestInfo) then
-							local pObjective = pQuestInfo.objectives[i];
-							-- did this give us a valid objective and does it appear to match ours
-							if (pObjective) and (pObjective.text == objective.text) then
-								-- now print that player's progress
-								if (pObjective.finished) then
-									color = ROYALBLUE_FONT_COLOR;
-								else
-									color = WHITE_FONT_COLOR;
-								end
-								if (trim(pObjective.info.name) ~= "") then
-									toolTip:AddLine("   * "..person.." ("..pObjective.info.done.."/"..pObjective.info.total..")",color.r,color.g,color.b);
-								else
-									local qualifier = " X";
+					if (UnitName("player") ~= UnitName("party"..p)) then
+						local pName,pRealm = UnitName("party"..p);
+						local person = GetGlobalName(pName,pRealm);
+						local questData = SocialQuest.PlayerQuests[person];
+						-- do we have a quest log for this party member
+						if (questData) then
+							local pQuestInfo = questData[liveQuestInfo.title];
+							-- now that we have the party member's quest log, do they have an entry for this quest?
+							if (pQuestInfo) then
+								local pObjective = pQuestInfo.objectives[i];
+								-- did this give us a valid objective and does it appear to match ours
+								if (pObjective) and (pObjective.text == objective.text) then
+									-- now print that player's progress
 									if (pObjective.finished) then
-										qualifier = " (done)";
+										color = ROYALBLUE_FONT_COLOR;
+									else
+										color = WHITE_FONT_COLOR;
 									end
-									toolTip:AddLine("   * "..person..qualifier,color.r,color.g,color.b);
-								end				
+									if (trim(pObjective.text) ~= "") then
+										toolTip:AddLine("   * "..person.." ("..pObjective.numFulfilled.."/"..pObjective.numRequired..")",color.r,color.g,color.b);
+									end
+								end
 							end
 						end
 					end
@@ -403,9 +420,9 @@ function SocialQuest:CreateQuestTooltip(toolTip,uniqueID)
 end
 
 function SocialQuest:SetHyperlink(...)
-	local toolTip, hyperLink = ...;	
-	local uniqueID = AbsoluteQuestLog:GetUniqueIDFromLink(hyperLink);
-	SocialQuest:CreateQuestTooltip(toolTip,uniqueID);
+	local toolTip, hyperLink = ...;
+	local questID = GetQuestIDFromLink(hyperLink);
+	SocialQuest:CreateQuestTooltip(toolTip, questID);
 end
 
 function SocialQuest:OnInitialize()
@@ -414,8 +431,13 @@ function SocialQuest:OnInitialize()
     SocialQuest:Print(SQ_TITLE_COLOR.." v"..SQ_VERSION.." loaded.|r");
     SocialQuest.PlayerQuests = {};
     SocialQuest.LastUpdate = nil;
-    SocialQuest.options = {};    
+    SocialQuest.options = {};
     SocialQuest.CurrentFollowed = nil;
+end
+
+function SocialQuest:ShowBanner(message, color)
+	if not color then color = BLUE_FONT_COLOR; end
+	RaidWarningFrame:AddMessage(message, color.r, color.g, color.b, 5);
 end
 
 function SocialQuest:OnEnable()
@@ -425,15 +447,14 @@ function SocialQuest:OnEnable()
 	SocialQuest:RegisterComm(SQ_FOLLOWED_START);
 	SocialQuest:RegisterComm(SQ_FOLLOWED_STOP);
 	SocialQuest:RegisterComm(SQ_REQUEST);
-	SocialQuest:RegisterEvent("PARTY_MEMBERS_CHANGED");
+	SocialQuest:RegisterEvent("GROUP_ROSTER_UPDATE");
 	SocialQuest:RegisterEvent("AUTOFOLLOW_BEGIN");
 	SocialQuest:RegisterEvent("AUTOFOLLOW_END");
-	SocialQuest:RegisterMessage(AbsoluteQuestLog.AQ_QUEST_COMPLETED,"QuestUpdate");
-	SocialQuest:RegisterMessage(AbsoluteQuestLog.AQ_QUEST_PROGRESS_UPDATED,"QuestUpdate");
-	SocialQuest:RegisterMessage(AbsoluteQuestLog.AQ_QUEST_ABANDONED,"QuestUpdate");
-	SocialQuest:RegisterMessage(AbsoluteQuestLog.AQ_QUEST_ACCEPTED,"QuestUpdate");
-	SocialQuest:RegisterMessage(AbsoluteQuestLog.AQ_QUEST_FAILED,"QuestUpdate");
-	SocialQuest:RegisterMessage(AbsoluteQuestLog.AQ_QUEST_FINISHED,"QuestUpdate");
+	SocialQuest:RegisterEvent("QUEST_ACCEPTED","QuestUpdate");
+	SocialQuest:RegisterEvent("QUEST_COMPLETE","QuestUpdate");
+	SocialQuest:RegisterEvent("QUEST_TURNED_IN","QuestUpdate");
+	SocialQuest:RegisterEvent("QUEST_FAILED","QuestUpdate");
+	SocialQuest:RegisterEvent("QUEST_REMOVED","QuestUpdate");
 	SocialQuest:SecureHook(ItemRefTooltip,"SetHyperlink");
 	--SocialQuest:RawHook("QuestGetAutoAccept",true);
 	local channel = GetChannelToUse();
@@ -455,15 +476,14 @@ function SocialQuest:OnDisable()
     SocialQuest:UnregisterComm(SQ_FOLLOWED_START);
     SocialQuest:UnregisterComm(SQ_FOLLOWED_STOP);
     SocialQuest:UnregisterComm(SQ_REQUEST);
-    SocialQuest:UnregisterEvent("PARTY_MEMBERS_CHANGED");
+	SocialQuest:UnregisterEvent("GROUP_ROSTER_UPDATE");
     SocialQuest:UnregisterEvent("AUTOFOLLOW_BEGIN");
 	SocialQuest:UnregisterEvent("AUTOFOLLOW_END");
-	SocialQuest:UnregisterMessage(AbsoluteQuestLog.AQ_QUEST_COMPLETED);
-	SocialQuest:UnregisterMessage(AbsoluteQuestLog.AQ_QUEST_PROGRESS_UPDATED);
-	SocialQuest:UnregisterMessage(AbsoluteQuestLog.AQ_QUEST_ABANDONED);
-	SocialQuest:UnregisterMessage(AbsoluteQuestLog.AQ_QUEST_ACCEPTED);
-	SocialQuest:UnregisterMessage(AbsoluteQuestLog.AQ_QUEST_FAILED);
-	SocialQuest:UnregisterMessage(AbsoluteQuestLog.AQ_QUEST_FINISHED);
+	SocialQuest:UnregisterEvent("QUEST_ACCEPTED");
+	SocialQuest:UnregisterEvent("QUEST_COMPLETE");
+	SocialQuest:UnregisterEvent("QUEST_TURNED_IN");
+	SocialQuest:UnregisterEvent("QUEST_FAILED");
+	SocialQuest:UnregisterEvent("QUEST_REMOVED");
 	SocialQuest:UnHook(ItemRefTooltip,"SetHyperlink");
 	--SocialQuest:UnHook("QuestGetAutoAccept");
 end
@@ -471,16 +491,16 @@ end
 
 function SocialQuest:OnCommReceived(prefix, message, distribution, sender)
     -- process the incoming message
-	
-	local sName,sRealm = strsplit("-",sender);        
+
+	local sName,sRealm = strsplit("-",sender);
     if sender ~= UnitName("player") then
 		if prefix == SQ_FOLLOWED_START then
 			if (SocialQuest.db.char.enabled) and (SocialQuest.db.char.follow.enabled) and (SocialQuest.db.char.follow.announceFollowed) then
-				Sea.io.bannerc(GREEN_FONT_COLOR,GetGlobalDisplayName(sName,sRealm).." has started following you");
+				SocialQuest:ShowBanner(GetGlobalDisplayName(sName,sRealm).." has started following you", GREEN_FONT_COLOR);
 			end
 		elseif prefix == SQ_FOLLOWED_STOP then
 			if (SocialQuest.db.char.enabled) and (SocialQuest.db.char.follow.enabled) and (SocialQuest.db.char.follow.announceFollowed) then
-				Sea.io.bannerc(RED_FONT_COLOR,GetGlobalDisplayName(sName,sRealm).." has stopped following you");
+				SocialQuest:ShowBanner(GetGlobalDisplayName(sName,sRealm).." has stopped following you", RED_FONT_COLOR);
 			end
 		elseif prefix == SQ_ANNOUNCE_INIT then
 			local success,allQuestData = SocialQuest:Deserialize(message);
@@ -524,31 +544,31 @@ function SocialQuest:OnCommReceived(prefix, message, distribution, sender)
 				(IsInRaid() and (SocialQuest.db.char.raid.displayReceivedEvents)) or
 				(IsInBG() and (SocialQuest.db.char.battleground.displayReceivedEvents))
 			then
-				if updateType == AbsoluteQuestLog.AQ_QUEST_COMPLETED then
+				if updateType == AQ_QUEST_COMPLETED then
 					if (SocialQuest.db.char.general.receive["complete"]) then
-						Sea.io.bannerc(BLUE_FONT_COLOR,GetGlobalDisplayName(sName,sRealm).." has turned in "..questName);
+						SocialQuest:ShowBanner(GetGlobalDisplayName(sName,sRealm).." has turned in "..questName, BLUE_FONT_COLOR);
 					end
-				elseif updateType == AbsoluteQuestLog.AQ_QUEST_PROGRESS_UPDATED then
+				elseif updateType == AQ_QUEST_PROGRESS_UPDATED then
 					if (SocialQuest.db.char.general.receive["progress"]) then
-						Sea.io.bannerc(GREEN_FONT_COLOR,GetGlobalDisplayName(sName,sRealm).."'s objectives:\r",progressText);
+						SocialQuest:ShowBanner(GetGlobalDisplayName(sName,sRealm).."'s objectives:\r",progressText, GREEN_FONT_COLOR);
 					end
-				elseif updateType == AbsoluteQuestLog.AQ_QUEST_ABANDONED then
+				elseif updateType == AQ_QUEST_ABANDONED then
 					if (SocialQuest.db.char.general.receive["abandon"]) then
-						Sea.io.bannerc(RED_FONT_COLOR,GetGlobalDisplayName(sName,sRealm).." has abandoned "..questName);
+						SocialQuest:ShowBanner(GetGlobalDisplayName(sName,sRealm).." has abandoned "..questName, RED_FONT_COLOR);
 					end
-				elseif updateType == AbsoluteQuestLog.AQ_QUEST_ACCEPTED then
+				elseif updateType == AQ_QUEST_ACCEPTED then
 					if (SocialQuest.db.char.general.receive["accept"]) then
-						Sea.io.bannerc(YELLOW_FONT_COLOR,GetGlobalDisplayName(sName,sRealm).." has accepted "..questName);
+						SocialQuest:ShowBanner(GetGlobalDisplayName(sName,sRealm).." has accepted "..questName, YELLOW_FONT_COLOR);
 					end
-				elseif updateType == AbsoluteQuestLog.AQ_QUEST_FAILED then
+				elseif updateType == AQ_QUEST_FAILED then
 					if (SocialQuest.db.char.general.receive["fail"]) then
-						Sea.io.bannerc(RED_FONT_COLOR,GetGlobalDisplayName(sName,sRealm).." has failed "..questName);
+						SocialQuest:ShowBanner(GetGlobalDisplayName(sName,sRealm).." has failed "..questName, RED_FONT_COLOR);
 					end
-				elseif updateType == AbsoluteQuestLog.AQ_QUEST_FINISHED then
+				elseif updateType == AQ_QUEST_FINISHED then
 					if (SocialQuest.db.char.general.receive["finish"]) then
-						Sea.io.bannerc(GREEN_FONT_COLOR,GetGlobalDisplayName(sName,sRealm).." has completed "..questName);
+						SocialQuest:ShowBanner(GetGlobalDisplayName(sName,sRealm).." has completed "..questName, GREEN_FONT_COLOR);
 						if EveryoneHasFinished(questName) then
-							Sea.io.bannerc(PURPLE_FONT_COLOR,"Everyone has completed "..questName);
+							SocialQuest:ShowBanner("Everyone has completed "..questName, PURPLE_FONT_COLOR);
 						end
 					end
 				end
@@ -566,7 +586,7 @@ function SocialQuest:GetSharedMembers()
 			if IsUnitOnQuest(GetQuestLogSelection(),"party"..j) then
 				uName = UnitName("party"..j);
 				table.insert(shared,uName);
-			end	
+			end
 		end
 	elseif GetNumRaidMembers() ~= 0 then
 		numMembers = GetNumRaidMembers();
@@ -574,7 +594,7 @@ function SocialQuest:GetSharedMembers()
 			if IsUnitOnQuest(GetQuestLogSelection(),"raid"..j) then
 				uName = UnitName("raid"..j);
 				table.insert(shared,uName);
-			end	
+			end
 		end
 	else
 		return nil;
@@ -614,7 +634,7 @@ function SocialQuest:QuestGetAutoAccept()
 	end
 end
 
-function SocialQuest:PARTY_MEMBERS_CHANGED(eventName)
+function SocialQuest:GROUP_ROSTER_UPDATE(eventName)
     -- update the other party/raid members or clean up
     local channel = GetChannelToUse();
     if not (channel) then
@@ -645,14 +665,4 @@ function SocialQuest:AUTOFOLLOW_END(...)
 		SocialQuest:SendCommMessage(SQ_FOLLOWED_STOP, '', "WHISPER", SocialQuest.CurrentFollowed);
 	end
 	SocialQuest.CurrentFollowed = nil;
-end
-
-function SocialQuest:JoinCustomChannel()
-	if (SocialQuest.db.char.enabled) and (SocialQuest.db.char.custom.enabled) then
-		JoinPermanentChannel(SocialQuest.db.char.custom.channelName,SocialQuest.db.char.custom.password,DEFAULT_CHAT_FRAME:GetID(),1);
-	end
-end
-
-function SocialQuest:LeaveCustomChannel()
-	LeaveChannelByName(SocialQuest.db.char.custom.channelName);
 end
