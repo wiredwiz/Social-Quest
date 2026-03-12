@@ -176,7 +176,7 @@ function SocialQuestGroupFrame:RenderSharedTab()
     for key, group in pairs(groups) do
         local memberCount = 0
         for _ in pairs(group.members) do memberCount = memberCount + 1 end
-        if memberCount < 2 then goto continue end
+        if memberCount >= 2 then
 
         if group.chain then
             -- Chain display.
@@ -276,8 +276,8 @@ function SocialQuestGroupFrame:RenderSharedTab()
             end
         end
 
-        ::continue::
-    end
+        end  -- close memberCount >= 2
+    end  -- close pairs(groups)
 
     frame.content:SetHeight(math.max(y, 10))
 end

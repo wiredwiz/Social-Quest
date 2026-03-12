@@ -190,8 +190,9 @@ end
 
 function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
     -- Ignore our own messages.
-    local myName = UnitName("player")
-    if sender == myName then return end
+    local myName, myRealm = UnitFullName("player")
+    local myFullName = myRealm and (myName .. "-" .. myRealm) or myName
+    if sender == myName or sender == myFullName then return end
 
     local ok, payload = LibStub("AceSerializer-3.0"):Deserialize(msg)
     if not ok then

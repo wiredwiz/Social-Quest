@@ -50,7 +50,6 @@ end
 
 function SocialQuestTooltips:Initialize()
     -- Hook the quest hyperlink tooltip.
-    local orig = ItemRefTooltip:GetScript("OnTooltipSetItem")
     -- Quest links use a different hook point. We hook SetHyperlink instead.
     hooksecurefunc(ItemRefTooltip, "SetHyperlink", function(self, link)
         if not link then return end
