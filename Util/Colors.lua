@@ -14,3 +14,11 @@ SocialQuestColors = {
     white     = "|cFFFFFFFF",
     reset     = "|r",
 }
+
+SocialQuestColors.event = {
+    accepted  = { r = 0,     g = 1,     b = 0     },  -- green  (#00FF00)
+    completed = { r = 1,     g = 0.843, b = 0     },  -- gold   (#FFD700)
+    finished  = { r = 0,     g = 0.8,   b = 1     },  -- cyan   (#00CCFF)
+    abandoned = { r = 0.533, g = 0.533, b = 0.533 },  -- grey   (#888888)
+    failed    = { r = 1,     g = 0,     b = 0     },  -- red    (#FF0000)
+}
