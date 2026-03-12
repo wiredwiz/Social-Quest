@@ -404,7 +404,6 @@ end
 local minimapButton = CreateFrame("Button", "SocialQuestMinimapButton", Minimap)
 minimapButton:SetSize(32, 32)
 minimapButton:SetFrameStrata("MEDIUM")
-minimapButton:SetPoint("TOPLEFT", Minimap, "TOPLEFT", 0, 0)
 
 -- Use a standard icon texture. Replace path if a custom icon is added later.
 minimapButton:SetNormalTexture("Interface\\Icons\\INV_Misc_GroupNeedMore")
@@ -414,6 +413,7 @@ minimapButton:SetPushedTexture("Interface\\Icons\\INV_Misc_GroupNeedMore")
 -- Position on the minimap edge.
 local angle = 225  -- degrees, top-left region
 local function updateMinimapButtonPosition()
+    minimapButton:ClearAllPoints()
     local rad  = math.rad(angle)
     local x    = 80 * math.cos(rad)
     local y    = 80 * math.sin(rad)
@@ -427,7 +427,7 @@ minimapButton:RegisterForDrag("LeftButton")
 minimapButton:SetScript("OnDragStart", function(self) self:SetScript("OnUpdate", function(self)
     local cx, cy = Minimap:GetCenter()
     local mx, my = GetCursorPosition()
-    local scale  = UIParent:GetEffectiveScale()
+    local scale  = Minimap:GetEffectiveScale()
     angle = math.deg(math.atan2((my / scale) - cy, (mx / scale) - cx))
     updateMinimapButtonPosition()
 end) end)
