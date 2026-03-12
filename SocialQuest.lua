@@ -1,4 +1,4 @@
-﻿SocialQuest = LibStub("AceAddon-3.0"):NewAddon("SocialQuest", "AceConsole-3.0", "AceEvent-3.0", "AceHook-3.0", "AceComm-3.0", "AceSerializer-3.0");
+﻿SocialQuest = LibStub("AceAddon-3.0"):NewAddon("SocialQuest", "AceConsole-3.0", "AceEvent-3.0", "AceHook-3.0", "AceComm-3.0", "AceSerializer-3.0", "AceTimer-3.0");
 
 SQ_TITLE_COLOR="|cFF6464F0";
 SQ_VERSION="1.00";
@@ -17,6 +17,9 @@ local AQ_QUEST_FAILED = "fail";
 local AQ_QUEST_FINISHED = "finish";
 
 local lastChatSend = 0;
+local SQ_MessageQueue = {};
+local SQ_QueueTimer = nil;
+local SQ_MAX_QUEUE_SIZE = 100;
 
 local defaults = {};
 defaults.char = {};
@@ -137,20 +140,41 @@ end
 
 local function SQ_SendChatMessage(...)
 	local message, type = ...;
-	if GetTime() - lastChatSend < 1 then return; end
-	lastChatSend = GetTime();
-	if StandardSendOK(type) then
-		SendChatMessage(message,GetChannelToUse());
+	-- Check for duplicate messages in queue
+	for _, queuedMsg in ipairs(SQ_MessageQueue) do
+		if queuedMsg.message == message and queuedMsg.type == type then
+			return; -- Duplicate, skip
+		end
 	end
-	if GuildSendOK(type) then
-		SendChatMessage(message,"GUILD");
+	-- Check queue size
+	if #SQ_MessageQueue >= SQ_MAX_QUEUE_SIZE then
+		SocialQuest:Print("SocialQuest: Message queue full (100 messages), dropping further messages.");
+		return;
 	end
+	-- Enqueue the message
+	table.insert(SQ_MessageQueue, {message = message, type = type});
+	-- Try to process immediately if not throttled
+	ProcessMessageQueue();
 end
 
 local function SQ_PrintDebugData(...)
 	local message, type = ...;
 	if (SocialQuest.db.char.enabled and (SocialQuest.db.char.debug.enabled and (not (type) or SocialQuest.db.char.debug.announce[type]))) then
 		SocialQuest:Print("Debug::"..message);
+	end
+end
+
+local function ProcessMessageQueue()
+	if GetTime() - lastChatSend >= 0.5 and #SQ_MessageQueue > 0 then
+		local msg = table.remove(SQ_MessageQueue, 1);
+		local message, type = msg.message, msg.type;
+		lastChatSend = GetTime();
+		if StandardSendOK(type) then
+			SendChatMessage(message, GetChannelToUse());
+		end
+		if GuildSendOK(type) then
+			SendChatMessage(message, "GUILD");
+		end
 	end
 end
 
@@ -169,7 +193,7 @@ local function GetGlobalDisplayName(friendName,friendRealm)
 	return string.format(nameTemplate,friendName,friendRealm);
 end
 
-local function EveryoneHasFinished(questName)
+local function EveryoneHasFinished(questID)
 	local maxGroupNum,unitText;
 	if IsInRaid() then
 		maxGroupNum = GetNumGroupMembers();
@@ -181,7 +205,7 @@ local function EveryoneHasFinished(questName)
 		return true;
 	end
 	local questDB = BuildQuestData();
-	local questData = questDB[questName];
+	local questData = questDB[questID];
 	if (questData) then
 		if (questData.complete ~= 1) then
 			return false;
@@ -193,7 +217,7 @@ local function EveryoneHasFinished(questName)
 			local person = GetGlobalName(pName,pRealm);
 			local questTree = SocialQuest.PlayerQuests[person];
 			if (questTree) then
-				questData = questTree[questName];
+				questData = questTree[questID];
 				if (questData) then
 					if (questData.complete ~= 1) then
 						return false;
@@ -227,8 +251,8 @@ local function BuildQuestData()
 		local info = C_QuestLog.GetInfo(i);
 		if info and info.title then
 			local objectives = C_QuestLog.GetQuestObjectives(info.questID) or {};
-			quests[info.title] = {
-				id = info.questID,
+			quests[info.questID] = {
+				title = info.title,
 				complete = info.isComplete,
 				objectives = objectives
 			};
@@ -240,12 +264,14 @@ end
 
 function SocialQuest:QuestUpdate(event, ...)
 	local updateType, questInfo, objective;
+	local questID;
 	if event == "QUEST_ACCEPTED" then
 		local questLogIndex = ...;
 		local info = C_QuestLog.GetInfo(questLogIndex);
 		if not info then return; end
 		updateType = AQ_QUEST_ACCEPTED;
 		questInfo = {cleanTitle = info.title, link = GetQuestLink(info.questID), objectives = C_QuestLog.GetQuestObjectives(info.questID) or {}};
+		questID = info.questID;
 		objective = nil;
 	elseif event == "QUEST_COMPLETE" then
 		local questLogIndex = ...;
@@ -253,9 +279,10 @@ function SocialQuest:QuestUpdate(event, ...)
 		if not info then return; end
 		updateType = AQ_QUEST_FINISHED;
 		questInfo = {cleanTitle = info.title, link = GetQuestLink(info.questID), objectives = C_QuestLog.GetQuestObjectives(info.questID) or {}};
+		questID = info.questID;
 		objective = nil;
 	elseif event == "QUEST_TURNED_IN" then
-		local questID = ...;
+		questID = ...;
 		local title = C_QuestLog.GetTitleForQuestID(questID) or "Unknown Quest";
 		updateType = AQ_QUEST_COMPLETED;
 		questInfo = {cleanTitle = title, link = GetQuestLink(questID), objectives = {}};
@@ -266,9 +293,10 @@ function SocialQuest:QuestUpdate(event, ...)
 		if not info then return; end
 		updateType = AQ_QUEST_FAILED;
 		questInfo = {cleanTitle = info.title, link = GetQuestLink(info.questID), objectives = C_QuestLog.GetQuestObjectives(info.questID) or {}};
+		questID = info.questID;
 		objective = nil;
 	elseif event == "QUEST_REMOVED" then
-		local questID = ...;
+		questID = ...;
 		local title = C_QuestLog.GetTitleForQuestID(questID) or "Unknown Quest";
 		updateType = AQ_QUEST_ABANDONED;
 		questInfo = {cleanTitle = title, link = GetQuestLink(questID), objectives = {}};
@@ -287,8 +315,8 @@ function SocialQuest:QuestUpdate(event, ...)
 		if (objective) then
 			updateMessage = objective.text;
 		end
-		local questData = BuildQuestData()[questInfo.cleanTitle] or {};
-		local updateData = SocialQuest:Serialize(updateType,questInfo.cleanTitle,questInfo.link,updateMessage,questData,channelName);
+		local questData = BuildQuestData()[questID] or {};
+		local updateData = SocialQuest:Serialize(updateType,questID,questInfo.link,updateMessage,questData,channelName);
 		SocialQuest:SendCommMessage(SQ_ANNOUNCE_UPDATE, updateData, channelName);
 		SocialQuest.LastUpdate = updateData;
 		SQ_PrintDebugData('Quest update comm message sent');
@@ -307,7 +335,7 @@ function SocialQuest:QuestUpdate(event, ...)
 		SQ_PrintDebugData("failed quest "..questInfo.link,"fail");
 	elseif updateType == AQ_QUEST_FINISHED then
 		SQ_SendChatMessage("completed quest "..questInfo.link,"finish");
-		if (IsInParty() or IsInRaid()) and EveryoneHasFinished(questInfo.cleanTitle) then
+		if (IsInParty() or IsInRaid()) and EveryoneHasFinished(info.questID) then
 			SocialQuest:ShowBanner("Everyone has completed "..questInfo.cleanTitle, PURPLE_FONT_COLOR);
 		end
 		SQ_PrintDebugData("completed quest "..questInfo.link,"finish");
@@ -393,7 +421,7 @@ function SocialQuest:CreateQuestTooltip(toolTip,uniqueID)
 						local questData = SocialQuest.PlayerQuests[person];
 						-- do we have a quest log for this party member
 						if (questData) then
-							local pQuestInfo = questData[liveQuestInfo.title];
+							local pQuestInfo = questData[uniqueID];
 							-- now that we have the party member's quest log, do they have an entry for this quest?
 							if (pQuestInfo) then
 								local pObjective = pQuestInfo.objectives[i];
@@ -458,15 +486,14 @@ function SocialQuest:OnEnable()
 	SocialQuest:SecureHook(ItemRefTooltip,"SetHyperlink");
 	--SocialQuest:RawHook("QuestGetAutoAccept",true);
 	local channel = GetChannelToUse();
-	-- Lets populate AbsoluteQuestLog with all the quests in our log, in case any are missing
-	for title,questInfo in pairs(AbsoluteQuestLog.Quests) do
-		AbsoluteQuestLog:AddQuestHistory(questInfo);
-	end
-	if (channel) then
-		local updateData = SocialQuest:Serialize(AbsoluteQuestLog.Quests);
-		SocialQuest:SendCommMessage(SQ_ANNOUNCE_INIT, updateData, GetChannelToUse());
-		SQ_PrintDebugData('Quest init comm message sent');
-	end
+
+		if (channel) then
+			local updateData = SocialQuest:Serialize(BuildQuestData());
+			SocialQuest:SendCommMessage(SQ_ANNOUNCE_INIT, updateData, GetChannelToUse());
+			SQ_PrintDebugData('Quest init comm message sent');
+		end
+	-- Start the message queue timer
+	SQ_QueueTimer = SocialQuest:ScheduleRepeatingTimer(ProcessMessageQueue, 0.25);
 end
 
 function SocialQuest:OnDisable()
@@ -486,6 +513,11 @@ function SocialQuest:OnDisable()
 	SocialQuest:UnregisterEvent("QUEST_REMOVED");
 	SocialQuest:UnHook(ItemRefTooltip,"SetHyperlink");
 	--SocialQuest:UnHook("QuestGetAutoAccept");
+	-- Cancel the message queue timer
+	if SQ_QueueTimer then
+		SocialQuest:CancelTimer(SQ_QueueTimer);
+		SQ_QueueTimer = nil;
+	end
 end
 
 
@@ -511,13 +543,10 @@ function SocialQuest:OnCommReceived(prefix, message, distribution, sender)
 				return;
 			end
 			SocialQuest.PlayerQuests[sender] = allQuestData;
-			for title,questInfo in pairs(allQuestData) do
-				AbsoluteQuestLog:AddQuestHistory(questInfo);
-			end
 			SQ_PrintDebugData('Quest init received from '..sender);
 		elseif prefix == SQ_REQUEST then
 			SQ_PrintDebugData('Quest init requested from '..sender);
-			local updateData = SocialQuest:Serialize(AbsoluteQuestLog.Quests);
+			local updateData = SocialQuest:Serialize(BuildQuestData());
 			SocialQuest:SendCommMessage(SQ_ANNOUNCE_INIT, updateData, "WHISPER", sender);
 			SQ_PrintDebugData('Quest init comm message sent to '..sender);
 			if (SocialQuest.LastUpdate ~= nil) then
@@ -525,7 +554,7 @@ function SocialQuest:OnCommReceived(prefix, message, distribution, sender)
 				SQ_PrintDebugData('Quest update comm message sent to '..sender);
 			end
 		elseif prefix == SQ_ANNOUNCE_UPDATE then
-			local success,updateType,questName,questLink,progressText,questData,source = SocialQuest:Deserialize(message);
+			local success,updateType,questID,questLink,progressText,questData,source = SocialQuest:Deserialize(message);
 			if not success then
 				-- corrupted data, request a refresh
 				SocialQuest:SendCommMessage(SQ_REQUEST, '', "WHISPER", sender);
@@ -538,7 +567,8 @@ function SocialQuest:OnCommReceived(prefix, message, distribution, sender)
 				return;
 			end
 			SQ_PrintDebugData('Quest update received from '..sender);
-			SocialQuest.PlayerQuests[sender][questName] = questData;
+			SocialQuest.PlayerQuests[sender][questID] = questData;
+			local questTitle = questData.title or C_QuestLog.GetTitleForQuestID(questID) or "Unknown Quest";
 			if (SocialQuest.db.char.enabled) and (SocialQuest.db.char.general.displayReceivedEvents) and
 				(IsInParty() and (SocialQuest.db.char.party.displayReceivedEvents)) or
 				(IsInRaid() and (SocialQuest.db.char.raid.displayReceivedEvents)) or
@@ -546,7 +576,7 @@ function SocialQuest:OnCommReceived(prefix, message, distribution, sender)
 			then
 				if updateType == AQ_QUEST_COMPLETED then
 					if (SocialQuest.db.char.general.receive["complete"]) then
-						SocialQuest:ShowBanner(GetGlobalDisplayName(sName,sRealm).." has turned in "..questName, BLUE_FONT_COLOR);
+						SocialQuest:ShowBanner(GetGlobalDisplayName(sName,sRealm).." has turned in "..questTitle, BLUE_FONT_COLOR);
 					end
 				elseif updateType == AQ_QUEST_PROGRESS_UPDATED then
 					if (SocialQuest.db.char.general.receive["progress"]) then
@@ -554,21 +584,21 @@ function SocialQuest:OnCommReceived(prefix, message, distribution, sender)
 					end
 				elseif updateType == AQ_QUEST_ABANDONED then
 					if (SocialQuest.db.char.general.receive["abandon"]) then
-						SocialQuest:ShowBanner(GetGlobalDisplayName(sName,sRealm).." has abandoned "..questName, RED_FONT_COLOR);
+						SocialQuest:ShowBanner(GetGlobalDisplayName(sName,sRealm).." has abandoned "..questTitle, RED_FONT_COLOR);
 					end
 				elseif updateType == AQ_QUEST_ACCEPTED then
 					if (SocialQuest.db.char.general.receive["accept"]) then
-						SocialQuest:ShowBanner(GetGlobalDisplayName(sName,sRealm).." has accepted "..questName, YELLOW_FONT_COLOR);
+						SocialQuest:ShowBanner(GetGlobalDisplayName(sName,sRealm).." has accepted "..questTitle, YELLOW_FONT_COLOR);
 					end
 				elseif updateType == AQ_QUEST_FAILED then
 					if (SocialQuest.db.char.general.receive["fail"]) then
-						SocialQuest:ShowBanner(GetGlobalDisplayName(sName,sRealm).." has failed "..questName, RED_FONT_COLOR);
+						SocialQuest:ShowBanner(GetGlobalDisplayName(sName,sRealm).." has failed "..questTitle, RED_FONT_COLOR);
 					end
 				elseif updateType == AQ_QUEST_FINISHED then
 					if (SocialQuest.db.char.general.receive["finish"]) then
-						SocialQuest:ShowBanner(GetGlobalDisplayName(sName,sRealm).." has completed "..questName, GREEN_FONT_COLOR);
-						if EveryoneHasFinished(questName) then
-							SocialQuest:ShowBanner("Everyone has completed "..questName, PURPLE_FONT_COLOR);
+						SocialQuest:ShowBanner(GetGlobalDisplayName(sName,sRealm).." has completed "..questTitle, GREEN_FONT_COLOR);
+						if EveryoneHasFinished(questID) then
+							SocialQuest:ShowBanner("Everyone has completed "..questTitle, PURPLE_FONT_COLOR);
 						end
 					end
 				end
@@ -644,7 +674,7 @@ function SocialQuest:GROUP_ROSTER_UPDATE(eventName)
 		return;
     end
 	if StandardSendOK() then
-		local updateData = SocialQuest:Serialize(AbsoluteQuestLog.Quests);
+		local updateData = SocialQuest:Serialize(BuildQuestData());
 		SocialQuest:SendCommMessage(SQ_ANNOUNCE_INIT, updateData, channel);
 		SQ_PrintDebugData('Quest init comm message sent');
 	end
