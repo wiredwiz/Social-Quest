@@ -178,8 +178,13 @@ function SocialQuestAnnounce:OnRemoteQuestEvent(sender, eventType, questID)
     if not tmpl then return end
 
     local bannerMsg = string.format(tmpl, sender, title)
+    local color = SocialQuestColors.event[eventType]
     if RaidWarningFrame then
-        RaidWarningFrame:AddMessage(bannerMsg)
+        if color then
+            RaidWarningFrame:AddMessage(bannerMsg, color.r, color.g, color.b)
+        else
+            RaidWarningFrame:AddMessage(bannerMsg)
+        end
     end
 end
 
