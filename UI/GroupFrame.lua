@@ -24,23 +24,13 @@ local function createFrame()
     f:SetScript("OnDragStop", f.StopMovingOrSizing)
     f:Hide()
 
-    f.title = f.TitleBg:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    f.title:SetPoint("LEFT", f.TitleBg, "LEFT", 5, 0)
-    f.title:SetText("SocialQuest — Group Quests")
+    -- Use the template's built-in title text rather than creating a duplicate.
+    f.TitleText:SetText("SocialQuest — Group Quests")
 
-    -- Scroll area for quest content.
-    f.scrollFrame = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
-    f.scrollFrame:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -60)
-    f.scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -28, 10)
-
-    f.content = CreateFrame("Frame", nil, f.scrollFrame)
-    f.content:SetSize(360, 1)
-    f.scrollFrame:SetScrollChild(f.content)
-
-    -- Tabs.
+    -- Tabs: anchored below the title bar (title bar is ~22px tall).
     local function makeTab(name, label, offsetX)
         local tab = CreateFrame("Button", "SocialQuestTab_"..name, f, "TabButtonTemplate")
-        tab:SetPoint("BOTTOMLEFT", f, "TOPLEFT", offsetX, -30)
+        tab:SetPoint("TOPLEFT", f, "TOPLEFT", offsetX, -24)
         tab:SetText(label)
         tab:SetScript("OnClick", function()
             currentTab = name
@@ -51,7 +41,16 @@ local function createFrame()
 
     f.tabShared = makeTab("shared", "Shared",  10)
     f.tabMine   = makeTab("mine",   "Mine",    90)
-    f.tabParty  = makeTab("party",  "Party",  150)
+    f.tabParty  = makeTab("party",  "Party",  160)
+
+    -- Scroll area: starts below the tab row (~24px title + ~26px tabs + 6px gap).
+    f.scrollFrame = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+    f.scrollFrame:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -56)
+    f.scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -28, 10)
+
+    f.content = CreateFrame("Frame", nil, f.scrollFrame)
+    f.content:SetSize(360, 1)
+    f.scrollFrame:SetScrollChild(f.content)
 
     return f
 end

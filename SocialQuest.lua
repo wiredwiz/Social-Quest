@@ -49,30 +49,32 @@ function SocialQuest:OnEnable()
     self:RegisterEvent("AUTOFOLLOW_END",      "OnAutoFollowEnd")
 
     -- Register AQL callbacks.
-    AQL:RegisterCallback("AQL_QUEST_ACCEPTED",        self, self.OnQuestAccepted)
-    AQL:RegisterCallback("AQL_QUEST_ABANDONED",       self, self.OnQuestAbandoned)
-    AQL:RegisterCallback("AQL_QUEST_FINISHED",        self, self.OnQuestFinished)
-    AQL:RegisterCallback("AQL_QUEST_COMPLETED",       self, self.OnQuestCompleted)
-    AQL:RegisterCallback("AQL_QUEST_FAILED",          self, self.OnQuestFailed)
-    AQL:RegisterCallback("AQL_QUEST_TRACKED",         self, self.OnQuestTracked)
-    AQL:RegisterCallback("AQL_QUEST_UNTRACKED",       self, self.OnQuestUntracked)
-    AQL:RegisterCallback("AQL_OBJECTIVE_PROGRESSED",  self, self.OnObjectiveProgressed)
-    AQL:RegisterCallback("AQL_OBJECTIVE_REGRESSED",   self, self.OnObjectiveRegressed)
-    AQL:RegisterCallback("AQL_UNIT_QUEST_LOG_CHANGED",self, self.OnUnitQuestLogChanged)
+    -- Dot-notation is required: AQL is the target in CallbackHandler, so
+    -- AQL:RegisterCallback() would set self==target and trigger a guard error.
+    AQL.RegisterCallback(self, "AQL_QUEST_ACCEPTED",         "OnQuestAccepted")
+    AQL.RegisterCallback(self, "AQL_QUEST_ABANDONED",        "OnQuestAbandoned")
+    AQL.RegisterCallback(self, "AQL_QUEST_FINISHED",         "OnQuestFinished")
+    AQL.RegisterCallback(self, "AQL_QUEST_COMPLETED",        "OnQuestCompleted")
+    AQL.RegisterCallback(self, "AQL_QUEST_FAILED",           "OnQuestFailed")
+    AQL.RegisterCallback(self, "AQL_QUEST_TRACKED",          "OnQuestTracked")
+    AQL.RegisterCallback(self, "AQL_QUEST_UNTRACKED",        "OnQuestUntracked")
+    AQL.RegisterCallback(self, "AQL_OBJECTIVE_PROGRESSED",   "OnObjectiveProgressed")
+    AQL.RegisterCallback(self, "AQL_OBJECTIVE_REGRESSED",    "OnObjectiveRegressed")
+    AQL.RegisterCallback(self, "AQL_UNIT_QUEST_LOG_CHANGED", "OnUnitQuestLogChanged")
 end
 
 function SocialQuest:OnDisable()
     if AQL then
-        AQL:UnregisterCallback("AQL_QUEST_ACCEPTED",         self)
-        AQL:UnregisterCallback("AQL_QUEST_ABANDONED",        self)
-        AQL:UnregisterCallback("AQL_QUEST_FINISHED",         self)
-        AQL:UnregisterCallback("AQL_QUEST_COMPLETED",        self)
-        AQL:UnregisterCallback("AQL_QUEST_FAILED",           self)
-        AQL:UnregisterCallback("AQL_QUEST_TRACKED",          self)
-        AQL:UnregisterCallback("AQL_QUEST_UNTRACKED",        self)
-        AQL:UnregisterCallback("AQL_OBJECTIVE_PROGRESSED",   self)
-        AQL:UnregisterCallback("AQL_OBJECTIVE_REGRESSED",    self)
-        AQL:UnregisterCallback("AQL_UNIT_QUEST_LOG_CHANGED", self)
+        AQL.UnregisterCallback(self, "AQL_QUEST_ACCEPTED")
+        AQL.UnregisterCallback(self, "AQL_QUEST_ABANDONED")
+        AQL.UnregisterCallback(self, "AQL_QUEST_FINISHED")
+        AQL.UnregisterCallback(self, "AQL_QUEST_COMPLETED")
+        AQL.UnregisterCallback(self, "AQL_QUEST_FAILED")
+        AQL.UnregisterCallback(self, "AQL_QUEST_TRACKED")
+        AQL.UnregisterCallback(self, "AQL_QUEST_UNTRACKED")
+        AQL.UnregisterCallback(self, "AQL_OBJECTIVE_PROGRESSED")
+        AQL.UnregisterCallback(self, "AQL_OBJECTIVE_REGRESSED")
+        AQL.UnregisterCallback(self, "AQL_UNIT_QUEST_LOG_CHANGED")
     end
 end
 

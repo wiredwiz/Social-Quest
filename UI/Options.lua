@@ -164,5 +164,5 @@ function SocialQuestOptions:Initialize()
     }
 
     AceConfig:RegisterOptionsTable("SocialQuest", options)
-    AceConfigDialog:AddToBlizzard("SocialQuest")
+    AceConfigDialog:AddToBlizOptions("SocialQuest")
 end
