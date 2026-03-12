@@ -142,7 +142,7 @@ function SocialQuestGroupData:OnUnitQuestLogChanged(unit)
 
     -- Partial data: find which of OUR quests this unit also has.
     local sharedQuestIDs = {}
-    local numEntries = C_QuestLog.GetNumQuestLogEntries()
+    local numEntries = GetNumQuestLogEntries()
     for i = 1, numEntries do
         -- GetQuestLogTitle in TBC Classic returns: title, level, suggestedGroup, isHeader, ...
         -- isHeader is the 4th return value (not 5th).

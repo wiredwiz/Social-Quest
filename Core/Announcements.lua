@@ -52,7 +52,7 @@ local function formatQuestMessage(eventType, questTitle)
         completed = "Quest turned in: %s",
         failed    = "Quest failed: %s",
     }
-    local tmpl = templates[eventType] or "Quest event (%s): %%s"
+    local tmpl = templates[eventType] or "Quest event (%s): %s"
     return string.format(tmpl, questTitle)
 end
 

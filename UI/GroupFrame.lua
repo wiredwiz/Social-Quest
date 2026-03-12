@@ -246,7 +246,7 @@ function SocialQuestGroupFrame:RenderSharedTab()
             end
         else
             -- Standalone quest display.
-            local questID = next(group.members)  -- get any questID for title lookup
+            local _, questID = next(group.members)  -- get any questID for title lookup
             local title = AQL and AQL:GetQuest(questID) and AQL:GetQuest(questID).title
                           or C_QuestLog.GetTitleForQuestID(questID)
                           or ("Quest " .. questID)
