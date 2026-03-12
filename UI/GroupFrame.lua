@@ -14,7 +14,7 @@ local refreshPending = false
 ------------------------------------------------------------------------
 
 local function createFrame()
-    local f = CreateFrame("Frame", "SocialQuestGroupFrame", UIParent, "BasicFrameTemplateWithInset")
+    local f = CreateFrame("Frame", "SocialQuestGroupFramePanel", UIParent, "BasicFrameTemplateWithInset")
     f:SetSize(400, 500)
     f:SetPoint("CENTER")
     f:SetMovable(true)
@@ -84,11 +84,11 @@ end
 
 function SocialQuestGroupFrame:Refresh()
     if not frame then return end
-    -- Clear existing content.
-    for _, child in ipairs({frame.content:GetChildren()}) do
-        child:Hide()
-        child:SetParent(nil)
-    end
+    -- Recreate the content frame to clear all FontStrings (GetChildren does not return FontStrings).
+    frame.scrollFrame:SetScrollChild(nil)
+    frame.content = CreateFrame("Frame", nil, frame.scrollFrame)
+    frame.content:SetSize(360, 1)
+    frame.scrollFrame:SetScrollChild(frame.content)
 
     if currentTab == "shared" then
         self:RenderSharedTab()
