@@ -61,6 +61,30 @@ function SocialQuest:OnEnable()
     AQL.RegisterCallback(self, "AQL_OBJECTIVE_PROGRESSED",   "OnObjectiveProgressed")
     AQL.RegisterCallback(self, "AQL_OBJECTIVE_REGRESSED",    "OnObjectiveRegressed")
     AQL.RegisterCallback(self, "AQL_UNIT_QUEST_LOG_CHANGED", "OnUnitQuestLogChanged")
+
+    -- Minimap button via LibDBIcon-1.0.
+    -- SocialQuestGroupFrame is a global defined in UI/GroupFrame.lua (loaded earlier).
+    local LDB    = LibStub("LibDataBroker-1.1", true)
+    local DBIcon = LibStub("LibDBIcon-1.0", true)
+    if LDB and DBIcon then
+        -- Guard against double-registration on unexpected second OnEnable call.
+        local launcher = LDB:GetDataObjectByName("SocialQuest")
+            or LDB:NewDataObject("SocialQuest", {
+            type  = "launcher",
+            icon  = "Interface\\Icons\\INV_Misc_GroupNeedMore",
+            OnClick = function(_, button)
+                if button == "LeftButton" then
+                    SocialQuestGroupFrame:Toggle()
+                end
+            end,
+            OnTooltipShow = function(tooltip)
+                tooltip:SetText("SocialQuest")
+                tooltip:AddLine("Click to open group quest frame.", 1, 1, 1)
+                tooltip:Show()
+            end,
+        })
+        DBIcon:Register("SocialQuest", launcher, self.db.profile.minimap)
+    end
 end
 
 function SocialQuest:OnDisable()
@@ -124,6 +148,8 @@ function SocialQuest:GetDefaults()
             debug = {
                 enabled = false,
             },
+            minimap = { hide = false },
+            -- LibDBIcon writes minimapPos into this table automatically when dragged.
             frameState = {
                 activeTab = "shared",
                 collapsedZones = {
