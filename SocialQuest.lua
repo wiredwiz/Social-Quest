@@ -124,6 +124,14 @@ function SocialQuest:GetDefaults()
             debug = {
                 enabled = false,
             },
+            frameState = {
+                activeTab = "shared",
+                collapsedZones = {
+                    mine   = {},
+                    party  = {},
+                    shared = {},
+                },
+            },
         },
     }
 end

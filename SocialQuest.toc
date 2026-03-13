@@ -10,6 +10,11 @@ SocialQuest.lua
 Core\GroupData.lua
 Core\Communications.lua
 Core\Announcements.lua
+UI\TabUtils.lua
+UI\RowFactory.lua
+UI\Tabs\MineTab.lua
+UI\Tabs\PartyTab.lua
+UI\Tabs\SharedTab.lua
 UI\Options.lua
 UI\Tooltips.lua
 UI\GroupFrame.lua

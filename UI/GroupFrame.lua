@@ -1,56 +1,112 @@
 -- UI/GroupFrame.lua
 -- Group quest window. Opened via /sq or minimap button.
--- Three tabs: Shared Quests, My Quests, Party Quests.
--- Chain-aware matching: groups quests by chainID when known.
+-- Tab rendering is delegated to MineTab, PartyTab, SharedTab providers.
+-- Zone collapse state and active tab are persisted via AceDB frameState.
+
+-- StaticPopup_Show(which, text1, ...) calls editBox:SetText(text1) AFTER it
+-- fires OnShow, so any SetText in OnShow gets immediately overwritten.
+-- Solution: pass the URL as text1 so Blizzard's own code populates the box.
+-- OnShow only defers HighlightText/SetFocus to run after Blizzard finishes.
+StaticPopupDialogs["SQ_WOWHEAD_POPUP"] = {
+    text         = "Quest URL (Ctrl+C to copy):",
+    button1      = "Close",
+    hasEditBox   = 1,
+    editBoxWidth = 300,
+    OnShow       = function(self)
+        -- Blizzard sets editBox:SetText(text1) after OnShow returns.
+        -- Defer focus+highlight to next tick so the text is already set.
+        C_Timer.After(0, function()
+            if self.editBox and self:IsShown() then
+                self.editBox:SetFocus()
+                self.editBox:HighlightText()
+            end
+        end)
+    end,
+    OnAccept     = function() end,
+    timeout      = 0,
+    whileDead    = true,
+    hideOnEscape = true,
+}
 
 SocialQuestGroupFrame = {}
 
-local frame = nil
-local currentTab = "shared"  -- "shared" | "mine" | "party"
+local frame          = nil
 local refreshPending = false
+
+-- Ordered tab providers. The id must match the collapsedZones subtable key.
+-- MineTab/PartyTab/SharedTab are loaded before GroupFrame per TOC order, so
+-- the globals exist here and can be assigned directly.
+-- Tab display order: Shared | Mine | Party
+local providers = {
+    { id = "shared", module = SharedTab },
+    { id = "mine",   module = MineTab   },
+    { id = "party",  module = PartyTab  },
+}
 
 ------------------------------------------------------------------------
 -- Frame construction
 ------------------------------------------------------------------------
 
 local function createFrame()
-    local f = CreateFrame("Frame", "SocialQuestGroupFramePanel", UIParent, "BasicFrameTemplateWithInset")
+    local f = CreateFrame("Frame", "SocialQuestGroupFramePanel", UIParent,
+                          "BasicFrameTemplateWithInset")
     f:SetSize(400, 500)
     f:SetPoint("CENTER")
+    f:SetFrameStrata("HIGH")
     f:SetMovable(true)
     f:EnableMouse(true)
     f:RegisterForDrag("LeftButton")
-    f:SetScript("OnDragStart", f.StartMoving)
+    f:SetScript("OnDragStart", function(self) self:StartMoving(); self:Raise() end)
     f:SetScript("OnDragStop", f.StopMovingOrSizing)
     f:Hide()
 
-    -- Use the template's built-in title text rather than creating a duplicate.
     f.TitleText:SetText("SocialQuest — Group Quests")
 
-    -- Tabs: anchored below the title bar (title bar is ~22px tall).
-    local function makeTab(name, label, offsetX)
-        local tab = CreateFrame("Button", "SocialQuestTab_"..name, f, "TabButtonTemplate")
+    -- Tab buttons.
+    local function makeTab(id, label, offsetX)
+        local tab = CreateFrame("Button", "SocialQuestTab_" .. id, f, "TabButtonTemplate")
         tab:SetPoint("TOPLEFT", f, "TOPLEFT", offsetX, -24)
         tab:SetText(label)
         tab:SetScript("OnClick", function()
-            currentTab = name
+            SocialQuest.db.profile.frameState.activeTab = id
             SocialQuestGroupFrame:Refresh()
         end)
         return tab
     end
 
     f.tabShared = makeTab("shared", "Shared",  10)
-    f.tabMine   = makeTab("mine",   "Mine",    90)
-    f.tabParty  = makeTab("party",  "Party",  160)
+    f.tabMine   = makeTab("mine",   "Mine",    80)
+    f.tabParty  = makeTab("party",  "Party",  150)
 
-    -- Scroll area: starts below the tab row (~24px title + ~26px tabs + 6px gap).
+    -- Separator: a child Frame created AFTER the tab buttons so it draws on top
+    -- of any tab art that bleeds below the button frame.  GetHeight() reads the
+    -- real TabButtonTemplate height so the separator sits exactly at tab bottom.
+    local TAB_TOP    = -24
+    local tabH       = f.tabShared:GetHeight()
+    local SEP_Y      = TAB_TOP - tabH      -- y of separator top edge
+    local SCROLL_TOP = SEP_Y - 4           -- 4 px gap below separator
+
+    local sepFrame = CreateFrame("Frame", nil, f)
+    sepFrame:SetPoint("TOPLEFT",  f, "TOPLEFT",   6, SEP_Y)
+    sepFrame:SetPoint("TOPRIGHT", f, "TOPRIGHT", -6, SEP_Y)
+    sepFrame:SetHeight(2)
+    local sepTex = sepFrame:CreateTexture(nil, "ARTWORK")
+    sepTex:SetAllPoints(sepFrame)
+    sepTex:SetTexture("Interface\\Buttons\\WHITE8x8")
+    sepTex:SetVertexColor(0.4, 0.35, 0.25, 1)
+
+    -- Scroll area.
     f.scrollFrame = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
-    f.scrollFrame:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -56)
+    f.scrollFrame:SetPoint("TOPLEFT",     f, "TOPLEFT",     10, SCROLL_TOP)
     f.scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -28, 10)
 
     f.content = CreateFrame("Frame", nil, f.scrollFrame)
     f.content:SetSize(360, 1)
     f.scrollFrame:SetScrollChild(f.content)
+
+    -- Register with UISpecialFrames so pressing Escape closes this window,
+    -- matching standard WoW window behaviour. Requires the frame's global name.
+    tinsert(UISpecialFrames, "SocialQuestGroupFramePanel")
 
     return f
 end
@@ -60,17 +116,25 @@ end
 ------------------------------------------------------------------------
 
 function SocialQuestGroupFrame:Toggle()
-    if not frame then frame = createFrame() end
+    if not frame then
+        frame = createFrame()
+    end
     if frame:IsShown() then
         frame:Hide()
     else
         frame:Show()
+        frame:Raise()
+        -- Rebuild the quest cache on every open so IsQuestWatched state is
+        -- current.  The initial PLAYER_LOGIN rebuild fires before watch state
+        -- is fully set up, causing isTracked to be stale on first open.
+        if SocialQuest.AQL and SocialQuest.AQL.QuestCache then
+            SocialQuest.AQL.QuestCache:Rebuild()
+        end
         self:Refresh()
     end
 end
 
--- Called by GroupData/Comm whenever data changes.
--- Batches refreshes to avoid multiple redraws per frame.
+-- Batches refreshes: at most one redraw per frame.
 function SocialQuestGroupFrame:RequestRefresh()
     if not frame or not frame:IsShown() then return end
     if refreshPending then return end
@@ -83,355 +147,84 @@ end
 
 function SocialQuestGroupFrame:Refresh()
     if not frame then return end
-    -- Recreate the content frame to clear all FontStrings (GetChildren does not return FontStrings).
-    -- Hide the old frame rather than passing nil to SetScrollChild, which is not accepted.
+    frame.scrollFrame:SetVerticalScroll(0)
+
+    -- Recreate content child (GetChildren does not return FontStrings; hiding is
+    -- the only clean way to discard old rows without leaking them).
     if frame.content then frame.content:Hide() end
     frame.content = CreateFrame("Frame", nil, frame.scrollFrame)
     frame.content:SetSize(360, 1)
     frame.scrollFrame:SetScrollChild(frame.content)
 
-    if currentTab == "shared" then
-        self:RenderSharedTab()
-    elseif currentTab == "mine" then
-        self:RenderMineTab()
+    -- Find active provider.
+    local activeID = SocialQuest.db.profile.frameState.activeTab or "shared"
+    local activeProvider
+    for _, p in ipairs(providers) do
+        if p.id == activeID then
+            activeProvider = p
+            break
+        end
+    end
+    if not activeProvider or not activeProvider.module then return end
+
+    -- Per-tab collapsed zones subtable.
+    local collapsedZones = SocialQuest.db.profile.frameState.collapsedZones
+    local tabCollapsed   = collapsedZones[activeID] or {}
+
+    -- Delegate rendering to the tab provider.
+    local totalHeight = activeProvider.module:Render(frame.content, RowFactory, tabCollapsed)
+    frame.content:SetHeight(math.max(totalHeight, 10))
+end
+
+-- Flip the collapsed state of one zone in the given tab and redraw.
+-- Absent key = expanded (spec default). Set true when collapsing, nil when expanding,
+-- so no stale false entries accumulate in the saved variable table.
+function SocialQuestGroupFrame:ToggleZone(tabId, zoneName)
+    local collapsedZones = SocialQuest.db.profile.frameState.collapsedZones
+    if not collapsedZones[tabId] then
+        collapsedZones[tabId] = {}
+    end
+    if collapsedZones[tabId][zoneName] then
+        collapsedZones[tabId][zoneName] = nil   -- expanded (absent key = default)
     else
-        self:RenderPartyTab()
+        collapsedZones[tabId][zoneName] = true  -- collapsed
     end
+    self:Refresh()
 end
 
 ------------------------------------------------------------------------
--- Chain-aware grouping helpers
-------------------------------------------------------------------------
-
--- Returns a grouping key for a questID:
---   If chain is known, returns "chain:<chainID>"
---   Otherwise returns "quest:<questID>"
-local function groupKey(questID)
-    local AQL = SocialQuest.AQL
-    if AQL then
-        local chain = AQL:GetChainInfo(questID)
-        if chain and chain.knownStatus == "known" and chain.chainID then
-            return "chain:" .. chain.chainID, chain
-        end
-    end
-    return "quest:" .. questID, nil
-end
-
--- Format a time duration (seconds) as "M:SS".
-local function formatTime(seconds)
-    if not seconds or seconds <= 0 then return "0:00" end
-    local m = math.floor(seconds / 60)
-    local s = math.floor(seconds % 60)
-    return string.format("%d:%02d", m, s)
-end
-
--- Estimate remaining timer for a remote player's quest snapshot.
-local function estimateTimer(timerSeconds, snapshotTime)
-    if not timerSeconds or not snapshotTime then return nil end
-    local elapsed = GetTime() - snapshotTime
-    local remaining = timerSeconds - elapsed
-    return remaining
-end
-
-------------------------------------------------------------------------
--- Shared Quests Tab
-------------------------------------------------------------------------
-
-function SocialQuestGroupFrame:RenderSharedTab()
-    local AQL = SocialQuest.AQL
-    if not AQL then return end
-    local C = SocialQuestColors
-
-    -- Build groups: key → { localQuestID, players = { [name] = questID } }
-    local groups = {}
-
-    -- Include local player's quests.
-    for questID, info in pairs(AQL:GetAllQuests()) do
-        local key, chain = groupKey(questID)
-        if not groups[key] then groups[key] = { chain = chain, members = {} } end
-        groups[key].members["(You)"] = questID
-    end
-
-    -- Include group members' quests.
-    for playerName, entry in pairs(SocialQuestGroupData.PlayerQuests) do
-        if entry.quests then
-            for questID in pairs(entry.quests) do
-                local key, chain = groupKey(questID)
-                if not groups[key] then groups[key] = { chain = chain, members = {} } end
-                groups[key].members[playerName] = questID
-            end
-        end
-    end
-
-    -- Filter to groups with at least 2 members (shared = 2+ people on same content).
-    local y = 0
-    local function addText(text, indent)
-        local fs = frame.content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        fs:SetPoint("TOPLEFT", frame.content, "TOPLEFT", indent or 0, -y)
-        fs:SetText(text)
-        fs:SetWidth(340)
-        y = y + fs:GetStringHeight() + 4
-    end
-
-    for key, group in pairs(groups) do
-        local memberCount = 0
-        for _ in pairs(group.members) do memberCount = memberCount + 1 end
-        if memberCount >= 2 then
-
-        if group.chain then
-            -- Chain display.
-            local chain = group.chain
-            addText(C.chain .. "[Chain] " .. (chain.steps and chain.steps[chain.step] and chain.steps[chain.step].title or "Unknown Chain") .. C.reset)
-
-            -- Step bar: show each step with member positions marked.
-            local stepLine = "  Step: "
-            for i = 1, chain.length do
-                stepLine = stepLine .. i
-                if i < chain.length then stepLine = stepLine .. " -- " end
-            end
-            addText(stepLine)
-
-            for playerName, questID in pairs(group.members) do
-                local playerChain = AQL and AQL:GetChainInfo(questID)
-                local step = playerChain and playerChain.step or "?"
-                local label = playerName .. ": step " .. step
-
-                -- Timer display.
-                if playerName == "(You)" then
-                    local info = AQL:GetQuest(questID)
-                    if info and info.timerSeconds then
-                        local remaining = info.timerSeconds - (GetTime() - info.snapshotTime)
-                        if remaining > 0 then
-                            label = label .. "  " .. C.timer .. "⏱ " .. formatTime(remaining) .. C.reset
-                        end
-                    end
-                else
-                    local pentry = SocialQuestGroupData.PlayerQuests[playerName]
-                    local pquest = pentry and pentry.quests and pentry.quests[questID]
-                    if pquest and pquest.timerSeconds then
-                        local remaining = estimateTimer(pquest.timerSeconds, pquest.snapshotTime)
-                        if remaining and remaining > 0 then
-                            label = label .. "  " .. C.timer .. "⏱ ~" .. formatTime(remaining) .. " (est.)" .. C.reset
-                        elseif remaining then
-                            label = label .. "  " .. C.timer .. "(Timer may have expired)" .. C.reset
-                        end
-                    end
-                end
-
-                addText(label, 16)
-            end
-
-            -- Relative step summary: compare local player's step to each other member.
-            -- "You are N steps ahead/behind" per the spec chain display example.
-            local myStep = nil
-            local myQuestID = group.members["(You)"]
-            if myQuestID then
-                local myCI = AQL and AQL:GetChainInfo(myQuestID)
-                myStep = myCI and myCI.step
-            end
-            if myStep then
-                for playerName, questID in pairs(group.members) do
-                    if playerName ~= "(You)" then
-                        local theirCI = AQL and AQL:GetChainInfo(questID)
-                        local theirStep = theirCI and theirCI.step
-                        if theirStep and theirStep ~= myStep then
-                            local diff = myStep - theirStep
-                            local rel = diff > 0
-                                and string.format("You are %d step(s) ahead of %s.", diff, playerName)
-                                or  string.format("You are %d step(s) behind %s.", -diff, playerName)
-                            addText(rel, 16)
-                        end
-                    end
-                end
-            end
-        else
-            -- Standalone quest display.
-            local _, questID = next(group.members)  -- get any questID for title lookup
-            local title = AQL and AQL:GetQuest(questID) and AQL:GetQuest(questID).title
-                          or C_QuestLog.GetTitleForQuestID(questID)
-                          or ("Quest " .. questID)
-            addText(C.header .. "[Quest] " .. title .. C.reset)
-
-            for playerName, qid in pairs(group.members) do
-                local label = "  " .. playerName .. ":"
-                if playerName == "(You)" then
-                    local info = AQL and AQL:GetQuest(qid)
-                    if info then
-                        for _, obj in ipairs(info.objectives or {}) do
-                            label = label .. " " .. obj.numFulfilled .. "/" .. obj.numRequired
-                        end
-                    end
-                else
-                    local pentry = SocialQuestGroupData.PlayerQuests[playerName]
-                    local pquest = pentry and pentry.quests and pentry.quests[qid]
-                    if pquest then
-                        for _, obj in ipairs(pquest.objectives or {}) do
-                            label = label .. " " .. obj.numFulfilled .. "/" .. obj.numRequired
-                        end
-                    else
-                        label = label .. " " .. SocialQuestColors.unknown .. "(no data)" .. SocialQuestColors.reset
-                    end
-                end
-                addText(label, 8)
-            end
-        end
-
-        end  -- close memberCount >= 2
-    end  -- close pairs(groups)
-
-    frame.content:SetHeight(math.max(y, 10))
-end
-
-------------------------------------------------------------------------
--- My Quests Tab
-------------------------------------------------------------------------
-
-function SocialQuestGroupFrame:RenderMineTab()
-    local AQL = SocialQuest.AQL
-    if not AQL then return end
-    local C = SocialQuestColors
-
-    -- Build set of questIDs shared with any group member.
-    local sharedIDs = {}
-    for _, entry in pairs(SocialQuestGroupData.PlayerQuests) do
-        if entry.quests then
-            for questID in pairs(entry.quests) do
-                sharedIDs[questID] = true
-            end
-        end
-    end
-
-    local y = 0
-    local function addText(text, indent)
-        local fs = frame.content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        fs:SetPoint("TOPLEFT", frame.content, "TOPLEFT", indent or 0, -y)
-        fs:SetText(text)
-        fs:SetWidth(340)
-        y = y + fs:GetStringHeight() + 4
-    end
-
-    for questID, info in pairs(AQL:GetAllQuests()) do
-        if not sharedIDs[questID] then
-            local title = info.title or ("Quest " .. questID)
-            local chain = info.chainInfo
-            local header = C.white .. title .. C.reset
-            if chain and chain.knownStatus == "known" then
-                header = header .. "  " .. C.chain .. "(chain step " .. chain.step .. "/" .. chain.length .. ")" .. C.reset
-            end
-            addText(header)
-
-            for _, obj in ipairs(info.objectives or {}) do
-                addText("  " .. obj.text, 8)
-            end
-        end
-    end
-
-    frame.content:SetHeight(math.max(y, 10))
-end
-
-------------------------------------------------------------------------
--- Party Quests Tab
-------------------------------------------------------------------------
-
-function SocialQuestGroupFrame:RenderPartyTab()
-    local AQL = SocialQuest.AQL
-    if not AQL then return end
-    local C = SocialQuestColors
-
-    -- Build set of local player's questIDs.
-    local myIDs = {}
-    for questID in pairs(AQL:GetAllQuests()) do
-        myIDs[questID] = true
-    end
-
-    local y = 0
-    local function addText(text, indent)
-        local fs = frame.content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        fs:SetPoint("TOPLEFT", frame.content, "TOPLEFT", indent or 0, -y)
-        fs:SetText(text)
-        fs:SetWidth(340)
-        y = y + fs:GetStringHeight() + 4
-    end
-
-    for playerName, entry in pairs(SocialQuestGroupData.PlayerQuests) do
-        if entry.quests then
-            for questID, qdata in pairs(entry.quests) do
-                if not myIDs[questID] then
-                    local title = C_QuestLog.GetTitleForQuestID(questID) or ("Quest " .. questID)
-                    local chain = AQL:GetChainInfo(questID)
-                    local header = C.white .. title .. C.reset .. "  — " .. playerName
-
-                    if chain and chain.knownStatus == "known" then
-                        local myChain = nil
-                        -- Check if local player is in same chain.
-                        for myQuestID in pairs(AQL:GetAllQuests()) do
-                            local myCI = AQL:GetChainInfo(myQuestID)
-                            if myCI and myCI.chainID == chain.chainID then
-                                myChain = myCI
-                                break
-                            end
-                        end
-                        if myChain then
-                            local diff = chain.step - myChain.step
-                            local rel = diff > 0 and ("you are " .. diff .. " step(s) behind")
-                                      or diff < 0 and ("you are " .. (-diff) .. " step(s) ahead")
-                                      or "same step"
-                            header = header .. "  " .. C.chain .. "(chain step " .. chain.step .. "/" .. chain.length .. " — " .. rel .. ")" .. C.reset
-                        else
-                            header = header .. "  " .. C.chain .. "(chain step " .. chain.step .. "/" .. chain.length .. ")" .. C.reset
-                        end
-                    end
-
-                    addText(header)
-
-                    if entry.hasSocialQuest then
-                        for _, obj in ipairs(qdata.objectives or {}) do
-                            addText("  " .. obj.numFulfilled .. "/" .. obj.numRequired, 8)
-                        end
-                    end
-                end
-            end
-        end
-    end
-
-    frame.content:SetHeight(math.max(y, 10))
-end
-
-------------------------------------------------------------------------
--- Minimap button
+-- Minimap button (unchanged from original)
 ------------------------------------------------------------------------
 
 local minimapButton = CreateFrame("Button", "SocialQuestMinimapButton", Minimap)
 minimapButton:SetSize(32, 32)
 minimapButton:SetFrameStrata("MEDIUM")
-
--- Use a standard icon texture. Replace path if a custom icon is added later.
 minimapButton:SetNormalTexture("Interface\\Icons\\INV_Misc_GroupNeedMore")
 minimapButton:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
 minimapButton:SetPushedTexture("Interface\\Icons\\INV_Misc_GroupNeedMore")
 
--- Position on the minimap edge.
-local angle = 225  -- degrees, top-left region
+local angle = 225
 local function updateMinimapButtonPosition()
     minimapButton:ClearAllPoints()
-    local rad  = math.rad(angle)
-    local x    = 80 * math.cos(rad)
-    local y    = 80 * math.sin(rad)
-    minimapButton:SetPoint("CENTER", Minimap, "CENTER", x, y)
+    local rad = math.rad(angle)
+    minimapButton:SetPoint("CENTER", Minimap, "CENTER", 80 * math.cos(rad), 80 * math.sin(rad))
 end
 updateMinimapButtonPosition()
 
--- Draggable repositioning around the minimap edge.
 minimapButton:EnableMouse(true)
 minimapButton:RegisterForDrag("LeftButton")
-minimapButton:SetScript("OnDragStart", function(self) self:SetScript("OnUpdate", function(self)
-    local cx, cy = Minimap:GetCenter()
-    local mx, my = GetCursorPosition()
-    local scale  = Minimap:GetEffectiveScale()
-    angle = math.deg(math.atan2((my / scale) - cy, (mx / scale) - cx))
-    updateMinimapButtonPosition()
-end) end)
-minimapButton:SetScript("OnDragStop", function(self) self:SetScript("OnUpdate", nil) end)
+minimapButton:SetScript("OnDragStart", function(self)
+    self:SetScript("OnUpdate", function(self)
+        local cx, cy = Minimap:GetCenter()
+        local mx, my = GetCursorPosition()
+        local scale  = Minimap:GetEffectiveScale()
+        angle = math.deg(math.atan2((my / scale) - cy, (mx / scale) - cx))
+        updateMinimapButtonPosition()
+    end)
+end)
+minimapButton:SetScript("OnDragStop", function(self)
+    self:SetScript("OnUpdate", nil)
+end)
 
 minimapButton:SetScript("OnClick", function()
     SocialQuestGroupFrame:Toggle()
@@ -443,4 +236,7 @@ minimapButton:SetScript("OnEnter", function(self)
     GameTooltip:AddLine("Click to open group quest frame.", 1, 1, 1)
     GameTooltip:Show()
 end)
-minimapButton:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+minimapButton:SetScript("OnLeave", function()
+    GameTooltip:Hide()
+end)
