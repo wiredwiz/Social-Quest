@@ -123,8 +123,8 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     local titleBtn = CreateFrame("Button", nil, contentFrame)
     titleBtn:SetSize(math.max(titleWidth, 20), ROW_H)
     titleBtn:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
-    titleBtn:SetNormalFontObject("GameFontNormalSmall")
-    titleBtn:SetHighlightFontObject("GameFontHighlightSmall")
+    titleBtn:SetNormalFontObject("GameFontNormal")
+    titleBtn:SetHighlightFontObject("GameFontHighlight")
 
     -- Build title string: title [Step X of Y] [timer].
     local titleText = questEntry.title or "Quest"
