@@ -23,6 +23,7 @@ Replace `StaticPopupDialogs["SQ_WOWHEAD_POPUP"]` with a dedicated custom `Frame`
 **Frame template:** Use `"BasicFrameTemplate"` (intentionally, not `"BasicFrameTemplateWithInset"` — the inset border is unnecessary for a small popup). `BasicFrameTemplate` provides a title bar and a close (X) button. The title text widget is at `urlPopup.TitleText`.
 
 **Frame layout:**
+- Global name: `"SocialQuestWowheadPopup"` — required for `UISpecialFrames` Escape support (see below).
 - Size: 340 × 100 px.
 - Anchor: `CENTER` to `UIParent`.
 - Title: set `urlPopup.TitleText:SetText("Quest URL (Ctrl+C to copy)")`.
@@ -31,12 +32,18 @@ Replace `StaticPopupDialogs["SQ_WOWHEAD_POPUP"]` with a dedicated custom `Frame`
   - Do NOT call `editBox:SetEnabled(false)` — that would prevent the user from selecting the text for Ctrl+C. The field is left enabled; the user can type in it, but there is no handler that would do anything with typed text. This is the correct approach for a "copy-able URL" field in TBC Classic.
 - The template's built-in X button dismisses the popup. No additional Close button is needed.
 
+**Escape key to close:** After creating the frame, register its global name with `UISpecialFrames`:
+```lua
+tinsert(UISpecialFrames, "SocialQuestWowheadPopup")
+```
+WoW's `UIParent_OnKeyDown` iterates `UISpecialFrames` when Escape is pressed and hides any shown frame in the list. This is the same pattern used by the main quest frame (`"SocialQuestGroupFramePanel"`).
+
 **`SocialQuestGroupFrame.ShowWowheadUrl(questID)` function** (added to the `SocialQuestGroupFrame` table in `GroupFrame.lua`):
-1. If `urlPopup == nil`, create the frame as described above.
+1. If `urlPopup == nil`, create the frame as described above (including the `UISpecialFrames` registration).
 2. Call `SocialQuestTabUtils.WowheadUrl(questID)` — pre-existing in `UI/TabUtils.lua`.
 3. Call `urlPopup.editBox:SetText(url)` — synchronous.
 4. Call `urlPopup:Show()`.
-5. Call `urlPopup.editBox:SetFocus()` and `urlPopup.editBox:HighlightText()`. Text is already set; these succeed immediately.
+5. Call `urlPopup.editBox:SetFocus()` and `urlPopup.editBox:HighlightText()`. Text is already set; these succeed immediately, pre-selecting the URL for the user.
 
 **Caller change:** In `RowFactory.AddQuestRow`, replace:
 ```lua
