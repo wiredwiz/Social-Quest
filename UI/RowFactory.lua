@@ -58,8 +58,9 @@ function RowFactory.AddZoneHeader(contentFrame, y, zoneName, isCollapsed, onTogg
 
     local label = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     label:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", 24, -y)
-    label:SetWidth(CONTENT_WIDTH - 24)
+    label:SetSize(CONTENT_WIDTH - 24, ROW_H)
     label:SetJustifyH("LEFT")
+    label:SetJustifyV("MIDDLE")
     label:SetText(C.header .. zoneName .. C.reset)
 
     return y + ROW_H + 4
@@ -96,7 +97,7 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     linkBtn:SetNormalFontObject("GameFontNormalSmall")
     linkBtn:SetHighlightFontObject("GameFontHighlightSmall")
     linkBtn:SetScript("OnClick", function()
-        StaticPopup_Show("SQ_WOWHEAD_POPUP", questEntry.wowheadUrl or "")
+        StaticPopup_Show("SQ_WOWHEAD_POPUP", nil, nil, questEntry.wowheadUrl or "")
     end)
     x = x + 24
 
@@ -118,13 +119,10 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     end
     local badgeWidth = badgeText ~= "" and 80 or 0
 
-    -- Quest title button.
+    -- Quest title (FontString for reliable left-alignment).
+    -- Template-less Buttons in TBC Classic do not expose GetFontString(), so we
+    -- use a plain FontString for display and an invisible Button overlay for clicks.
     local titleWidth = CONTENT_WIDTH - x - badgeWidth - 10
-    local titleBtn = CreateFrame("Button", nil, contentFrame)
-    titleBtn:SetSize(math.max(titleWidth, 20), ROW_H)
-    titleBtn:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
-    titleBtn:SetNormalFontObject("GameFontNormal")
-    titleBtn:SetHighlightFontObject("GameFontHighlight")
 
     -- Build title string: title [Step X of Y] [timer].
     local titleText = questEntry.title or "Quest"
@@ -143,15 +141,20 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
         math.floor(c.r * 255),
         math.floor(c.g * 255),
         math.floor(c.b * 255))
-    titleBtn:SetText(colorCode .. titleText .. "|r")
-    local titleFs = titleBtn:GetFontString()
-    if titleFs then
-        titleFs:SetJustifyH("LEFT")
-    end
 
-    if callbacks then
+    local titleFs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    titleFs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
+    titleFs:SetSize(math.max(titleWidth, 20), ROW_H)
+    titleFs:SetJustifyH("LEFT")
+    titleFs:SetJustifyV("MIDDLE")
+    titleFs:SetText(colorCode .. titleText .. "|r")
+
+    -- Invisible click overlay (shift-click to track/untrack).
+    if callbacks and callbacks.onTitleShiftClick then
+        local titleBtn = CreateFrame("Button", nil, contentFrame)
+        titleBtn:SetAllPoints(titleFs)
         titleBtn:SetScript("OnClick", function()
-            if IsShiftKeyDown() and callbacks.onTitleShiftClick then
+            if IsShiftKeyDown() then
                 callbacks.onTitleShiftClick(questEntry.logIndex, questEntry.isTracked)
             end
         end)

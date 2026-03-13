@@ -44,10 +44,11 @@ local function createFrame()
                           "BasicFrameTemplateWithInset")
     f:SetSize(400, 500)
     f:SetPoint("CENTER")
+    f:SetFrameStrata("HIGH")
     f:SetMovable(true)
     f:EnableMouse(true)
     f:RegisterForDrag("LeftButton")
-    f:SetScript("OnDragStart", f.StartMoving)
+    f:SetScript("OnDragStart", function(self) self:StartMoving(); self:Raise() end)
     f:SetScript("OnDragStop", f.StopMovingOrSizing)
     f:Hide()
 
@@ -93,6 +94,7 @@ function SocialQuestGroupFrame:Toggle()
         frame:Hide()
     else
         frame:Show()
+        frame:Raise()
         self:Refresh()
     end
 end
