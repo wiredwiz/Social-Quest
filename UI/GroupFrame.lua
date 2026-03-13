@@ -3,35 +3,11 @@
 -- Tab rendering is delegated to MineTab, PartyTab, SharedTab providers.
 -- Zone collapse state and active tab are persisted via AceDB frameState.
 
--- StaticPopup_Show(which, text1, ...) calls editBox:SetText(text1) AFTER it
--- fires OnShow, so any SetText in OnShow gets immediately overwritten.
--- Solution: pass the URL as text1 so Blizzard's own code populates the box.
--- OnShow only defers HighlightText/SetFocus to run after Blizzard finishes.
-StaticPopupDialogs["SQ_WOWHEAD_POPUP"] = {
-    text         = "Quest URL (Ctrl+C to copy):",
-    button1      = "Close",
-    hasEditBox   = 1,
-    editBoxWidth = 300,
-    OnShow       = function(self)
-        -- Blizzard sets editBox:SetText(text1) after OnShow returns.
-        -- Defer focus+highlight to next tick so the text is already set.
-        C_Timer.After(0, function()
-            if self.editBox and self:IsShown() then
-                self.editBox:SetFocus()
-                self.editBox:HighlightText()
-            end
-        end)
-    end,
-    OnAccept     = function() end,
-    timeout      = 0,
-    whileDead    = true,
-    hideOnEscape = true,
-}
-
 SocialQuestGroupFrame = {}
 
 local frame          = nil
 local refreshPending = false
+local urlPopup       = nil
 
 -- Ordered tab providers. The id must match the collapsedZones subtable key.
 -- MineTab/PartyTab/SharedTab are loaded before GroupFrame per TOC order, so
@@ -42,6 +18,59 @@ local providers = {
     { id = "mine",   module = MineTab,   tab = nil, offsetX = 130 },
     { id = "party",  module = PartyTab,  tab = nil, offsetX = 250 },
 }
+
+------------------------------------------------------------------------
+-- Wowhead URL popup
+------------------------------------------------------------------------
+
+local function createUrlPopup()
+    local p = CreateFrame("Frame", "SocialQuestWowheadPopup", UIParent,
+                          "BasicFrameTemplate")
+    p:SetSize(340, 100)
+    p:SetPoint("CENTER")
+    p:SetFrameStrata("DIALOG")
+    p:SetMovable(true)
+    p:EnableMouse(true)
+    p:RegisterForDrag("LeftButton")
+    p:SetScript("OnDragStart", function(self) self:StartMoving(); self:Raise() end)
+    p:SetScript("OnDragStop", p.StopMovingOrSizing)
+    p:Hide()
+
+    p.TitleText:SetText("Quest URL (Ctrl+C to copy)")
+
+    local eb = CreateFrame("EditBox", nil, p)
+    eb:SetSize(300, 20)
+    eb:SetPoint("CENTER", p, "CENTER", 0, -8)
+    eb:SetAutoFocus(false)
+    eb:SetFontObject("ChatFontNormal")
+    eb:SetBackdrop({
+        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile     = true, tileSize = 16, edgeSize = 8,
+        insets   = { left = 2, right = 2, top = 2, bottom = 2 },
+    })
+    eb:SetBackdropColor(0, 0, 0, 0.6)
+    eb:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+    p.editBox = eb
+
+    -- Register so pressing Escape closes this popup (same pattern as main frame).
+    tinsert(UISpecialFrames, "SocialQuestWowheadPopup")
+
+    return p
+end
+
+-- Called by RowFactory when the user clicks the [?] link button on a quest row.
+-- Sets the URL synchronously before Show() so the edit box is never blank.
+function SocialQuestGroupFrame.ShowWowheadUrl(questID)
+    if not urlPopup then
+        urlPopup = createUrlPopup()
+    end
+    local url = SocialQuestTabUtils.WowheadUrl(questID)
+    urlPopup.editBox:SetText(url)
+    urlPopup:Show()
+    urlPopup.editBox:SetFocus()
+    urlPopup.editBox:HighlightText()
+end
 
 ------------------------------------------------------------------------
 -- Frame construction

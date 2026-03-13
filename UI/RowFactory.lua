@@ -2,7 +2,6 @@
 -- Stateless row-drawing utilities for the group frame tab providers.
 -- All functions take (contentFrame, y, ...) and return the new y offset.
 -- contentFrame is the scroll child (width = 360 px, set by GroupFrame).
--- StaticPopupDialogs["SQ_WOWHEAD_POPUP"] is registered in GroupFrame.lua.
 
 RowFactory = {}
 
@@ -84,7 +83,7 @@ end
 -- Layout (left to right): [?] link | [v] checkmark (Mine only) | title | badge (right)
 -- callbacks = { onTitleShiftClick = function(logIndex, isTracked) }
 --   onTitleShiftClick: nil on Party/Shared tabs (disables checkmark and shift-click).
---   NOTE: The link button calls StaticPopup_Show directly; no onLinkClick callback.
+--   NOTE: The link button calls SocialQuestGroupFrame.ShowWowheadUrl directly; no onLinkClick callback.
 function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     local C = SocialQuestColors
     local x = indent or 0
@@ -97,10 +96,7 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     linkBtn:SetNormalFontObject("GameFontNormalSmall")
     linkBtn:SetHighlightFontObject("GameFontHighlightSmall")
     linkBtn:SetScript("OnClick", function()
-        -- Pass URL as text1. StaticPopup_Show calls editBox:SetText(text1)
-        -- after OnShow fires, so Blizzard's own code populates the box.
-        StaticPopup_Show("SQ_WOWHEAD_POPUP",
-            SocialQuestTabUtils.WowheadUrl(questEntry.questID))
+        SocialQuestGroupFrame.ShowWowheadUrl(questEntry.questID)
     end)
     x = x + 24
 
