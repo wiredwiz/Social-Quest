@@ -14,9 +14,9 @@ local urlPopup       = nil
 -- the globals exist here and can be assigned directly.
 -- Tab display order: Shared | Mine | Party
 local providers = {
-    { id = "shared", module = SharedTab, tab = nil, offsetX = 10  },
-    { id = "mine",   module = MineTab,   tab = nil, offsetX = 130 },
-    { id = "party",  module = PartyTab,  tab = nil, offsetX = 250 },
+    { id = "shared", module = SharedTab, tab = nil, offsetX = 18  },
+    { id = "mine",   module = MineTab,   tab = nil, offsetX = 138 },
+    { id = "party",  module = PartyTab,  tab = nil, offsetX = 258 },
 }
 
 ------------------------------------------------------------------------
@@ -43,14 +43,20 @@ local function createUrlPopup()
     eb:SetPoint("CENTER", p, "CENTER", 0, -8)
     eb:SetAutoFocus(false)
     eb:SetFontObject("ChatFontNormal")
-    eb:SetBackdrop({
+
+    local ebBg = CreateFrame("Frame", nil, p)
+    ebBg:SetPoint("TOPLEFT",     eb, "TOPLEFT",     -3,  3)
+    ebBg:SetPoint("BOTTOMRIGHT", eb, "BOTTOMRIGHT",  3, -3)
+    ebBg:SetBackdrop({
         bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
         tile     = true, tileSize = 16, edgeSize = 8,
         insets   = { left = 2, right = 2, top = 2, bottom = 2 },
     })
-    eb:SetBackdropColor(0, 0, 0, 0.6)
-    eb:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+    ebBg:SetBackdropColor(0, 0, 0, 0.6)
+    ebBg:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+    ebBg:SetFrameLevel(eb:GetFrameLevel() - 1)
+
     p.editBox = eb
 
     -- Register so pressing Escape closes this popup (same pattern as main frame).
@@ -204,6 +210,7 @@ function SocialQuestGroupFrame:Refresh()
         if p.tab then
             if p.id == activeID then
                 PanelTemplates_SelectTab(p.tab)
+                p.tab:GetFontString():SetFontObject("GameFontHighlightSmall")
             else
                 PanelTemplates_DeselectTab(p.tab)
             end
