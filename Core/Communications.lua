@@ -17,6 +17,7 @@ local PREFIXES = {
     "SQ_INIT", "SQ_UPDATE", "SQ_OBJECTIVE",
     "SQ_BEACON", "SQ_REQUEST",
     "SQ_FOLLOW_START", "SQ_FOLLOW_STOP",
+    "SQ_REQ_COMPLETED", "SQ_RESP_COMPLETED",
 }
 
 -- Called from SocialQuest:OnEnable().
@@ -62,6 +63,8 @@ function SocialQuestComm:OnGroupChanged()
         end
     end
     -- Guild: no AceComm sync.
+
+    self:SendReqCompleted()
 end
 
 ------------------------------------------------------------------------
@@ -171,6 +174,13 @@ function SocialQuestComm:SendFollowStop(targetName)
     LibStub("AceComm-3.0"):SendCommMessage("SQ_FOLLOW_STOP", serialize({}), "WHISPER", targetName)
 end
 
+-- Broadcast to group members requesting their completed quest IDs.
+function SocialQuestComm:SendReqCompleted()
+    local channel = self:GetActiveChannel()
+    if not channel then return end
+    LibStub("AceComm-3.0"):SendCommMessage("SQ_REQ_COMPLETED", serialize({}), channel)
+end
+
 -- Returns the appropriate AceComm channel string for the player's current group context.
 -- Returns nil if not in a group or guild-only (guild has no AceComm sync).
 function SocialQuestComm:GetActiveChannel()
@@ -229,5 +239,25 @@ function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
 
     elseif prefix == "SQ_FOLLOW_STOP" then
         SocialQuestAnnounce:OnFollowStop(sender)
+
+    elseif prefix == "SQ_REQ_COMPLETED" then
+        -- Whisper our completed quest history back to the requester.
+        local AQL = SocialQuest.AQL
+        if AQL and AQL.HistoryCache then
+            local payload = { completedQuests = AQL.HistoryCache.completed }
+            LibStub("AceComm-3.0"):SendCommMessage(
+                "SQ_RESP_COMPLETED", serialize(payload), "WHISPER", sender)
+        end
+
+    elseif prefix == "SQ_RESP_COMPLETED" then
+        -- Store the responding player's completed quest set.
+        -- NOTE: `payload` here is already deserialized — the existing code at the
+        -- top of OnCommReceived does `local ok, payload = AceSerializer:Deserialize(msg)`
+        -- before the prefix dispatch, so no separate deserialization is needed here.
+        local entry = SocialQuestGroupData.PlayerQuests[sender]
+        if entry then
+            entry.completedQuests = payload.completedQuests or {}
+        end
+        SocialQuestGroupFrame:RequestRefresh()
     end
 end

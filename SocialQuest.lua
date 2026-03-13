@@ -40,6 +40,11 @@ function SocialQuest:OnEnable()
     -- Register AceComm prefixes.
     SocialQuestComm:Initialize()
 
+    -- If already in a group at login, query completed quest history immediately.
+    if IsInGroup() or IsInRaid() then
+        SocialQuestComm:SendReqCompleted()
+    end
+
     -- Register tooltips hook.
     SocialQuestTooltips:Initialize()
 
@@ -123,6 +128,14 @@ function SocialQuest:GetDefaults()
             },
             debug = {
                 enabled = false,
+            },
+            frameState = {
+                activeTab = "mine",
+                collapsedZones = {
+                    mine   = {},
+                    party  = {},
+                    shared = {},
+                },
             },
         },
     }

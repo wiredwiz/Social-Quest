@@ -44,7 +44,7 @@ function SocialQuestGroupData:OnGroupChanged()
     -- Add stub entries for new members we haven't heard from yet.
     for fullName in pairs(current) do
         if not self.PlayerQuests[fullName] then
-            self.PlayerQuests[fullName] = { hasSocialQuest = false }
+            self.PlayerQuests[fullName] = { hasSocialQuest = false, completedQuests = {} }
         end
     end
 end
@@ -55,10 +55,12 @@ end
 function SocialQuestGroupData:OnInitReceived(sender, payload)
     if not self:IsInGroup(sender) then return end
 
+    local existing = self.PlayerQuests[sender]
     self.PlayerQuests[sender] = {
-        hasSocialQuest = true,
-        lastSync       = GetTime(),
-        quests         = payload.quests or {},
+        hasSocialQuest  = true,
+        lastSync        = GetTime(),
+        quests          = payload.quests or {},
+        completedQuests = (existing and existing.completedQuests) or {},
     }
 
     SocialQuestGroupFrame:RequestRefresh()
@@ -73,7 +75,7 @@ function SocialQuestGroupData:OnUpdateReceived(sender, payload)
 
     local entry = self.PlayerQuests[sender]
     if not entry then
-        entry = { hasSocialQuest = true, lastSync = GetTime(), quests = {} }
+        entry = { hasSocialQuest = true, lastSync = GetTime(), quests = {}, completedQuests = {} }
         self.PlayerQuests[sender] = entry
     end
     entry.hasSocialQuest = true
@@ -162,9 +164,10 @@ function SocialQuestGroupData:OnUnitQuestLogChanged(unit)
     end
 
     self.PlayerQuests[fullName] = {
-        hasSocialQuest = false,
-        lastSync       = GetTime(),
-        quests         = questData,
+        hasSocialQuest  = false,
+        lastSync        = GetTime(),
+        quests          = questData,
+        completedQuests = {},
     }
 
     SocialQuestGroupFrame:RequestRefresh()
