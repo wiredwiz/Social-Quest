@@ -144,6 +144,10 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
         math.floor(c.g * 255),
         math.floor(c.b * 255))
     titleBtn:SetText(colorCode .. titleText .. "|r")
+    local titleFs = titleBtn:GetFontString()
+    if titleFs then
+        titleFs:SetJustifyH("LEFT")
+    end
 
     if callbacks then
         titleBtn:SetScript("OnClick", function()

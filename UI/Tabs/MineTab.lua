@@ -67,7 +67,7 @@ function MineTab:BuildTree()
             suggestedGroup = questInfo.suggestedGroup,
             timerSeconds   = questInfo.timerSeconds,
             snapshotTime   = questInfo.snapshotTime,
-            wowheadUrl     = questInfo.wowheadUrl,
+            wowheadUrl     = questInfo.wowheadUrl or ("https://www.wowhead.com/tbc/quest=" .. tostring(questInfo.questID)),
             chainInfo      = questInfo.chainInfo,
             objectives     = questInfo.objectives,
             players        = {},
