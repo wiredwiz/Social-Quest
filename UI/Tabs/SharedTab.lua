@@ -259,14 +259,8 @@ function SharedTab:Render(contentFrame, rowFactory, tabCollapsedZones)
                 for _, entry in ipairs(chain.steps) do
                     y = rowFactory.AddQuestRow(contentFrame, y, entry, QUEST_INDENT + 8, {})
                     for _, player in ipairs(entry.players) do
+                        -- AddPlayerRow renders objectives internally; do not loop here.
                         y = rowFactory.AddPlayerRow(contentFrame, y, player, PLAYER_INDENT + 8)
-                        -- On Shared tab all players are actively engaged (spec Section 8.3),
-                        -- so hasCompleted and needsShare are always false. Guard kept for symmetry.
-                        if not player.hasCompleted and not player.needsShare then
-                            for _, obj in ipairs(player.objectives or {}) do
-                                y = rowFactory.AddObjectiveRow(contentFrame, y, obj, OBJ_INDENT)
-                            end
-                        end
                     end
                 end
             end
@@ -274,12 +268,8 @@ function SharedTab:Render(contentFrame, rowFactory, tabCollapsedZones)
             for _, entry in ipairs(zone.quests) do
                 y = rowFactory.AddQuestRow(contentFrame, y, entry, QUEST_INDENT, {})
                 for _, player in ipairs(entry.players) do
+                    -- AddPlayerRow renders objectives internally; do not loop here.
                     y = rowFactory.AddPlayerRow(contentFrame, y, player, PLAYER_INDENT)
-                    if not player.hasCompleted and not player.needsShare then
-                        for _, obj in ipairs(player.objectives or {}) do
-                            y = rowFactory.AddObjectiveRow(contentFrame, y, obj, OBJ_INDENT)
-                        end
-                    end
                 end
             end
         end

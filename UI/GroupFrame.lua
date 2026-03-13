@@ -3,19 +3,24 @@
 -- Tab rendering is delegated to MineTab, PartyTab, SharedTab providers.
 -- Zone collapse state and active tab are persisted via AceDB frameState.
 
--- URL written here by RowFactory immediately before StaticPopup_Show so that
--- OnShow can read it without depending on self.data plumbing in TBC Classic.
-SocialQuestWowheadPopupUrl = ""
-
+-- StaticPopup_Show(which, text1, ...) calls editBox:SetText(text1) AFTER it
+-- fires OnShow, so any SetText in OnShow gets immediately overwritten.
+-- Solution: pass the URL as text1 so Blizzard's own code populates the box.
+-- OnShow only defers HighlightText/SetFocus to run after Blizzard finishes.
 StaticPopupDialogs["SQ_WOWHEAD_POPUP"] = {
     text         = "Quest URL (Ctrl+C to copy):",
     button1      = "Close",
     hasEditBox   = 1,
     editBoxWidth = 300,
     OnShow       = function(self)
-        self.editBox:SetText(SocialQuestWowheadPopupUrl)
-        self.editBox:SetFocus()
-        self.editBox:HighlightText()
+        -- Blizzard sets editBox:SetText(text1) after OnShow returns.
+        -- Defer focus+highlight to next tick so the text is already set.
+        C_Timer.After(0, function()
+            if self.editBox and self:IsShown() then
+                self.editBox:SetFocus()
+                self.editBox:HighlightText()
+            end
+        end)
     end,
     OnAccept     = function() end,
     timeout      = 0,
