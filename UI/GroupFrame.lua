@@ -3,15 +3,17 @@
 -- Tab rendering is delegated to MineTab, PartyTab, SharedTab providers.
 -- Zone collapse state and active tab are persisted via AceDB frameState.
 
--- Register the Wowhead URL popup at module scope (before any frame is created).
--- RowFactory.AddQuestRow calls StaticPopup_Show("SQ_WOWHEAD_POPUP", url).
+-- URL written here by RowFactory immediately before StaticPopup_Show so that
+-- OnShow can read it without depending on self.data plumbing in TBC Classic.
+SocialQuestWowheadPopupUrl = ""
+
 StaticPopupDialogs["SQ_WOWHEAD_POPUP"] = {
     text         = "Quest URL (Ctrl+C to copy):",
     button1      = "Close",
     hasEditBox   = 1,
     editBoxWidth = 300,
     OnShow       = function(self)
-        self.editBox:SetText(self.data or "")
+        self.editBox:SetText(SocialQuestWowheadPopupUrl)
         self.editBox:SetFocus()
         self.editBox:HighlightText()
     end,
@@ -71,19 +73,27 @@ local function createFrame()
     f.tabMine   = makeTab("mine",   "Mine",    80)
     f.tabParty  = makeTab("party",  "Party",  150)
 
-    -- Horizontal separator between the tab row and the scroll content area.
-    -- WHITE8x8 is a solid-white texture available since vanilla; vertex colour it.
-    local sep = f:CreateTexture(nil, "ARTWORK")
-    sep:SetTexture("Interface\\Buttons\\WHITE8x8")
-    sep:SetVertexColor(0.4, 0.35, 0.25, 1)
-    sep:SetPoint("TOPLEFT",  f, "TOPLEFT",   6, -52)
-    sep:SetPoint("TOPRIGHT", f, "TOPRIGHT", -6, -52)
-    sep:SetHeight(1)
+    -- Separator: a child Frame created AFTER the tab buttons so it draws on top
+    -- of any tab art that bleeds below the button frame.  GetHeight() reads the
+    -- real TabButtonTemplate height so the separator sits exactly at tab bottom.
+    local TAB_TOP    = -24
+    local tabH       = f.tabShared:GetHeight()
+    local SEP_Y      = TAB_TOP - tabH      -- y of separator top edge
+    local SCROLL_TOP = SEP_Y - 4           -- 4 px gap below separator
+
+    local sepFrame = CreateFrame("Frame", nil, f)
+    sepFrame:SetPoint("TOPLEFT",  f, "TOPLEFT",   6, SEP_Y)
+    sepFrame:SetPoint("TOPRIGHT", f, "TOPRIGHT", -6, SEP_Y)
+    sepFrame:SetHeight(2)
+    local sepTex = sepFrame:CreateTexture(nil, "ARTWORK")
+    sepTex:SetAllPoints(sepFrame)
+    sepTex:SetTexture("Interface\\Buttons\\WHITE8x8")
+    sepTex:SetVertexColor(0.4, 0.35, 0.25, 1)
 
     -- Scroll area.
     f.scrollFrame = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
-    f.scrollFrame:SetPoint("TOPLEFT",     f, "TOPLEFT",     10,  -56)
-    f.scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -28,  10)
+    f.scrollFrame:SetPoint("TOPLEFT",     f, "TOPLEFT",     10, SCROLL_TOP)
+    f.scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -28, 10)
 
     f.content = CreateFrame("Frame", nil, f.scrollFrame)
     f.content:SetSize(360, 1)
@@ -109,6 +119,12 @@ function SocialQuestGroupFrame:Toggle()
     else
         frame:Show()
         frame:Raise()
+        -- Rebuild the quest cache on every open so IsQuestWatched state is
+        -- current.  The initial PLAYER_LOGIN rebuild fires before watch state
+        -- is fully set up, causing isTracked to be stale on first open.
+        if SocialQuest.AQL and SocialQuest.AQL.QuestCache then
+            SocialQuest.AQL.QuestCache:Rebuild()
+        end
         self:Refresh()
     end
 end

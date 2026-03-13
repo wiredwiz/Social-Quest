@@ -97,8 +97,11 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     linkBtn:SetNormalFontObject("GameFontNormalSmall")
     linkBtn:SetHighlightFontObject("GameFontHighlightSmall")
     linkBtn:SetScript("OnClick", function()
-        StaticPopup_Show("SQ_WOWHEAD_POPUP", nil, nil,
-            SocialQuestTabUtils.WowheadUrl(questEntry.questID))
+        -- Write URL to the module-level variable BEFORE showing the popup.
+        -- OnShow reads SocialQuestWowheadPopupUrl directly; this avoids
+        -- any dependency on StaticPopup's self.data timing in TBC Classic.
+        SocialQuestWowheadPopupUrl = SocialQuestTabUtils.WowheadUrl(questEntry.questID)
+        StaticPopup_Show("SQ_WOWHEAD_POPUP")
     end)
     x = x + 24
 
