@@ -136,7 +136,7 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     end
     local timeStr = formatTimeRemaining(questEntry.timerSeconds, questEntry.snapshotTime)
     if timeStr then
-        titleText = titleText .. " [" .. timeStr .. "]"
+        titleText = titleText .. " " .. C.timer .. "[" .. timeStr .. "]" .. C.reset
     end
     titleBtn:SetText(titleText)
 
