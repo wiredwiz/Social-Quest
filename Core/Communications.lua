@@ -243,8 +243,8 @@ function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
     elseif prefix == "SQ_REQ_COMPLETED" then
         -- Whisper our completed quest history back to the requester.
         local AQL = SocialQuest.AQL
-        if AQL and AQL.HistoryCache then
-            local payload = { completedQuests = AQL.HistoryCache.completed }
+        if AQL then
+            local payload = { completedQuests = AQL:GetCompletedQuests() }
             LibStub("AceComm-3.0"):SendCommMessage(
                 "SQ_RESP_COMPLETED", serialize(payload), "WHISPER", sender)
         end
