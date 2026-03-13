@@ -311,6 +311,9 @@
 
       elseif prefix == "SQ_RESP_COMPLETED" then
           -- Store the responding player's completed quest set.
+          -- NOTE: `payload` here is already deserialized — the existing code at the
+          -- top of OnCommReceived does `local ok, payload = AceSerializer:Deserialize(msg)`
+          -- before the prefix dispatch, so no separate deserialization is needed here.
           local entry = SocialQuestGroupData.PlayerQuests[sender]
           if entry then
               entry.completedQuests = payload.completedQuests or {}
@@ -1355,8 +1358,8 @@ SharedTab shows quests where 2+ players are engaged (same questID or same chainI
                       local ci = getChainInfoForQuestID(eng.questID)
 
                       -- Update chain title: prefer step 1 (deterministic regardless of pairs order).
-                      local ci2 = getChainInfoForQuestID(eng.questID)
-                      if localInfo and localInfo.title and ci2.step == 1 then
+                      -- `ci` was computed two lines above for this same questID.
+                      if localInfo and localInfo.title and ci.step == 1 then
                           zone.chains[chainID].title = localInfo.title
                       elseif localInfo and localInfo.title and
                           zone.chains[chainID].title == "Chain " .. chainID then
@@ -1554,7 +1557,7 @@ SharedTab shows quests where 2+ players are engaged (same questID or same chainI
 
 - [ ] **Step 2: Verify file structure (manual)**
 
-  Confirm: `GetLabel`, `BuildTree`, `Render` present. 4 local helpers (`getZoneForQuestID`, `getChainInfoForQuestID`, `buildLocalObjectives`, `buildRemoteObjectives`). No `TODO` markers.
+  Confirm: `GetLabel`, `BuildTree`, `Render` present. 4 module-level local helpers (`getZoneForQuestID`, `getChainInfoForQuestID`, `buildLocalObjectives`, `buildRemoteObjectives`). Additionally, `addEngagement` and `ensureZone` are defined as `local function` closures **inside** `BuildTree` — they are not module-level helpers. No `TODO` markers.
 
 ---
 
@@ -1779,7 +1782,7 @@ Replace the three inline Render* functions with provider dispatch. Add `SQ_WOWHE
 
 - [ ] **Step 2: Verify file structure (manual)**
 
-  Confirm: `StaticPopupDialogs["SQ_WOWHEAD_POPUP"]` block, `SocialQuestGroupFrame` table, `providers` table with 3 entries, `initProviders`, `createFrame`, `Toggle`, `RequestRefresh`, `Refresh`, `ToggleZone`, minimap button. No `TODO` markers. The old `RenderMineTab`, `RenderSharedTab`, `RenderPartyTab` functions and `groupKey`/`formatTime`/`estimateTimer` helpers are **gone**.
+  Confirm: `StaticPopupDialogs["SQ_WOWHEAD_POPUP"]` block, `SocialQuestGroupFrame` table, `providers` table with 3 entries (modules assigned directly — no `initProviders` function), `createFrame`, `Toggle`, `RequestRefresh`, `Refresh`, `ToggleZone`, minimap button. No `TODO` markers. The old `RenderMineTab`, `RenderSharedTab`, `RenderPartyTab` functions and `groupKey`/`formatTime`/`estimateTimer` helpers are **gone**.
 
 ---
 
@@ -1790,7 +1793,7 @@ Replace the three inline Render* functions with provider dispatch. Add `SQ_WOWHE
 
 - [ ] **Step 1: Add RowFactory and Tabs entries before GroupFrame**
 
-  Replace the current toc content with:
+  Replace the file list section of the TOC (preserve any existing `## SavedVariables`, `## OptionalDeps`, or other header fields that may be present). The file list becomes:
 
   ```
   ## Interface: 20505
@@ -1847,6 +1850,20 @@ Replace the three inline Render* functions with provider dispatch. Add `SQ_WOWHE
 - [ ] **Step 7: Verify no errors solo (empty Party/Shared)**
 
   Solo, click Party and Shared tabs. Expected: empty content, no Lua errors.
+
+- [ ] **Step 8: Verify FINISHED row (requires second SocialQuest player in party)**
+
+  Have both players in a group. One player completes and turns in a quest. After the AceComm exchange completes (may take a few seconds), open Party tab. Expected: the completing player's row shows `[Name] FINISHED` in green. If testing alone, manually set a mock entry in WowLua:
+
+  ```lua
+  local name = next(SocialQuestGroupData.PlayerQuests)
+  if name then
+      SocialQuestGroupData.PlayerQuests[name].completedQuests[12345] = true
+      SocialQuestGroupFrame:Refresh()
+  end
+  ```
+
+  Then open Party tab and verify a green FINISHED row appears for questID 12345 if that player had it.
 
 ---
 
