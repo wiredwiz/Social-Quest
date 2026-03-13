@@ -84,7 +84,8 @@ end
 function SocialQuestGroupFrame:Refresh()
     if not frame then return end
     -- Recreate the content frame to clear all FontStrings (GetChildren does not return FontStrings).
-    frame.scrollFrame:SetScrollChild(nil)
+    -- Hide the old frame rather than passing nil to SetScrollChild, which is not accepted.
+    if frame.content then frame.content:Hide() end
     frame.content = CreateFrame("Frame", nil, frame.scrollFrame)
     frame.content:SetSize(360, 1)
     frame.scrollFrame:SetScrollChild(frame.content)
