@@ -38,9 +38,9 @@ local refreshPending = false
 -- the globals exist here and can be assigned directly.
 -- Tab display order: Shared | Mine | Party
 local providers = {
-    { id = "shared", module = SharedTab },
-    { id = "mine",   module = MineTab   },
-    { id = "party",  module = PartyTab  },
+    { id = "shared", module = SharedTab, tab = nil, offsetX = 10  },
+    { id = "mine",   module = MineTab,   tab = nil, offsetX = 130 },
+    { id = "party",  module = PartyTab,  tab = nil, offsetX = 250 },
 }
 
 ------------------------------------------------------------------------
@@ -74,15 +74,16 @@ local function createFrame()
         return tab
     end
 
-    f.tabShared = makeTab("shared", "Shared",  10)
-    f.tabMine   = makeTab("mine",   "Mine",    80)
-    f.tabParty  = makeTab("party",  "Party",  150)
+    for _, p in ipairs(providers) do
+        p.tab = makeTab(p.id, p.module:GetLabel(), p.offsetX)
+        p.tab:SetWidth(120)
+    end
 
     -- Separator: a child Frame created AFTER the tab buttons so it draws on top
     -- of any tab art that bleeds below the button frame.  GetHeight() reads the
     -- real TabButtonTemplate height so the separator sits exactly at tab bottom.
     local TAB_TOP    = -24
-    local tabH       = f.tabShared:GetHeight()
+    local tabH       = providers[1].tab:GetHeight()
     local SEP_Y      = TAB_TOP - tabH      -- y of separator top edge
     local SCROLL_TOP = SEP_Y - 4           -- 4 px gap below separator
 
@@ -166,6 +167,19 @@ function SocialQuestGroupFrame:Refresh()
         end
     end
     if not activeProvider or not activeProvider.module then return end
+
+    -- Highlight active tab; deselect others.
+    -- PanelTemplates_SelectTab disables the button (standard WoW: can't re-click active tab).
+    -- PanelTemplates_DeselectTab re-enables inactive tabs.
+    for _, p in ipairs(providers) do
+        if p.tab then
+            if p.id == activeID then
+                PanelTemplates_SelectTab(p.tab)
+            else
+                PanelTemplates_DeselectTab(p.tab)
+            end
+        end
+    end
 
     -- Per-tab collapsed zones subtable.
     local collapsedZones = SocialQuest.db.profile.frameState.collapsedZones
