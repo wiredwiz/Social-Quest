@@ -97,18 +97,10 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     linkBtn:SetNormalFontObject("GameFontNormalSmall")
     linkBtn:SetHighlightFontObject("GameFontHighlightSmall")
     linkBtn:SetScript("OnClick", function()
-        StaticPopup_Show("SQ_WOWHEAD_POPUP", nil, nil, questEntry.wowheadUrl or "")
+        StaticPopup_Show("SQ_WOWHEAD_POPUP", nil, nil,
+            SocialQuestTabUtils.WowheadUrl(questEntry.questID))
     end)
     x = x + 24
-
-    -- [v] Tracked checkmark — only when onTitleShiftClick is provided and quest is tracked.
-    if callbacks and callbacks.onTitleShiftClick and questEntry.isTracked then
-        local check = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        check:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
-        check:SetWidth(18)
-        check:SetText(C.completed .. "[v]" .. C.reset)
-        x = x + 20
-    end
 
     -- Determine badge text. "Complete" trumps "Group".
     local badgeText = ""
@@ -135,6 +127,11 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     local timeStr = formatTimeRemaining(questEntry.timerSeconds, questEntry.snapshotTime)
     if timeStr then
         titleText = titleText .. " " .. C.timer .. "[" .. timeStr .. "]" .. C.reset
+    end
+    -- Tracked checkmark inline after title — only when shift-click tracking is enabled.
+    -- Uses the standard WoW checkbox checkmark texture, matching the quest log's style.
+    if callbacks and callbacks.onTitleShiftClick and questEntry.isTracked then
+        titleText = titleText .. " |TInterface\\Buttons\\UI-CheckBox-Check:12:12:0:0|t"
     end
     local c = getDifficultyColor(questEntry.level)
     local colorCode = string.format("|cFF%02X%02X%02X",

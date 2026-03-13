@@ -6,24 +6,6 @@
 MineTab = {}
 
 ------------------------------------------------------------------------
--- Private helpers
-------------------------------------------------------------------------
-
--- Looks up chainInfo for any questID. Uses AQL cache; falls back to provider
--- for remote questIDs not in the local log.
-local function getChainInfoForQuestID(questID)
-    local AQL = SocialQuest.AQL
-    local ci = AQL:GetChainInfo(questID)
-    if ci.knownStatus == "known" then return ci end
-    local provider = AQL.provider
-    if provider then
-        local ok, result = pcall(provider.GetChainInfo, provider, questID)
-        if ok and result and result.knownStatus == "known" then return result end
-    end
-    return ci
-end
-
-------------------------------------------------------------------------
 -- Tab provider interface
 ------------------------------------------------------------------------
 
@@ -67,7 +49,6 @@ function MineTab:BuildTree()
             suggestedGroup = questInfo.suggestedGroup,
             timerSeconds   = questInfo.timerSeconds,
             snapshotTime   = questInfo.snapshotTime,
-            wowheadUrl     = questInfo.wowheadUrl or ("https://www.wowhead.com/tbc/quest=" .. tostring(questInfo.questID)),
             chainInfo      = questInfo.chainInfo,
             objectives     = questInfo.objectives,
             players        = {},
@@ -90,7 +71,7 @@ function MineTab:BuildTree()
             for playerName, playerData in pairs(SocialQuestGroupData.PlayerQuests) do
                 if playerData.quests then
                     for pQuestID in pairs(playerData.quests) do
-                        local pCI = getChainInfoForQuestID(pQuestID)
+                        local pCI = SocialQuestTabUtils.GetChainInfoForQuestID(pQuestID)
                         if pCI.knownStatus == "known"
                             and pCI.chainID == chainID
                             and pCI.step    ~= ci.step then

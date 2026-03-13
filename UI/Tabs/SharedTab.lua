@@ -6,55 +6,6 @@
 SharedTab = {}
 
 ------------------------------------------------------------------------
--- Private helpers
-------------------------------------------------------------------------
-
-local function getZoneForQuestID(questID)
-    local info = SocialQuest.AQL:GetQuest(questID)
-    if info and info.zone then return info.zone end
-    return "Other Quests"
-end
-
-local function getChainInfoForQuestID(questID)
-    local AQL = SocialQuest.AQL
-    local ci = AQL:GetChainInfo(questID)
-    if ci.knownStatus == "known" then return ci end
-    local provider = AQL.provider
-    if provider then
-        local ok, result = pcall(provider.GetChainInfo, provider, questID)
-        if ok and result and result.knownStatus == "known" then return result end
-    end
-    return ci
-end
-
-local function buildLocalObjectives(questInfo)
-    local objs = {}
-    for i, obj in ipairs(questInfo.objectives or {}) do
-        objs[i] = {
-            text         = obj.text or "",
-            isFinished   = obj.isFinished,
-            numFulfilled = obj.numFulfilled,
-            numRequired  = obj.numRequired,
-        }
-    end
-    return objs
-end
-
-local function buildRemoteObjectives(pquest)
-    local objs = {}
-    for i, obj in ipairs(pquest.objectives or {}) do
-        local text = tostring(obj.numFulfilled or 0) .. "/" .. tostring(obj.numRequired or 1)
-        objs[i] = {
-            text         = text,
-            isFinished   = obj.isFinished,
-            numFulfilled = obj.numFulfilled or 0,
-            numRequired  = obj.numRequired  or 1,
-        }
-    end
-    return objs
-end
-
-------------------------------------------------------------------------
 -- Tab provider interface
 ------------------------------------------------------------------------
 
@@ -74,7 +25,7 @@ function SharedTab:BuildTree()
     local questEngaged = {}
 
     local function addEngagement(questID, playerName, isLocal, qdata)
-        local ci = getChainInfoForQuestID(questID)
+        local ci = SocialQuestTabUtils.GetChainInfoForQuestID(questID)
         if ci.knownStatus == "known" and ci.chainID then
             local cid = ci.chainID
             if not chainEngaged[cid] then chainEngaged[cid] = {} end
@@ -142,7 +93,7 @@ function SharedTab:BuildTree()
                 if not addedQuestIDs[eng.questID] then
                     addedQuestIDs[eng.questID] = true
                     local localInfo = AQL:GetQuest(eng.questID)
-                    local ci = getChainInfoForQuestID(eng.questID)
+                    local ci = SocialQuestTabUtils.GetChainInfoForQuestID(eng.questID)
 
                     -- Update chain title: prefer step 1 (deterministic regardless of pairs order).
                     -- `ci` was computed two lines above for this same questID.
@@ -167,8 +118,6 @@ function SharedTab:BuildTree()
                         suggestedGroup = localInfo and localInfo.suggestedGroup or 0,
                         timerSeconds   = localInfo and localInfo.timerSeconds,
                         snapshotTime   = localInfo and localInfo.snapshotTime,
-                        wowheadUrl     = localInfo and localInfo.wowheadUrl
-                                         or ("https://www.wowhead.com/tbc/quest=" .. eng.questID),
                         chainInfo      = ci,
                         objectives     = localInfo and localInfo.objectives or {},
                         players        = {},
@@ -185,7 +134,7 @@ function SharedTab:BuildTree()
                                     hasSocialQuest = true,
                                     hasCompleted   = false,
                                     needsShare     = false,
-                                    objectives     = buildLocalObjectives(info or {}),
+                                    objectives     = SocialQuestTabUtils.BuildLocalObjectives(info or {}),
                                     step           = pEng.step,
                                     chainLength    = pEng.chainLength,
                                 })
@@ -197,7 +146,7 @@ function SharedTab:BuildTree()
                                     hasSocialQuest = playerData and playerData.hasSocialQuest or false,
                                     hasCompleted   = false,
                                     needsShare     = false,
-                                    objectives     = buildRemoteObjectives(pEng.qdata or {}),
+                                    objectives     = SocialQuestTabUtils.BuildRemoteObjectives(pEng.qdata or {}),
                                     step           = pEng.step,
                                     chainLength    = pEng.chainLength,
                                 })
@@ -223,7 +172,7 @@ function SharedTab:BuildTree()
         local count = 0
         for _ in pairs(engaged) do count = count + 1 end
         if count >= 2 then
-            local zoneName  = getZoneForQuestID(questID)
+            local zoneName  = SocialQuestTabUtils.GetZoneForQuestID(questID)
             local zone      = ensureZone(zoneName)
             local localInfo = AQL:GetQuest(questID)
 
@@ -239,8 +188,6 @@ function SharedTab:BuildTree()
                 suggestedGroup = localInfo and localInfo.suggestedGroup or 0,
                 timerSeconds   = localInfo and localInfo.timerSeconds,
                 snapshotTime   = localInfo and localInfo.snapshotTime,
-                wowheadUrl     = localInfo and localInfo.wowheadUrl
-                                 or ("https://www.wowhead.com/tbc/quest=" .. questID),
                 chainInfo      = { knownStatus = "unknown" },
                 objectives     = localInfo and localInfo.objectives or {},
                 players        = {},
@@ -254,7 +201,7 @@ function SharedTab:BuildTree()
                         hasSocialQuest = true,
                         hasCompleted   = false,
                         needsShare     = false,
-                        objectives     = buildLocalObjectives(localInfo or {}),
+                        objectives     = SocialQuestTabUtils.BuildLocalObjectives(localInfo or {}),
                     })
                 else
                     local playerData = SocialQuestGroupData.PlayerQuests[playerName]
@@ -264,7 +211,7 @@ function SharedTab:BuildTree()
                         hasSocialQuest = playerData and playerData.hasSocialQuest or false,
                         hasCompleted   = false,
                         needsShare     = false,
-                        objectives     = buildRemoteObjectives(eng.qdata or {}),
+                        objectives     = SocialQuestTabUtils.BuildRemoteObjectives(eng.qdata or {}),
                     })
                 end
             end

@@ -8,55 +8,6 @@ PartyTab = {}
 -- Private helpers
 ------------------------------------------------------------------------
 
--- Returns zone name for a questID using local AQL cache; falls back to "Other Quests".
-local function getZoneForQuestID(questID)
-    local info = SocialQuest.AQL:GetQuest(questID)
-    if info and info.zone then return info.zone end
-    return "Other Quests"
-end
-
--- Returns chainInfo for any questID; tries provider for remote quests.
-local function getChainInfoForQuestID(questID)
-    local AQL = SocialQuest.AQL
-    local ci = AQL:GetChainInfo(questID)
-    if ci.knownStatus == "known" then return ci end
-    local provider = AQL.provider
-    if provider then
-        local ok, result = pcall(provider.GetChainInfo, provider, questID)
-        if ok and result and result.knownStatus == "known" then return result end
-    end
-    return ci
-end
-
--- Builds objective rows for the local player from AQL questInfo.
-local function buildLocalObjectives(questInfo)
-    local objs = {}
-    for i, obj in ipairs(questInfo.objectives or {}) do
-        objs[i] = {
-            text         = obj.text or "",
-            isFinished   = obj.isFinished,
-            numFulfilled = obj.numFulfilled,
-            numRequired  = obj.numRequired,
-        }
-    end
-    return objs
-end
-
--- Builds objective rows for a remote player from GroupData quest entry.
-local function buildRemoteObjectives(pquest)
-    local objs = {}
-    for i, obj in ipairs(pquest.objectives or {}) do
-        local text = tostring(obj.numFulfilled or 0) .. "/" .. tostring(obj.numRequired or 1)
-        objs[i] = {
-            text         = text,
-            isFinished   = obj.isFinished,
-            numFulfilled = obj.numFulfilled or 0,
-            numRequired  = obj.numRequired  or 1,
-        }
-    end
-    return objs
-end
-
 -- Builds the ordered list of playerEntry rows for one questID.
 -- localHasIt: true when AQL:GetQuest(questID) is non-nil.
 local function buildPlayerRowsForQuest(questID, localHasIt)
@@ -73,7 +24,7 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
             hasSocialQuest = true,
             hasCompleted   = false,
             needsShare     = false,
-            objectives     = buildLocalObjectives(myInfo),
+            objectives     = SocialQuestTabUtils.BuildLocalObjectives(myInfo),
             step           = ci and ci.knownStatus == "known" and ci.step       or nil,
             chainLength    = ci and ci.knownStatus == "known" and ci.length     or nil,
         })
@@ -105,14 +56,14 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
             })
         elseif hasQuest then
             local pquest = playerData.quests[questID]
-            local pCI    = getChainInfoForQuestID(questID)
+            local pCI    = SocialQuestTabUtils.GetChainInfoForQuestID(questID)
             table.insert(players, {
                 name           = playerName,
                 isMe           = false,
                 hasSocialQuest = playerData.hasSocialQuest,
                 hasCompleted   = false,
                 needsShare     = false,
-                objectives     = buildRemoteObjectives(pquest),
+                objectives     = SocialQuestTabUtils.BuildRemoteObjectives(pquest),
                 step           = pCI.knownStatus == "known" and pCI.step   or nil,
                 chainLength    = pCI.knownStatus == "known" and pCI.length or nil,
             })
@@ -163,7 +114,7 @@ function PartyTab:BuildTree()
     local orderIdx = 0
 
     for questID in pairs(allQuestIDs) do
-        local zoneName = getZoneForQuestID(questID)
+        local zoneName = SocialQuestTabUtils.GetZoneForQuestID(questID)
         if not tree.zones[zoneName] then
             orderIdx = orderIdx + 1
             tree.zones[zoneName] = {
@@ -176,7 +127,7 @@ function PartyTab:BuildTree()
         local zone = tree.zones[zoneName]
 
         local localInfo    = AQL:GetQuest(questID)
-        local ci           = localInfo and localInfo.chainInfo or getChainInfoForQuestID(questID)
+        local ci           = localInfo and localInfo.chainInfo or SocialQuestTabUtils.GetChainInfoForQuestID(questID)
         local localHasIt   = localInfo ~= nil
 
         local entry = {
@@ -191,8 +142,6 @@ function PartyTab:BuildTree()
             suggestedGroup = localInfo and localInfo.suggestedGroup or 0,
             timerSeconds   = localInfo and localInfo.timerSeconds,
             snapshotTime   = localInfo and localInfo.snapshotTime,
-            wowheadUrl     = localInfo and localInfo.wowheadUrl
-                             or ("https://www.wowhead.com/tbc/quest=" .. questID),
             chainInfo      = ci,
             objectives     = localInfo and localInfo.objectives or {},
             players        = buildPlayerRowsForQuest(questID, localHasIt),

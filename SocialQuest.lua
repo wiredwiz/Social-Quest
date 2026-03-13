@@ -125,7 +125,7 @@ function SocialQuest:GetDefaults()
                 enabled = false,
             },
             frameState = {
-                activeTab = "mine",
+                activeTab = "shared",
                 collapsedZones = {
                     mine   = {},
                     party  = {},

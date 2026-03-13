@@ -29,10 +29,11 @@ local refreshPending = false
 -- Ordered tab providers. The id must match the collapsedZones subtable key.
 -- MineTab/PartyTab/SharedTab are loaded before GroupFrame per TOC order, so
 -- the globals exist here and can be assigned directly.
+-- Tab display order: Shared | Mine | Party
 local providers = {
+    { id = "shared", module = SharedTab },
     { id = "mine",   module = MineTab   },
     { id = "party",  module = PartyTab  },
-    { id = "shared", module = SharedTab },
 }
 
 ------------------------------------------------------------------------
@@ -66,9 +67,18 @@ local function createFrame()
         return tab
     end
 
-    f.tabMine   = makeTab("mine",   "Mine",    10)
-    f.tabParty  = makeTab("party",  "Party",   80)
-    f.tabShared = makeTab("shared", "Shared", 150)
+    f.tabShared = makeTab("shared", "Shared",  10)
+    f.tabMine   = makeTab("mine",   "Mine",    80)
+    f.tabParty  = makeTab("party",  "Party",  150)
+
+    -- Horizontal separator between the tab row and the scroll content area.
+    -- WHITE8x8 is a solid-white texture available since vanilla; vertex colour it.
+    local sep = f:CreateTexture(nil, "ARTWORK")
+    sep:SetTexture("Interface\\Buttons\\WHITE8x8")
+    sep:SetVertexColor(0.4, 0.35, 0.25, 1)
+    sep:SetPoint("TOPLEFT",  f, "TOPLEFT",   6, -52)
+    sep:SetPoint("TOPRIGHT", f, "TOPRIGHT", -6, -52)
+    sep:SetHeight(1)
 
     -- Scroll area.
     f.scrollFrame = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
@@ -78,6 +88,10 @@ local function createFrame()
     f.content = CreateFrame("Frame", nil, f.scrollFrame)
     f.content:SetSize(360, 1)
     f.scrollFrame:SetScrollChild(f.content)
+
+    -- Register with UISpecialFrames so pressing Escape closes this window,
+    -- matching standard WoW window behaviour. Requires the frame's global name.
+    tinsert(UISpecialFrames, "SocialQuestGroupFramePanel")
 
     return f
 end
@@ -122,7 +136,7 @@ function SocialQuestGroupFrame:Refresh()
     frame.scrollFrame:SetScrollChild(frame.content)
 
     -- Find active provider.
-    local activeID = SocialQuest.db.profile.frameState.activeTab or "mine"
+    local activeID = SocialQuest.db.profile.frameState.activeTab or "shared"
     local activeProvider
     for _, p in ipairs(providers) do
         if p.id == activeID then
