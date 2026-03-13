@@ -138,10 +138,12 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     if timeStr then
         titleText = titleText .. " " .. C.timer .. "[" .. timeStr .. "]" .. C.reset
     end
-    titleBtn:SetText(titleText)
-
     local c = getDifficultyColor(questEntry.level)
-    titleBtn:SetTextColor(c.r, c.g, c.b)
+    local colorCode = string.format("|cFF%02X%02X%02X",
+        math.floor(c.r * 255),
+        math.floor(c.g * 255),
+        math.floor(c.b * 255))
+    titleBtn:SetText(colorCode .. titleText .. "|r")
 
     if callbacks then
         titleBtn:SetScript("OnClick", function()

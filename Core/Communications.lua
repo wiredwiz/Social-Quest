@@ -17,7 +17,7 @@ local PREFIXES = {
     "SQ_INIT", "SQ_UPDATE", "SQ_OBJECTIVE",
     "SQ_BEACON", "SQ_REQUEST",
     "SQ_FOLLOW_START", "SQ_FOLLOW_STOP",
-    "SQ_REQ_COMPLETED", "SQ_RESP_COMPLETED",
+    "SQ_REQ_COMPLETED", "SQ_RESP_COMPLETE",
 }
 
 -- Called from SocialQuest:OnEnable().
@@ -246,10 +246,10 @@ function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
         if AQL then
             local payload = { completedQuests = AQL:GetCompletedQuests() }
             LibStub("AceComm-3.0"):SendCommMessage(
-                "SQ_RESP_COMPLETED", serialize(payload), "WHISPER", sender)
+                "SQ_RESP_COMPLETE", serialize(payload), "WHISPER", sender)
         end
 
-    elseif prefix == "SQ_RESP_COMPLETED" then
+    elseif prefix == "SQ_RESP_COMPLETE" then
         -- Store the responding player's completed quest set.
         -- NOTE: `payload` here is already deserialized — the existing code at the
         -- top of OnCommReceived does `local ok, payload = AceSerializer:Deserialize(msg)`
