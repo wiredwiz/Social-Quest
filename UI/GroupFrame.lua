@@ -229,6 +229,22 @@ function SocialQuestGroupFrame:Refresh()
     frame.content:SetHeight(math.max(totalHeight, 10))
 end
 
+-- Expand all zones in the given tab and redraw.
+function SocialQuestGroupFrame:ExpandAll(tabId)
+    SocialQuest.db.profile.frameState.collapsedZones[tabId] = {}
+    self:Refresh()
+end
+
+-- Collapse all named zones in the given tab and redraw.
+function SocialQuestGroupFrame:CollapseAll(tabId, zoneNames)
+    local collapsed = SocialQuest.db.profile.frameState.collapsedZones
+    if not collapsed[tabId] then collapsed[tabId] = {} end
+    for _, name in ipairs(zoneNames) do
+        collapsed[tabId][name] = true
+    end
+    self:Refresh()
+end
+
 -- Flip the collapsed state of one zone in the given tab and redraw.
 -- Absent key = expanded (spec default). Set true when collapsing, nil when expanding,
 -- so no stale false entries accumulate in the saved variable table.
