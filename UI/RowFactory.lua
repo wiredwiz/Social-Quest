@@ -98,6 +98,14 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     linkBtn:SetScript("OnClick", function()
         SocialQuestGroupFrame.ShowWowheadUrl(questEntry.questID)
     end)
+    linkBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Click here to copy the wowhead quest url", 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    linkBtn:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
     x = x + 24
 
     -- Determine badge text. "Complete" trumps "Group".
