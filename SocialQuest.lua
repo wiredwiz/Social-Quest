@@ -60,6 +60,7 @@ function SocialQuest:OnEnable()
     AQL.RegisterCallback(self, "AQL_QUEST_UNTRACKED",        "OnQuestUntracked")
     AQL.RegisterCallback(self, "AQL_OBJECTIVE_PROGRESSED",   "OnObjectiveProgressed")
     AQL.RegisterCallback(self, "AQL_OBJECTIVE_REGRESSED",    "OnObjectiveRegressed")
+    AQL.RegisterCallback(self, "AQL_OBJECTIVE_COMPLETED",    "OnObjectiveCompleted")
     AQL.RegisterCallback(self, "AQL_UNIT_QUEST_LOG_CHANGED", "OnUnitQuestLogChanged")
 
     -- Minimap button via LibDBIcon-1.0.
@@ -100,6 +101,7 @@ function SocialQuest:OnDisable()
         AQL.UnregisterCallback(self, "AQL_QUEST_UNTRACKED")
         AQL.UnregisterCallback(self, "AQL_OBJECTIVE_PROGRESSED")
         AQL.UnregisterCallback(self, "AQL_OBJECTIVE_REGRESSED")
+        AQL.UnregisterCallback(self, "AQL_OBJECTIVE_COMPLETED")
         AQL.UnregisterCallback(self, "AQL_UNIT_QUEST_LOG_CHANGED")
     end
 end
@@ -260,27 +262,27 @@ end
 ------------------------------------------------------------------------
 
 function SocialQuest:OnQuestAccepted(event, questInfo)
-    SocialQuestAnnounce:OnQuestEvent("accepted", questInfo)
+    SocialQuestAnnounce:OnQuestEvent("accepted", questInfo.questID)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "accepted")
 end
 
 function SocialQuest:OnQuestAbandoned(event, questInfo)
-    SocialQuestAnnounce:OnQuestEvent("abandoned", questInfo)
+    SocialQuestAnnounce:OnQuestEvent("abandoned", questInfo.questID)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "abandoned")
 end
 
 function SocialQuest:OnQuestFinished(event, questInfo)
-    SocialQuestAnnounce:OnQuestEvent("finished", questInfo)
+    SocialQuestAnnounce:OnQuestEvent("finished", questInfo.questID)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "finished")
 end
 
 function SocialQuest:OnQuestCompleted(event, questInfo)
-    SocialQuestAnnounce:OnQuestEvent("completed", questInfo)
+    SocialQuestAnnounce:OnQuestEvent("completed", questInfo.questID)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "completed")
 end
 
 function SocialQuest:OnQuestFailed(event, questInfo)
-    SocialQuestAnnounce:OnQuestEvent("failed", questInfo)
+    SocialQuestAnnounce:OnQuestEvent("failed", questInfo.questID)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "failed")
 end
 
@@ -293,13 +295,23 @@ function SocialQuest:OnQuestUntracked(event, questInfo)
 end
 
 function SocialQuest:OnObjectiveProgressed(event, questInfo, objective, delta)
-    SocialQuestAnnounce:OnObjectiveEvent("objective", questInfo, objective)
+    -- Always broadcast so remote PlayerQuests tables stay accurate.
     SocialQuestComm:BroadcastObjectiveUpdate(questInfo, objective)
+
+    -- Suppress progress announce when threshold is crossed; COMPLETED fires next.
+    if objective.numFulfilled >= objective.numRequired then return end
+
+    SocialQuestAnnounce:OnObjectiveEvent("objective_progress", questInfo, objective, false)
+end
+
+function SocialQuest:OnObjectiveCompleted(event, questInfo, objective)
+    -- Comm already broadcast by OnObjectiveProgressed. Only announce here.
+    SocialQuestAnnounce:OnObjectiveEvent("objective_complete", questInfo, objective, false)
 end
 
 function SocialQuest:OnObjectiveRegressed(event, questInfo, objective, delta)
-    -- Broadcast regression so remote PlayerQuests tables stay accurate.
     SocialQuestComm:BroadcastObjectiveUpdate(questInfo, objective)
+    SocialQuestAnnounce:OnObjectiveEvent("objective_progress", questInfo, objective, true)
 end
 
 function SocialQuest:OnUnitQuestLogChanged(event, unit)
