@@ -44,7 +44,7 @@ local function createUrlPopup()
     eb:SetAutoFocus(false)
     eb:SetFontObject("ChatFontNormal")
 
-    local ebBg = CreateFrame("Frame", nil, p)
+    local ebBg = CreateFrame("Frame", nil, p, "BackdropTemplate")
     ebBg:SetPoint("TOPLEFT",     eb, "TOPLEFT",     -3,  3)
     ebBg:SetPoint("BOTTOMRIGHT", eb, "BOTTOMRIGHT",  3, -3)
     ebBg:SetBackdrop({
@@ -91,8 +91,9 @@ local function createFrame()
     f:SetMovable(true)
     f:EnableMouse(true)
     f:RegisterForDrag("LeftButton")
-    f:SetScript("OnDragStart", function(self) self:StartMoving(); self:Raise() end)
-    f:SetScript("OnDragStop", f.StopMovingOrSizing)
+    f:SetScript("OnDragStart", function(self) self:StartMoving() end)
+    f:SetScript("OnDragStop",  f.StopMovingOrSizing)
+    f:SetScript("OnMouseDown", function(self) self:Raise() end)
     f:Hide()
 
     f.TitleText:SetText("SocialQuest — Group Quests")
@@ -111,7 +112,9 @@ local function createFrame()
 
     for _, p in ipairs(providers) do
         p.tab = makeTab(p.id, p.module:GetLabel(), p.offsetX)
-        p.tab:SetWidth(120)
+        PanelTemplates_TabResize(p.tab, 0, 120, 120)
+        p.tab:SetFrameStrata("MEDIUM")
+        p.tab:SetScript("OnMouseDown", function() f:Raise() end)
     end
 
     -- Separator: a child Frame created AFTER the tab buttons so it draws on top
@@ -159,7 +162,6 @@ function SocialQuestGroupFrame:Toggle()
         frame:Hide()
     else
         frame:Show()
-        frame:Raise()
         -- Rebuild the quest cache on every open so IsQuestWatched state is
         -- current.  The initial PLAYER_LOGIN rebuild fires before watch state
         -- is fully set up, causing isTracked to be stale on first open.
@@ -167,6 +169,7 @@ function SocialQuestGroupFrame:Toggle()
             SocialQuest.AQL.QuestCache:Rebuild()
         end
         self:Refresh()
+        frame:Raise()
     end
 end
 
@@ -210,7 +213,6 @@ function SocialQuestGroupFrame:Refresh()
         if p.tab then
             if p.id == activeID then
                 PanelTemplates_SelectTab(p.tab)
-                p.tab:GetFontString():SetFontObject("GameFontHighlightSmall")
             else
                 PanelTemplates_DeselectTab(p.tab)
             end
