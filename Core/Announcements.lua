@@ -108,11 +108,9 @@ end
 local function displayBanner(msg, eventType)
     if not RaidWarningFrame then return end
     local color = SocialQuestColors.GetEventColor(eventType)
-    if color then
-        RaidWarningFrame:AddMessage(msg, color.r, color.g, color.b)
-    else
-        RaidWarningFrame:AddMessage(msg)
-    end
+    local colorInfo = color and { r = color.r, g = color.g, b = color.b }
+                   or { r = 1, g = 1, b = 0 }
+    RaidNotice_AddMessage(RaidWarningFrame, msg, colorInfo)
 end
 
 local function displayChatPreview(msg)
