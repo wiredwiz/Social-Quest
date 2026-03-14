@@ -170,7 +170,10 @@ function SocialQuestAnnounce:OnQuestEvent(eventType, questID)
     if not db.enabled then return end
 
     local AQL   = SocialQuest.AQL
-    local title = AQL and AQL:GetQuestTitle(questID) or ("Quest " .. questID)
+    local info  = AQL and AQL:GetQuest(questID)
+    local title = (info and info.title)
+               or C_QuestLog.GetTitleForQuestID(questID)
+               or ("Quest " .. questID)
     local msg   = formatOutboundQuestMsg(eventType, title)
 
     if not questieWouldAnnounce(eventType) then
