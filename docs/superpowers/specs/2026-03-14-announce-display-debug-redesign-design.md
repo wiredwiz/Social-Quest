@@ -2,8 +2,9 @@
 
 **Date:** 2026-03-14
 **Scope:** Overhaul the announcement and banner system; add a per-section "Display Events" control
-group; unify objective event handling; add Questie chat suppression; remove `isTracked` from
-transmitted data; add a fully self-contained debug test panel with hardcoded demo events.
+group; unify objective event handling; add per-event-type Questie chat suppression; remove
+`isTracked` from transmitted data; add a fully self-contained debug test panel; add colorblind
+mode (auto-follows WoW CVar or SocialQuest override toggle); add own-quest event banners.
 
 ---
 
@@ -96,9 +97,20 @@ general = {
     receive = { ... },   -- ← DELETE: replaced by per-section display tables
 }
 
--- UPDATED general section (add displayReceived, keep everything else):
+-- UPDATED general section (add displayReceived, colorblindMode, displayOwn, displayOwnEvents):
 general = {
-    displayReceived = true,  -- master banner gate (was: general.receive.* merged here)
+    displayReceived  = true,   -- master banner gate (was: general.receive.* merged here)
+    colorblindMode   = false,  -- use colorblind-friendly color scheme; WoW CVar check in isColorblindMode() always takes precedence (see §2.6.4)
+    displayOwn       = false,  -- opt-in: show banners for local player's own quest events
+    displayOwnEvents = {       -- per-event gates for own-quest banners
+        accepted           = true,
+        abandoned          = true,
+        finished           = true,
+        completed          = true,
+        failed             = true,
+        objective_progress = true,
+        objective_complete = true,
+    },
     -- ... other existing general keys unchanged ...
 },
 
@@ -175,14 +187,79 @@ whisperFriends = {
 },
 ```
 
-### 2.6 New color entries
+### 2.6 Color changes in `Util/Colors.lua`
 
-Add to `SocialQuestColors.event` in `Util/Colors.lua`:
+#### 2.6.1 New entries in `SocialQuestColors.event` (standard palette)
 
 ```lua
 objective_progress = { r = 1,   g = 0.6, b = 0   },  -- orange  (#FF9900)
 objective_complete = { r = 0.4, g = 1,   b = 0.4 },  -- lime    (#66FF66)
 ```
+
+#### 2.6.2 New `SocialQuestColors.eventCB` — colorblind-safe banner palette (Okabe-Ito)
+
+All seven event types must have an entry. Types unaffected by red-green colorblindness are
+carried over unchanged.
+
+```lua
+SocialQuestColors.eventCB = {
+    accepted           = { r = 0.337, g = 0.706, b = 0.914 },  -- sky blue       (#56B4E9)
+    completed          = { r = 1,     g = 0.843, b = 0     },  -- gold           (#FFD700) unchanged
+    finished           = { r = 0,     g = 0.620, b = 0.451 },  -- teal           (#009E73)
+    abandoned          = { r = 0.533, g = 0.533, b = 0.533 },  -- grey           (#888888) unchanged
+    failed             = { r = 0.835, g = 0.369, b = 0     },  -- vermillion     (#D55E00)
+    objective_progress = { r = 0.902, g = 0.624, b = 0     },  -- amber          (#E69F00)
+    objective_complete = { r = 0.800, g = 0.475, b = 0.655 },  -- reddish purple (#CC79A7)
+}
+```
+
+#### 2.6.3 New `SocialQuestColors.cbUI` — colorblind overrides for inline UI text
+
+Only the two semantically colour-coded text constants need overrides; all others are safe.
+
+```lua
+SocialQuestColors.cbUI = {
+    completed = "|cFF56B4E9",  -- sky blue   (replaces green    #00FF00)
+    failed    = "|cFFD55E00",  -- vermillion (replaces red      #FF0000)
+}
+```
+
+#### 2.6.4 Colorblind detection helper and accessor functions
+
+Add after the table definitions in `Util/Colors.lua`:
+
+```lua
+-- Returns true when colorblind mode is active — either WoW's built-in CVar or the
+-- SocialQuest override. The CVar check is intentionally first so WoW's global setting
+-- always wins, even if the SocialQuest toggle is off.
+local function isColorblindMode()
+    if GetCVar("colorblindMode") == "1" then return true end
+    return SocialQuest and SocialQuest.db
+        and SocialQuest.db.profile.general.colorblindMode == true
+end
+
+-- Returns the {r,g,b} color for a banner/chat event type.
+-- Always call this instead of indexing SocialQuestColors.event directly.
+function SocialQuestColors.GetEventColor(eventType)
+    local tbl = isColorblindMode() and SocialQuestColors.eventCB or SocialQuestColors.event
+    return tbl[eventType]
+end
+
+-- Returns the inline color escape string for a UI text key (e.g. "completed", "failed").
+-- Falls back to the standard value when no colorblind override is defined for the key.
+function SocialQuestColors.GetUIColor(key)
+    if isColorblindMode() and SocialQuestColors.cbUI[key] then
+        return SocialQuestColors.cbUI[key]
+    end
+    return SocialQuestColors[key]
+end
+```
+
+#### 2.6.5 Update `RowFactory.lua` to use accessor
+
+Every reference to `C.completed` or `C.failed` in `RowFactory.lua` must be replaced with
+`SocialQuestColors.GetUIColor("completed")` and `SocialQuestColors.GetUIColor("failed")`
+respectively. No other `SocialQuestColors` keys require changes.
 
 ---
 
@@ -250,10 +327,11 @@ end
 ### 3.2 Display primitives
 
 ```lua
--- Shows a RaidWarningFrame banner. eventType selects the colour from SocialQuestColors.event.
+-- Shows a RaidWarningFrame banner. eventType selects the colour via GetEventColor(),
+-- which automatically uses the colorblind palette when colorblind mode is active.
 local function displayBanner(msg, eventType)
     if not RaidWarningFrame then return end
-    local color = SocialQuestColors.event[eventType]
+    local color = SocialQuestColors.GetEventColor(eventType)
     if color then
         RaidWarningFrame:AddMessage(msg, color.r, color.g, color.b)
     else
@@ -270,15 +348,31 @@ end
 
 ### 3.3 Questie suppression helper
 
+Suppression is **per event type**: only suppress a SocialQuest chat message when Questie has
+its own flag enabled for that specific event type. `finished`, `failed`, and `objective_progress`
+are never suppressed because Questie has no equivalent announcements for them.
+
 ```lua
--- Returns true when Questie is installed and configured to announce objective
--- progress to at least one channel, meaning SocialQuest should suppress its own
--- objective chat message to avoid double-printing.
-local function questieWouldAnnounceObjective()
+-- Maps SocialQuest event type → the Questie profile flag that controls the same message.
+-- Event types absent from this table are never suppressed (Questie has no equivalent).
+-- Research note: Questie only announces objective_complete (threshold reached),
+-- never partial progress — so objective_progress is intentionally absent.
+local QUESTIE_FLAG_FOR = {
+    accepted           = "questAnnounceAccepted",
+    abandoned          = "questAnnounceAbandoned",
+    completed          = "questAnnounceCompleted",
+    objective_complete = "questAnnounceObjectives",
+}
+
+-- Returns true when Questie is installed, its flag for this event type is enabled,
+-- and its announce channel is not disabled — meaning it would double-print the same message.
+local function questieWouldAnnounce(eventType)
+    local flag = QUESTIE_FLAG_FOR[eventType]
+    if not flag then return false end           -- Questie has no equivalent for this type
     if type(Questie) ~= "table" then return false end
     local profile = Questie.db and Questie.db.profile
     if not profile then return false end
-    if not profile.questAnnounceObjectives then return false end
+    if not profile[flag] then return false end
     return profile.questAnnounceChannel ~= "disabled"
 end
 ```
@@ -301,10 +395,32 @@ local function getSenderSection()
 end
 ```
 
-### 3.5 `OnQuestEvent` — local player outbound (unchanged interface, updated internals)
+### 3.5 `OnQuestEvent` — local player outbound (updated)
 
-Replaces `formatQuestMessage` inline usage with `formatOutboundQuestMsg`.
-Chat channel logic is unchanged. No banner for local player's own quest events.
+Two changes from the original:
+1. Wraps the chat-send block in `questieWouldAnnounce(eventType)` to suppress per-type.
+2. Calls `self:OnOwnQuestEvent()` at the end — the own-quest banner fires regardless of
+   Questie suppression (Questie suppression is about chat, not local banners).
+
+```lua
+function SocialQuestAnnounce:OnQuestEvent(eventType, questID)
+    local db = SocialQuest.db.profile
+    if not db.enabled then return end
+
+    local AQL   = SocialQuest.AQL
+    local title = AQL and AQL:GetQuestTitle(questID) or ("Quest " .. questID)
+    local msg   = formatOutboundQuestMsg(eventType, title)
+
+    -- Chat channel logic: unchanged from existing code, wrapped in Questie guard.
+    if not questieWouldAnnounce(eventType) then
+        -- party / raid / battleground / guild / whisperFriends sends (existing logic)
+        -- ... implementer copies existing channel dispatch from current OnQuestEvent ...
+    end
+
+    -- Own-quest banner: fires regardless of chat suppression.
+    self:OnOwnQuestEvent(eventType, title)
+end
+```
 
 ### 3.6 `OnObjectiveEvent` — local player outbound objective chat
 
@@ -316,34 +432,38 @@ function SocialQuestAnnounce:OnObjectiveEvent(eventType, questInfo, objective, i
     local db = SocialQuest.db.profile
     if not db.enabled then return end
 
-    -- Suppress if Questie would already print this.
-    if questieWouldAnnounceObjective() then return end
+    -- Chat channel logic: suppressed per event type if Questie handles it.
+    -- objective_progress is never in QUESTIE_FLAG_FOR so it is never suppressed.
+    if not questieWouldAnnounce(eventType) then
+        local msg = formatOutboundObjectiveMsg(
+            questInfo.title,
+            objective.text or "",
+            objective.numFulfilled,
+            objective.numRequired,
+            isRegression)
 
-    local msg = formatOutboundObjectiveMsg(
-        questInfo.title,
-        objective.text or "",
-        objective.numFulfilled,
-        objective.numRequired,
-        isRegression)
+        -- Party
+        if IsInGroup(LE_PARTY_CATEGORY_HOME) and not IsInRaid() then
+            if db.party.transmit and db.party.announce[eventType] then
+                enqueueChat(msg, "PARTY")
+            end
+        end
 
-    -- Party
-    if IsInGroup(LE_PARTY_CATEGORY_HOME) and not IsInRaid() then
-        if db.party.transmit and db.party.announce[eventType] then
-            enqueueChat(msg, "PARTY")
+        -- Battleground
+        if IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
+            if db.battleground.transmit and db.battleground.announce[eventType] then
+                enqueueChat(msg, "BATTLEGROUND")
+            end
+        end
+
+        -- Whisper friends
+        if db.whisperFriends.enabled and db.whisperFriends.announce[eventType] then
+            self:WhisperFriends(msg, db.whisperFriends.groupOnly)
         end
     end
 
-    -- Battleground
-    if IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
-        if db.battleground.transmit and db.battleground.announce[eventType] then
-            enqueueChat(msg, "BATTLEGROUND")
-        end
-    end
-
-    -- Whisper friends
-    if db.whisperFriends.enabled and db.whisperFriends.announce[eventType] then
-        self:WhisperFriends(msg, db.whisperFriends.groupOnly)
-    end
+    -- Own-quest banner: fires regardless of chat suppression.
+    self:OnOwnObjectiveEvent(eventType, questInfo, objective, isRegression)
 end
 ```
 
@@ -469,6 +589,39 @@ function SocialQuestAnnounce:TestEvent(eventType)
     if not demo then return end
     displayBanner(demo.banner, demo.colorKey)
     displayChatPreview(demo.outbound)
+end
+```
+
+### 3.10 `OnOwnQuestEvent` and `OnOwnObjectiveEvent` — NEW own-quest banners
+
+Called from `OnQuestEvent` and `OnObjectiveEvent` respectively. Reuse existing formatters and
+`displayBanner` primitive. Pass `"You"` as sender so the banner reads "You accepted: [Quest]",
+consistent with how party member banners are formatted.
+
+```lua
+-- Banner for the local player's own quest state changes.
+function SocialQuestAnnounce:OnOwnQuestEvent(eventType, questTitle)
+    local db = SocialQuest.db.profile
+    if not db.enabled then return end
+    if not db.general.displayOwn then return end
+    if not db.general.displayOwnEvents[eventType] then return end
+
+    local msg = formatQuestBannerMsg("You", eventType, questTitle)
+    if msg then displayBanner(msg, eventType) end
+end
+
+-- Banner for the local player's own objective progress/complete/regression.
+function SocialQuestAnnounce:OnOwnObjectiveEvent(eventType, questInfo, objective, isRegression)
+    local db = SocialQuest.db.profile
+    if not db.enabled then return end
+    if not db.general.displayOwn then return end
+    if not db.general.displayOwnEvents[eventType] then return end
+
+    local msg = formatObjectiveBannerMsg(
+        "You", questInfo.title,
+        objective.numFulfilled, objective.numRequired,
+        eventType == "objective_complete", isRegression)
+    displayBanner(msg, eventType)
 end
 ```
 
@@ -631,16 +784,50 @@ local function announceChatGroup(sectionKey, questOnly)
         args.objective_progress = toggle(
             "Objective Progress",
             "Send a chat message when a quest objective progresses or regresses. "
-            .. "Format matches Questie's style. Suppressed automatically if Questie "
-            .. "is installed and already announcing objective progress.",
+            .. "Format matches Questie's style. Never suppressed by Questie — "
+            .. "Questie does not announce partial progress.",
             { sectionKey, "announce", "objective_progress" })
         args.objective_complete = toggle(
             "Objective Complete",
             "Send a chat message when a quest objective reaches its goal (e.g. 8/8 Kobolds). "
-            .. "Suppressed automatically if Questie is handling this.",
+            .. "Suppressed automatically if Questie is installed and its "
+            .. "'Announce Objectives' setting is enabled.",
             { sectionKey, "announce", "objective_complete" })
     end
     return { type = "group", name = "Announce in Chat", inline = true, args = args }
+end
+
+-- Builds the "Own Quest Banners" inline group under General.
+-- Controls which of the local player's own quest events show a RaidWarning banner.
+local function ownDisplayEventsGroup()
+    return {
+        type   = "group",
+        name   = "Own Quest Banners",
+        inline = true,
+        args   = {
+            accepted  = toggle("Accepted",
+                "Show a banner when you accept a quest.",
+                { "general", "displayOwnEvents", "accepted"  }),
+            abandoned = toggle("Abandoned",
+                "Show a banner when you abandon a quest.",
+                { "general", "displayOwnEvents", "abandoned" }),
+            finished  = toggle("Finished",
+                "Show a banner when all objectives on a quest are complete (before turning in).",
+                { "general", "displayOwnEvents", "finished"  }),
+            completed = toggle("Completed",
+                "Show a banner when you turn in a quest.",
+                { "general", "displayOwnEvents", "completed" }),
+            failed    = toggle("Failed",
+                "Show a banner when a quest fails.",
+                { "general", "displayOwnEvents", "failed"    }),
+            objective_progress = toggle("Objective Progress",
+                "Show a banner when one of your quest objectives progresses or regresses.",
+                { "general", "displayOwnEvents", "objective_progress" }),
+            objective_complete = toggle("Objective Complete",
+                "Show a banner when one of your quest objectives reaches its goal (e.g. 8/8).",
+                { "general", "displayOwnEvents", "objective_complete" }),
+        },
+    }
 end
 
 -- Builds the "Display Events" inline group for controlling which inbound events
@@ -686,6 +873,11 @@ enabled         "Master on/off switch for all SocialQuest functionality."
 displayReceived "Master switch: allow any banner notifications to appear.
                  Individual 'Display Events' groups below control which event
                  types are shown per section."
+colorblindMode  "Use colorblind-friendly colors for all SocialQuest banners and
+                 UI text. It is unnecessary to enable this if Color Blind mode is
+                 already enabled in the game client."
+displayOwn      "Show a banner on screen for your own quest events."
+ownDisplayEventsGroup()
 ```
 
 **Party:**
@@ -780,10 +972,11 @@ Each `execute` button calls `SocialQuestAnnounce:TestEvent(eventType)`.
 
 | File | Change |
 |------|--------|
-| `Util/Colors.lua` | Add `objective_progress` and `objective_complete` to `SocialQuestColors.event` |
-| `Core/Announcements.lua` | Full restructure: pure formatters, display primitives, Questie suppression, section-aware `OnRemoteQuestEvent`, new `OnRemoteObjectiveEvent`, new `TestEvent` |
+| `Util/Colors.lua` | Add `objective_progress`/`objective_complete` to `SocialQuestColors.event`; add `SocialQuestColors.eventCB` (Okabe-Ito colorblind palette, 7 entries); add `SocialQuestColors.cbUI` (colorblind overrides for `completed` and `failed` text); add `isColorblindMode()`, `GetEventColor()`, `GetUIColor()` |
+| `UI/RowFactory.lua` | Replace `C.completed` and `C.failed` with `SocialQuestColors.GetUIColor("completed")` / `GetUIColor("failed")` everywhere they appear |
+| `Core/Announcements.lua` | Full restructure: pure formatters, colorblind-aware `displayBanner` (uses `GetEventColor`), per-event-type `questieWouldAnnounce`, Questie-guarded `OnQuestEvent` + `OnObjectiveEvent`, section-aware `OnRemoteQuestEvent`, new `OnRemoteObjectiveEvent`, new `OnOwnQuestEvent`, new `OnOwnObjectiveEvent`, new `TestEvent` |
 | `Core/Communications.lua` | Remove `isTracked` from `buildQuestPayload` and `buildInitPayload` |
 | `Core/GroupData.lua` | Remove `isTracked` storage; add `OnRemoteObjectiveEvent` call with regression detection in `OnObjectiveReceived` |
 | `SocialQuest.lua` | Register `AQL_OBJECTIVE_COMPLETED`; update `OnObjectiveProgressed` (suppress when complete, always broadcast); add `OnObjectiveCompleted`; update `OnObjectiveRegressed` (add chat announce) |
-| `SocialQuest.lua` `GetDefaults()` | Remove `general.receive`; add `general.displayReceived = true`; add `displayReceived = true` to party/raid/battleground; add `display` subtables to party/raid/battleground (whisperFriends is outbound-only — no display subtable); add `objective_progress`/`objective_complete` to party/battleground/whisperFriends announce tables; remove orphaned `objective` key from same three sections |
-| `UI/Options.lua` | Full rebuild: rename helpers, two inline groups per section, all tooltips, debug execute buttons |
+| `SocialQuest.lua` `GetDefaults()` | Remove `general.receive`; add `general.displayReceived`, `general.colorblindMode`, `general.displayOwn`, `general.displayOwnEvents`; add `displayReceived` to party/raid/battleground; add `display` subtables to party/raid/battleground (whisperFriends excluded — outbound only); add `objective_progress`/`objective_complete` to party/battleground/whisperFriends announce; remove orphaned `objective` key from same three sections |
+| `UI/Options.lua` | Full rebuild: `announceChatGroup`, `displayEventsGroup`, `ownDisplayEventsGroup` helpers; colorblind + own-quest controls in General; per-type Questie suppression tooltips; debug execute buttons |
