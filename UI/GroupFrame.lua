@@ -88,7 +88,7 @@ local function createFrame()
                           "BasicFrameTemplateWithInset")
     f:SetSize(400, 500)
     f:SetPoint("CENTER")
-    f:SetFrameStrata("MEDIUM")
+    f:SetFrameStrata("HIGH")
     f:SetMovable(true)
     f:EnableMouse(true)
     f:RegisterForDrag("LeftButton")
@@ -114,7 +114,7 @@ local function createFrame()
     for _, p in ipairs(providers) do
         p.tab = makeTab(p.id, p.module:GetLabel(), p.offsetX)
         PanelTemplates_TabResize(p.tab, 0, 120, 120)
-        p.tab:SetFrameStrata("MEDIUM")
+        p.tab:SetFrameStrata("HIGH")
         p.tab:SetScript("OnMouseDown", function() f:Raise() end)
     end
 
