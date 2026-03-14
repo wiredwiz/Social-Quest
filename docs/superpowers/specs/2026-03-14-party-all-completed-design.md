@@ -69,13 +69,30 @@ Place this function in the "Remote event banner notifications" section, just bef
 
 ```
 1. If SocialQuestGroupData.PlayerQuests is empty → return (not in a group)
+
 2. For each entry in PlayerQuests:
-     if hasSocialQuest == false → return  (non-SQ member present)
-3. For each entry in PlayerQuests:
-     if completedQuests[questID] ~= true → return  (SQ member hasn't completed it)
-4. If not localHasCompleted:
-     if not C_QuestLog.IsQuestFlaggedCompleted(questID) → return
-5. All checks pass:
+     if hasSocialQuest == false → return  (non-SQ member present; suppress entirely)
+
+3. Build "engaged" set — only players who have or had the quest matter.
+     Players who never had the quest are irrelevant and excluded.
+
+     For each remote entry in PlayerQuests, the entry is "engaged" if:
+       entry.quests[questID] ~= nil          (has it active)
+       OR entry.completedQuests[questID]     (turned it in)
+
+     The local player is "engaged" if:
+       localHasCompleted                     (just turned it in — caller guarantees this)
+       OR AQL:GetQuest(questID) ~= nil       (has it active in AQL cache)
+       OR C_QuestLog.IsQuestFlaggedCompleted(questID)  (completed previously)
+
+4. If the engaged set is empty → return
+     (no one in the group has or had this quest; nothing to announce)
+
+5. For each player in the engaged set who has NOT completed the quest → return
+     Remote: entry.completedQuests[questID] ~= true
+     Local:  not localHasCompleted (and not C_QuestLog.IsQuestFlaggedCompleted when localHasCompleted is false)
+
+6. All engaged players have completed the quest:
      a. Determine section via getSenderSection()
      b. Check display gating (see below)
      c. Resolve quest title
@@ -83,6 +100,8 @@ Place this function in the "Remote event banner notifications" section, just bef
      e. Show banner via displayBanner(msg, "all_complete")
      f. If localHasCompleted and chat announce gating passes → send chat message
 ```
+
+**Example:** 5 players, all with SocialQuest. 3 have the quest, 2 do not. When the 3rd player completes it, the engaged set is {player1, player2, player3}. Players 4 and 5 are not engaged and are ignored. All 3 engaged players have completed it → banner fires.
 
 **`localHasCompleted` parameter:**
 - `true` when called from `OnQuestEvent("completed", ...)` — the local player just turned in the quest; no API check needed
@@ -169,7 +188,8 @@ If the last-completer reloads their UI before peers receive their `SQ_UPDATE`, p
 |----------|-----------|
 | Solo (no group) | `PlayerQuests` empty → return early, no notification |
 | Any non-SQ member in group | `hasSocialQuest == false` → return early, no notification |
-| SQ member hasn't completed quest yet | `completedQuests[questID] ~= true` → return early |
+| SQ member has the quest but hasn't completed it | Member is in engaged set; `completedQuests[questID] ~= true` → return early |
+| SQ member never had the quest | Member is not in engaged set; ignored entirely |
 | Local player hasn't completed quest | `C_QuestLog.IsQuestFlaggedCompleted` false → return early |
 | `display.completed` toggle off | Banner suppressed (same as normal completion banners) |
 | `announce.completed` toggle off | Chat message suppressed even on local trigger |
