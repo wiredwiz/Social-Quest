@@ -7,7 +7,7 @@
 --     lastSync       = <GetTime()>,
 --     quests = {
 --         [questID] = {
---             questID=N, isComplete=bool, isFailed=bool, isTracked=bool,
+--             questID=N, isComplete=bool, isFailed=bool,
 --             snapshotTime=N, timerSeconds=N_or_nil,
 --             objectives = { {numFulfilled=N, numRequired=N, isFinished=bool}, ... }
 --         },
@@ -50,7 +50,7 @@ function SocialQuestGroupData:OnGroupChanged()
 end
 
 -- Called when a full SQ_INIT message arrives from a player.
--- payload: { quests = { [questID] = { isComplete, isFailed, isTracked,
+-- payload: { quests = { [questID] = { isComplete, isFailed,
 --            snapshotTime, timerSeconds, objectives={...} } } }
 function SocialQuestGroupData:OnInitReceived(sender, payload)
     if not self:IsInGroup(sender) then return end
@@ -68,7 +68,7 @@ end
 
 -- Called when a single-quest SQ_UPDATE arrives.
 -- payload: { questID=N, eventType="accepted"|..., isComplete=bool, isFailed=bool,
---            isTracked=bool, snapshotTime=N, timerSeconds=N_or_nil,
+--            snapshotTime=N, timerSeconds=N_or_nil,
 --            objectives={...} }
 function SocialQuestGroupData:OnUpdateReceived(sender, payload)
     if not self:IsInGroup(sender) then return end
@@ -91,7 +91,6 @@ function SocialQuestGroupData:OnUpdateReceived(sender, payload)
             questID      = questID,
             isComplete   = payload.isComplete  == 1,
             isFailed     = payload.isFailed    == 1,
-            isTracked    = payload.isTracked   == 1,
             snapshotTime = payload.snapshotTime,
             timerSeconds = payload.timerSeconds,
             objectives   = payload.objectives or {},
@@ -105,24 +104,33 @@ function SocialQuestGroupData:OnUpdateReceived(sender, payload)
 end
 
 -- Called when a single-objective SQ_OBJECTIVE arrives.
--- payload: { questID=N, objIndex=N, numFulfilled=N, numRequired=N, isFinished=bool }
+-- payload: { questID=N, objIndex=N, numFulfilled=N, numRequired=N, isFinished=0|1 }
+-- Determines regression direction before updating stored value, then fires banner.
 function SocialQuestGroupData:OnObjectiveReceived(sender, payload)
     if not self:IsInGroup(sender) then return end
 
     local entry = self.PlayerQuests[sender]
     if not entry or not entry.quests then return end
-
     local quest = entry.quests[payload.questID]
     if not quest then return end
 
     local obj = quest.objectives[payload.objIndex]
-    if not obj then
-        obj = {}
-        quest.objectives[payload.objIndex] = obj
-    end
+    if not obj then obj = {}; quest.objectives[payload.objIndex] = obj end
+
+    -- Determine direction before updating stored value.
+    local isRegression = obj.numFulfilled ~= nil
+                     and payload.numFulfilled < obj.numFulfilled
+    local isComplete   = payload.isFinished == 1
+
     obj.numFulfilled = payload.numFulfilled
     obj.numRequired  = payload.numRequired
-    obj.isFinished   = payload.isFinished == 1
+    obj.isFinished   = isComplete
+
+    -- Banner notification.
+    SocialQuestAnnounce:OnRemoteObjectiveEvent(
+        sender, payload.questID,
+        payload.numFulfilled, payload.numRequired,
+        isComplete, isRegression)
 
     SocialQuestGroupFrame:RequestRefresh()
 end
