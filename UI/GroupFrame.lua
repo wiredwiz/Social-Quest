@@ -43,6 +43,7 @@ local function createUrlPopup()
     eb:SetPoint("CENTER", p, "CENTER", 0, -8)
     eb:SetAutoFocus(false)
     eb:SetFontObject("ChatFontNormal")
+    eb:SetScript("OnEscapePressed", function() p:Hide() end)
 
     local ebBg = CreateFrame("Frame", nil, p, "BackdropTemplate")
     ebBg:SetPoint("TOPLEFT",     eb, "TOPLEFT",     -3,  3)
