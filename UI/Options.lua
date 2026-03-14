@@ -8,21 +8,6 @@ function SocialQuestOptions:Initialize()
     local AceConfigDialog = LibStub("AceConfigDialog-3.0")
     local db = SocialQuest.db.profile
 
-    local function get(info)
-        local key = info[#info]
-        -- Walk info path to find value in db.profile.
-        local t = db
-        for i = 1, #info - 1 do t = t[info[i]] end
-        return t[key]
-    end
-
-    local function set(info, value)
-        local key = info[#info]
-        local t = db
-        for i = 1, #info - 1 do t = t[info[i]] end
-        t[key] = value
-    end
-
     local function toggle(label, desc, path)
         return {
             type    = "toggle",
