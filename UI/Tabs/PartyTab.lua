@@ -187,6 +187,14 @@ function PartyTab:Render(contentFrame, rowFactory, tabCollapsedZones)
     end
     table.sort(sortedZones, function(a, b) return a.order < b.order end)
 
+    if #sortedZones > 0 then
+        local zoneNames = {}
+        for _, zone in ipairs(sortedZones) do table.insert(zoneNames, zone.name) end
+        y = rowFactory.AddExpandCollapseHeader(contentFrame, y,
+            function() SocialQuestGroupFrame:ExpandAll("party") end,
+            function() SocialQuestGroupFrame:CollapseAll("party", zoneNames) end)
+    end
+
     for _, zone in ipairs(sortedZones) do
         local zoneName    = zone.name
         local isCollapsed = tabCollapsedZones[zoneName] == true

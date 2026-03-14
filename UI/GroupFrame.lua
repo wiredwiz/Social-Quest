@@ -3,45 +3,81 @@
 -- Tab rendering is delegated to MineTab, PartyTab, SharedTab providers.
 -- Zone collapse state and active tab are persisted via AceDB frameState.
 
--- StaticPopup_Show(which, text1, ...) calls editBox:SetText(text1) AFTER it
--- fires OnShow, so any SetText in OnShow gets immediately overwritten.
--- Solution: pass the URL as text1 so Blizzard's own code populates the box.
--- OnShow only defers HighlightText/SetFocus to run after Blizzard finishes.
-StaticPopupDialogs["SQ_WOWHEAD_POPUP"] = {
-    text         = "Quest URL (Ctrl+C to copy):",
-    button1      = "Close",
-    hasEditBox   = 1,
-    editBoxWidth = 300,
-    OnShow       = function(self)
-        -- Blizzard sets editBox:SetText(text1) after OnShow returns.
-        -- Defer focus+highlight to next tick so the text is already set.
-        C_Timer.After(0, function()
-            if self.editBox and self:IsShown() then
-                self.editBox:SetFocus()
-                self.editBox:HighlightText()
-            end
-        end)
-    end,
-    OnAccept     = function() end,
-    timeout      = 0,
-    whileDead    = true,
-    hideOnEscape = true,
-}
-
 SocialQuestGroupFrame = {}
 
 local frame          = nil
 local refreshPending = false
+local urlPopup       = nil
 
 -- Ordered tab providers. The id must match the collapsedZones subtable key.
 -- MineTab/PartyTab/SharedTab are loaded before GroupFrame per TOC order, so
 -- the globals exist here and can be assigned directly.
 -- Tab display order: Shared | Mine | Party
 local providers = {
-    { id = "shared", module = SharedTab },
-    { id = "mine",   module = MineTab   },
-    { id = "party",  module = PartyTab  },
+    { id = "shared", module = SharedTab, tab = nil, offsetX = 18  },
+    { id = "mine",   module = MineTab,   tab = nil, offsetX = 138 },
+    { id = "party",  module = PartyTab,  tab = nil, offsetX = 258 },
 }
+
+------------------------------------------------------------------------
+-- Wowhead URL popup
+------------------------------------------------------------------------
+
+local function createUrlPopup()
+    local p = CreateFrame("Frame", "SocialQuestWowheadPopup", UIParent,
+                          "BasicFrameTemplate")
+    p:SetSize(340, 100)
+    p:SetPoint("CENTER")
+    p:SetFrameStrata("DIALOG")
+    p:SetMovable(true)
+    p:EnableMouse(true)
+    p:RegisterForDrag("LeftButton")
+    p:SetScript("OnDragStart", function(self) self:StartMoving(); self:Raise() end)
+    p:SetScript("OnDragStop", p.StopMovingOrSizing)
+    p:Hide()
+
+    p.TitleText:SetText("Quest URL (Ctrl+C to copy)")
+
+    local eb = CreateFrame("EditBox", nil, p)
+    eb:SetSize(300, 20)
+    eb:SetPoint("CENTER", p, "CENTER", 0, -8)
+    eb:SetAutoFocus(false)
+    eb:SetFontObject("ChatFontNormal")
+    eb:SetScript("OnEscapePressed", function() p:Hide() end)
+
+    local ebBg = CreateFrame("Frame", nil, p, "BackdropTemplate")
+    ebBg:SetPoint("TOPLEFT",     eb, "TOPLEFT",     -3,  3)
+    ebBg:SetPoint("BOTTOMRIGHT", eb, "BOTTOMRIGHT",  3, -3)
+    ebBg:SetBackdrop({
+        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile     = true, tileSize = 16, edgeSize = 8,
+        insets   = { left = 2, right = 2, top = 2, bottom = 2 },
+    })
+    ebBg:SetBackdropColor(0, 0, 0, 0.6)
+    ebBg:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+    ebBg:SetFrameLevel(eb:GetFrameLevel() - 1)
+
+    p.editBox = eb
+
+    -- Register so pressing Escape closes this popup (same pattern as main frame).
+    tinsert(UISpecialFrames, "SocialQuestWowheadPopup")
+
+    return p
+end
+
+-- Called by RowFactory when the user clicks the [?] link button on a quest row.
+-- Sets the URL synchronously before Show() so the edit box is never blank.
+function SocialQuestGroupFrame.ShowWowheadUrl(questID)
+    if not urlPopup then
+        urlPopup = createUrlPopup()
+    end
+    local url = SocialQuestTabUtils.WowheadUrl(questID)
+    urlPopup.editBox:SetText(url)
+    urlPopup:Show()
+    urlPopup.editBox:SetFocus()
+    urlPopup.editBox:HighlightText()
+end
 
 ------------------------------------------------------------------------
 -- Frame construction
@@ -56,8 +92,9 @@ local function createFrame()
     f:SetMovable(true)
     f:EnableMouse(true)
     f:RegisterForDrag("LeftButton")
-    f:SetScript("OnDragStart", function(self) self:StartMoving(); self:Raise() end)
-    f:SetScript("OnDragStop", f.StopMovingOrSizing)
+    f:SetScript("OnDragStart", function(self) self:StartMoving() end)
+    f:SetScript("OnDragStop",  f.StopMovingOrSizing)
+    f:SetScript("OnMouseDown", function(self) self:Raise() end)
     f:Hide()
 
     f.TitleText:SetText("SocialQuest — Group Quests")
@@ -74,15 +111,18 @@ local function createFrame()
         return tab
     end
 
-    f.tabShared = makeTab("shared", "Shared",  10)
-    f.tabMine   = makeTab("mine",   "Mine",    80)
-    f.tabParty  = makeTab("party",  "Party",  150)
+    for _, p in ipairs(providers) do
+        p.tab = makeTab(p.id, p.module:GetLabel(), p.offsetX)
+        PanelTemplates_TabResize(p.tab, 0, 120, 120)
+        p.tab:SetFrameStrata("HIGH")
+        p.tab:SetScript("OnMouseDown", function() f:Raise() end)
+    end
 
     -- Separator: a child Frame created AFTER the tab buttons so it draws on top
     -- of any tab art that bleeds below the button frame.  GetHeight() reads the
     -- real TabButtonTemplate height so the separator sits exactly at tab bottom.
     local TAB_TOP    = -24
-    local tabH       = f.tabShared:GetHeight()
+    local tabH       = providers[1].tab:GetHeight()
     local SEP_Y      = TAB_TOP - tabH      -- y of separator top edge
     local SCROLL_TOP = SEP_Y - 4           -- 4 px gap below separator
 
@@ -123,7 +163,6 @@ function SocialQuestGroupFrame:Toggle()
         frame:Hide()
     else
         frame:Show()
-        frame:Raise()
         -- Rebuild the quest cache on every open so IsQuestWatched state is
         -- current.  The initial PLAYER_LOGIN rebuild fires before watch state
         -- is fully set up, causing isTracked to be stale on first open.
@@ -131,6 +170,7 @@ function SocialQuestGroupFrame:Toggle()
             SocialQuest.AQL.QuestCache:Rebuild()
         end
         self:Refresh()
+        frame:Raise()
     end
 end
 
@@ -167,6 +207,19 @@ function SocialQuestGroupFrame:Refresh()
     end
     if not activeProvider or not activeProvider.module then return end
 
+    -- Highlight active tab; deselect others.
+    -- PanelTemplates_SelectTab disables the button (standard WoW: can't re-click active tab).
+    -- PanelTemplates_DeselectTab re-enables inactive tabs.
+    for _, p in ipairs(providers) do
+        if p.tab then
+            if p.id == activeID then
+                PanelTemplates_SelectTab(p.tab)
+            else
+                PanelTemplates_DeselectTab(p.tab)
+            end
+        end
+    end
+
     -- Per-tab collapsed zones subtable.
     local collapsedZones = SocialQuest.db.profile.frameState.collapsedZones
     local tabCollapsed   = collapsedZones[activeID] or {}
@@ -174,6 +227,22 @@ function SocialQuestGroupFrame:Refresh()
     -- Delegate rendering to the tab provider.
     local totalHeight = activeProvider.module:Render(frame.content, RowFactory, tabCollapsed)
     frame.content:SetHeight(math.max(totalHeight, 10))
+end
+
+-- Expand all zones in the given tab and redraw.
+function SocialQuestGroupFrame:ExpandAll(tabId)
+    SocialQuest.db.profile.frameState.collapsedZones[tabId] = {}
+    self:Refresh()
+end
+
+-- Collapse all named zones in the given tab and redraw.
+function SocialQuestGroupFrame:CollapseAll(tabId, zoneNames)
+    local collapsed = SocialQuest.db.profile.frameState.collapsedZones
+    if not collapsed[tabId] then collapsed[tabId] = {} end
+    for _, name in ipairs(zoneNames) do
+        collapsed[tabId][name] = true
+    end
+    self:Refresh()
 end
 
 -- Flip the collapsed state of one zone in the given tab and redraw.
@@ -192,51 +261,3 @@ function SocialQuestGroupFrame:ToggleZone(tabId, zoneName)
     self:Refresh()
 end
 
-------------------------------------------------------------------------
--- Minimap button (unchanged from original)
-------------------------------------------------------------------------
-
-local minimapButton = CreateFrame("Button", "SocialQuestMinimapButton", Minimap)
-minimapButton:SetSize(32, 32)
-minimapButton:SetFrameStrata("MEDIUM")
-minimapButton:SetNormalTexture("Interface\\Icons\\INV_Misc_GroupNeedMore")
-minimapButton:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
-minimapButton:SetPushedTexture("Interface\\Icons\\INV_Misc_GroupNeedMore")
-
-local angle = 225
-local function updateMinimapButtonPosition()
-    minimapButton:ClearAllPoints()
-    local rad = math.rad(angle)
-    minimapButton:SetPoint("CENTER", Minimap, "CENTER", 80 * math.cos(rad), 80 * math.sin(rad))
-end
-updateMinimapButtonPosition()
-
-minimapButton:EnableMouse(true)
-minimapButton:RegisterForDrag("LeftButton")
-minimapButton:SetScript("OnDragStart", function(self)
-    self:SetScript("OnUpdate", function(self)
-        local cx, cy = Minimap:GetCenter()
-        local mx, my = GetCursorPosition()
-        local scale  = Minimap:GetEffectiveScale()
-        angle = math.deg(math.atan2((my / scale) - cy, (mx / scale) - cx))
-        updateMinimapButtonPosition()
-    end)
-end)
-minimapButton:SetScript("OnDragStop", function(self)
-    self:SetScript("OnUpdate", nil)
-end)
-
-minimapButton:SetScript("OnClick", function()
-    SocialQuestGroupFrame:Toggle()
-end)
-
-minimapButton:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-    GameTooltip:SetText("SocialQuest")
-    GameTooltip:AddLine("Click to open group quest frame.", 1, 1, 1)
-    GameTooltip:Show()
-end)
-
-minimapButton:SetScript("OnLeave", function()
-    GameTooltip:Hide()
-end)

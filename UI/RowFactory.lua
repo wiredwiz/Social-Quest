@@ -2,7 +2,6 @@
 -- Stateless row-drawing utilities for the group frame tab providers.
 -- All functions take (contentFrame, y, ...) and return the new y offset.
 -- contentFrame is the scroll child (width = 360 px, set by GroupFrame).
--- StaticPopupDialogs["SQ_WOWHEAD_POPUP"] is registered in GroupFrame.lua.
 
 RowFactory = {}
 
@@ -40,6 +39,45 @@ end
 ------------------------------------------------------------------------
 -- Public API
 ------------------------------------------------------------------------
+
+-- Expand-all / collapse-all control row rendered at the top of each tab.
+-- onExpand() and onCollapse() are called with no arguments on button click.
+function RowFactory.AddExpandCollapseHeader(contentFrame, y, onExpand, onCollapse)
+    local C   = SocialQuestColors
+    local mid = math.floor(CONTENT_WIDTH / 2)
+
+    local expandBtn = CreateFrame("Button", nil, contentFrame)
+    expandBtn:SetSize(22, ROW_H)
+    expandBtn:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", 0, -y)
+    expandBtn:SetText("[+]")
+    expandBtn:SetNormalFontObject("GameFontNormalSmall")
+    expandBtn:SetHighlightFontObject("GameFontHighlightSmall")
+    if onExpand then expandBtn:SetScript("OnClick", onExpand) end
+
+    local expandLabel = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    expandLabel:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", 24, -y)
+    expandLabel:SetSize(mid - 24, ROW_H)
+    expandLabel:SetJustifyH("LEFT")
+    expandLabel:SetJustifyV("MIDDLE")
+    expandLabel:SetText(C.white .. "expand all" .. C.reset)
+
+    local collapseBtn = CreateFrame("Button", nil, contentFrame)
+    collapseBtn:SetSize(22, ROW_H)
+    collapseBtn:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", mid, -y)
+    collapseBtn:SetText("[-]")
+    collapseBtn:SetNormalFontObject("GameFontNormalSmall")
+    collapseBtn:SetHighlightFontObject("GameFontHighlightSmall")
+    if onCollapse then collapseBtn:SetScript("OnClick", onCollapse) end
+
+    local collapseLabel = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    collapseLabel:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", mid + 24, -y)
+    collapseLabel:SetSize(CONTENT_WIDTH - mid - 24, ROW_H)
+    collapseLabel:SetJustifyH("LEFT")
+    collapseLabel:SetJustifyV("MIDDLE")
+    collapseLabel:SetText(C.white .. "collapse all" .. C.reset)
+
+    return y + ROW_H + 4
+end
 
 -- Zone/category header row with [+]/[-] collapse toggle.
 -- onToggle() is called on button click (no arguments).
@@ -84,7 +122,7 @@ end
 -- Layout (left to right): [?] link | [v] checkmark (Mine only) | title | badge (right)
 -- callbacks = { onTitleShiftClick = function(logIndex, isTracked) }
 --   onTitleShiftClick: nil on Party/Shared tabs (disables checkmark and shift-click).
---   NOTE: The link button calls StaticPopup_Show directly; no onLinkClick callback.
+--   NOTE: The link button calls SocialQuestGroupFrame.ShowWowheadUrl directly; no onLinkClick callback.
 function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     local C = SocialQuestColors
     local x = indent or 0
@@ -97,10 +135,15 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     linkBtn:SetNormalFontObject("GameFontNormalSmall")
     linkBtn:SetHighlightFontObject("GameFontHighlightSmall")
     linkBtn:SetScript("OnClick", function()
-        -- Pass URL as text1. StaticPopup_Show calls editBox:SetText(text1)
-        -- after OnShow fires, so Blizzard's own code populates the box.
-        StaticPopup_Show("SQ_WOWHEAD_POPUP",
-            SocialQuestTabUtils.WowheadUrl(questEntry.questID))
+        SocialQuestGroupFrame.ShowWowheadUrl(questEntry.questID)
+    end)
+    linkBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText("Click here to copy the wowhead quest url", 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    linkBtn:SetScript("OnLeave", function()
+        GameTooltip:Hide()
     end)
     x = x + 24
 
