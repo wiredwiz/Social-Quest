@@ -150,7 +150,7 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     -- Determine badge text. "Complete" trumps "Group".
     local badgeText = ""
     if questEntry.isComplete then
-        badgeText = C.completed .. "(Complete)" .. C.reset
+        badgeText = SocialQuestColors.GetUIColor("completed") .. "(Complete)" .. C.reset
     elseif questEntry.suggestedGroup and questEntry.suggestedGroup > 0 then
         badgeText = C.chain .. "(Group)" .. C.reset
     end
