@@ -83,7 +83,9 @@ function SocialQuest:OnEnable()
                 tooltip:Show()
             end,
         })
-        DBIcon:Register("SocialQuest", launcher, self.db.profile.minimap)
+        if not DBIcon:GetMinimapButton("SocialQuest") then
+            DBIcon:Register("SocialQuest", launcher, self.db.profile.minimap)
+        end
     end
 end
 
