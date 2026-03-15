@@ -76,11 +76,14 @@ function SocialQuest:OnEnable()
             OnClick = function(_, button)
                 if button == "LeftButton" then
                     SocialQuestGroupFrame:Toggle()
+                elseif button == "RightButton" then
+                    LibStub("AceConfigDialog-3.0"):Open("SocialQuest")
                 end
             end,
             OnTooltipShow = function(tooltip)
                 tooltip:SetText("SocialQuest")
-                tooltip:AddLine("Click to open group quest frame.", 1, 1, 1)
+                tooltip:AddLine("Left-click to open group quest frame.", 1, 1, 1)
+                tooltip:AddLine("Right-click to open settings.", 1, 1, 1)
                 tooltip:Show()
             end,
         })
