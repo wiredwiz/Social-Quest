@@ -269,23 +269,26 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent)
         return y + ROW_H + 2
 
     else
-        -- Name line (with optional step info).
-        local nameLine = name
-        if playerEntry.step and playerEntry.chainLength then
-            nameLine = nameLine
-                .. " Step " .. tostring(playerEntry.step)
-                .. " of "   .. tostring(playerEntry.chainLength)
+        local objectives = playerEntry.objectives or {}
+        if #objectives == 0 then
+            -- Has quest but no objective data yet; show name alone.
+            local fs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
+            fs:SetWidth(CONTENT_WIDTH - x - 4)
+            fs:SetJustifyH("LEFT")
+            fs:SetText(C.white .. name .. C.reset)
+            return y + ROW_H + 2
         end
-        local nameFs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        nameFs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
-        nameFs:SetWidth(CONTENT_WIDTH - x - 4)
-        nameFs:SetJustifyH("LEFT")
-        nameFs:SetText(C.white .. nameLine .. C.reset)
-        y = y + ROW_H + 2
 
-        -- Objective rows.
-        for _, obj in ipairs(playerEntry.objectives or {}) do
-            y = RowFactory.AddObjectiveRow(contentFrame, y, obj, x + INDENT_STEP)
+        -- One row per objective, prefixed with player name.
+        for _, obj in ipairs(objectives) do
+            local clr = obj.isFinished and SocialQuestColors.GetUIColor("completed") or C.active
+            local fs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
+            fs:SetWidth(CONTENT_WIDTH - x - 4)
+            fs:SetJustifyH("LEFT")
+            fs:SetText(C.white .. name .. C.reset .. " " .. clr .. (obj.text or "") .. C.reset)
+            y = y + fs:GetStringHeight() + 2
         end
         return y
     end
