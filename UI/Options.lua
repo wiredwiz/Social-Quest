@@ -348,6 +348,12 @@ function SocialQuestOptions:Initialize()
         },
     }
 
+    local AceDBOptions = LibStub("AceDBOptions-3.0", true)
+    if AceDBOptions then
+        options.args.profiles = AceDBOptions:GetOptionsTable(SocialQuest.db)
+        options.args.profiles.order = 99
+    end
+
     AceConfig:RegisterOptionsTable("SocialQuest", options)
     AceConfigDialog:AddToBlizOptions("SocialQuest")
 end

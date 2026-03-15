@@ -117,7 +117,7 @@ function SocialQuest:GetDefaults()
             general = {
                 displayReceived  = true,
                 colorblindMode   = false,
-                displayOwn       = false,
+                displayOwn       = true,
                 displayOwnEvents = {
                     accepted           = true,
                     abandoned          = true,
