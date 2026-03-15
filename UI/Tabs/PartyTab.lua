@@ -132,7 +132,9 @@ function PartyTab:BuildTree()
 
         local entry = {
             questID        = questID,
-            title          = localInfo and localInfo.title or ("Quest " .. questID),
+            title          = (localInfo and localInfo.title)
+                             or C_QuestLog.GetQuestInfo(questID)
+                             or ("Quest " .. questID),
             level          = localInfo and localInfo.level or 0,
             zone           = zoneName,
             isComplete     = localInfo and localInfo.isComplete or false,

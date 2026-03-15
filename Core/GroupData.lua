@@ -62,7 +62,7 @@ function SocialQuestGroupData:OnInitReceived(sender, payload)
     for questID, q in pairs(quests) do
         if not q.title then
             local info = AQL and AQL:GetQuest(questID)
-            q.title = info and info.title
+            q.title = (info and info.title) or C_QuestLog.GetQuestInfo(questID)
         end
     end
 
@@ -108,7 +108,7 @@ function SocialQuestGroupData:OnUpdateReceived(sender, payload)
         local info = AQL and AQL:GetQuest(questID)
         entry.quests[questID] = {
             questID      = questID,
-            title        = info and info.title,  -- cached for use in later banners
+            title        = (info and info.title) or C_QuestLog.GetQuestInfo(questID),
             isComplete   = payload.isComplete  == 1,
             isFailed     = payload.isFailed    == 1,
             snapshotTime = payload.snapshotTime,
