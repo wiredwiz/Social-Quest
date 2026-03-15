@@ -338,7 +338,15 @@ end
 
 function SocialQuestAnnounce:OnRemoteQuestEvent(sender, eventType, questID)
     local db = SocialQuest.db.profile
-    if not db.enabled or not db.general.displayReceived then return end
+    if not db.enabled then return end
+
+    -- Party-wide completion check: fires regardless of displayReceived, because
+    -- "Everyone has completed" is a synthesized local event, not a raw inbound banner.
+    if eventType == "completed" then
+        checkAllCompleted(questID, false)
+    end
+
+    if not db.general.displayReceived then return end
 
     local section   = getSenderSection()
     local sectionDb = db[section]
@@ -359,11 +367,6 @@ function SocialQuestAnnounce:OnRemoteQuestEvent(sender, eventType, questID)
 
     local msg = formatQuestBannerMsg(sender, eventType, title)
     if msg then displayBanner(msg, eventType) end
-
-    -- Party-wide completion check.
-    if eventType == "completed" then
-        checkAllCompleted(questID, false)
-    end
 end
 
 function SocialQuestAnnounce:OnRemoteObjectiveEvent(sender, questID, numFulfilled, numRequired, isComplete, isRegression)
