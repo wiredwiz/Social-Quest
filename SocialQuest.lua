@@ -154,7 +154,7 @@ function SocialQuest:GetDefaults()
                 transmit        = true,
                 displayReceived = true,
                 friendsOnly     = false,
-                announce = { accepted=true, abandoned=true, finished=true, completed=true, failed=true },
+                announce = { accepted=false, abandoned=false, finished=false, completed=false, failed=false },
                 display = {
                     accepted           = true,
                     abandoned          = true,
@@ -167,20 +167,20 @@ function SocialQuest:GetDefaults()
             },
             guild = {
                 transmit = true,
-                announce = { accepted=true, abandoned=true, finished=true, completed=true, failed=true },
+                announce = { accepted=false, abandoned=false, finished=false, completed=false, failed=false },
             },
             battleground = {
                 transmit        = true,
                 displayReceived = true,
                 friendsOnly     = false,
                 announce = {
-                    accepted           = true,
-                    abandoned          = true,
-                    finished           = true,
-                    completed          = true,
-                    failed             = true,
-                    objective_progress = true,
-                    objective_complete = true,
+                    accepted           = false,
+                    abandoned          = false,
+                    finished           = false,
+                    completed          = false,
+                    failed             = false,
+                    objective_progress = false,
+                    objective_complete = false,
                 },
                 display = {
                     accepted           = true,
