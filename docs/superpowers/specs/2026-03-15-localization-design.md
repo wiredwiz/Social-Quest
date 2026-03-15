@@ -77,7 +77,7 @@ String literals are then replaced with `L["..."]`.
 | `SocialQuest.lua` | Error message, minimap tooltip lines |
 | `Core/Announcements.lua` | Chat templates, banner templates, follow notifications, regression suffix, chat preview label, all-completed message |
 | `UI/GroupFrame.lua` | Frame title, URL popup title |
-| `UI/RowFactory.lua` | expand all, collapse all, link tooltip, (Complete), (Group), Step X of Y, FINISHED, Needs it Shared, (no data) |
+| `UI/RowFactory.lua` | expand all, collapse all, link tooltip, (Complete), (Group), Step X of Y, %s FINISHED, %s Needs it Shared, %s (no data) |
 | `UI/Tooltips.lua` | Group Progress header, status labels |
 | `UI/Tabs/MineTab.lua` | Tab label, Other Quests fallback |
 | `UI/Tabs/PartyTab.lua` | Tab label, (You) |
@@ -130,6 +130,53 @@ local suffix = isRegression and L[" (regression)"] or ""
 return string.format(L["{rt1} SocialQuest: %d/%d %s%s for %s!"], ...)
 ```
 
+### Concatenation Refactors Required
+
+Several source sites use Lua string concatenation rather than `string.format`. These must be converted when adding `L[...]` keys, because some languages require the subject/object to appear in a different position.
+
+**`Core/Announcements.lua` — "Everyone has completed"**
+```lua
+-- Before
+local msg = "Everyone has completed: " .. title
+-- After
+local msg = string.format(L["Everyone has completed: %s"], title)
+```
+
+**`Core/Announcements.lua` — Follow notifications**
+```lua
+-- Before
+SocialQuest:Print(sender .. " started following you.")
+SocialQuest:Print(sender .. " stopped following you.")
+-- After
+SocialQuest:Print(string.format(L["%s started following you."], sender))
+SocialQuest:Print(string.format(L["%s stopped following you."], sender))
+```
+
+**`UI/RowFactory.lua` — Player status suffixes**
+```lua
+-- Before
+fs:SetText(SocialQuestColors.GetUIColor("completed") .. name .. " FINISHED" .. C.reset)
+fs:SetText(C.unknown .. name .. " Needs it Shared" .. C.reset)
+fs:SetText(C.unknown .. name .. " (no data)" .. C.reset)
+-- After
+fs:SetText(SocialQuestColors.GetUIColor("completed") .. string.format(L["%s FINISHED"], name) .. C.reset)
+fs:SetText(C.unknown .. string.format(L["%s Needs it Shared"], name) .. C.reset)
+fs:SetText(C.unknown .. string.format(L["%s (no data)"], name) .. C.reset)
+```
+
+**`UI/RowFactory.lua` — Step/chain display (lines 168–170)**
+
+Source currently uses three separate concatenations:
+```lua
+-- Before
+titleText = titleText
+    .. " (Step " .. tostring(ci.step   or "?")
+    .. " of "    .. tostring(ci.length or "?") .. ")"
+-- After
+titleText = titleText
+    .. string.format(L[" (Step %s of %s)"], tostring(ci.step or "?"), tostring(ci.length or "?"))
+```
+
 ---
 
 ## TOC Changes
@@ -165,7 +212,9 @@ The following keys must be defined in `enUS.lua`. Each is set to `true`.
 "Quest complete (objectives done): %s"
 "Quest turned in: %s"
 "Quest failed: %s"
-"Quest event: %s"
+"Quest event: %s"              ← defensive fallback in formatOutboundQuestMsg; unreachable
+                                  in the current call graph. Include for safety; non-English
+                                  locales need not prioritize translating it.
 " (regression)"
 "{rt1} SocialQuest: %d/%d %s%s for %s!"
 "%s accepted: %s"
@@ -177,9 +226,12 @@ The following keys must be defined in `enUS.lua`. Each is set to `true`.
 "%s regressed: %s (%d/%d)"
 "%s progressed: %s (%d/%d)"
 "|cFF00CCFFSocialQuest (preview):|r "
-"Everyone has completed: "
-" started following you."
-" stopped following you."
+"Everyone has completed: %s"   ← %s = quest title; source currently uses concatenation,
+                                  must be changed to string.format (see migration note below)
+"You"                          ← sender name used in own-quest banners ("You accepted: …");
+                                  distinct from "(You)" in RowFactory (which has parentheses)
+"%s started following you."    ← %s = player name; source currently uses concatenation
+"%s stopped following you."    ← %s = player name; source currently uses concatenation
 ```
 
 ### SocialQuest.lua
@@ -202,10 +254,12 @@ The following keys must be defined in `enUS.lua`. Each is set to `true`.
 "Click here to copy the wowhead quest url"
 "(Complete)"
 "(Group)"
-" (Step %s of %s)"
-" FINISHED"
-" Needs it Shared"
-" (no data)"
+" (Step %s of %s)"   ← source uses string concatenation, not string.format; must be
+                        refactored (see migration note below)
+"%s FINISHED"        ← %s = player name; source concatenates name .. " FINISHED";
+                        must be refactored to string.format(L["%s FINISHED"], name)
+"%s Needs it Shared" ← %s = player name; same concatenation refactor required
+"%s (no data)"       ← %s = player name; same concatenation refactor required
 ```
 
 ### UI/Tooltips.lua
@@ -334,11 +388,16 @@ The following keys must be defined in `enUS.lua`. Each is set to `true`.
 
 ## Translation Notes
 
-- All 10 non-English locale files are AI-generated. Format specifiers (`%s`, `%d`, `%d/%d`) must be preserved exactly in all translations.
+- All 10 non-English locale files are AI-generated. Format specifiers (`%s`, `%d`, `%d/%d`) must be preserved exactly in all translations — count and order must match the source exactly.
 - The `{rt1}` raid marker symbol in the objective progress chat string must be preserved as-is in all translations.
-- The `|cFF00CCFFSocialQuest (preview):|r` colored chat prefix: the addon name "SocialQuest" and the color codes must remain unchanged. Only "(preview)" may be translated if the locale warrants it.
-- "Other Quests" is used as a zone fallback name when no zone can be determined. It appears in three files but is one key.
-- "(You)" refers to the local player in the party/shared tab — translate as the local-language equivalent of a self-referential placeholder.
+- The key `"|cFF00CCFFSocialQuest (preview):|r "` includes a trailing space after `|r`. That trailing space is intentional and required — without it, the banner text immediately follows the reset code with no separator. Every translation must preserve the trailing space.
+- "Other Quests" is used as a zone fallback name when no zone can be determined. It appears in three files (`MineTab`, `SharedTab`, `TabUtils`) but is one key defined once in `enUS.lua`.
+- `"(You)"` (with parentheses) refers to the local player label in party/shared tab rows — translate as the local-language equivalent of a self-referential placeholder.
+- `"You"` (without parentheses) is used as the sender name in own-quest banners (e.g. "You accepted: [Quest Name]"). Translate as the nominative first-person pronoun.
+- The `%s` in `"%s FINISHED"`, `"%s Needs it Shared"`, `"%s (no data)"`, `"%s started following you."`, `"%s stopped following you."` is always a player character name. Translators should account for morphological agreement where applicable.
+- The `%s` in `"Everyone has completed: %s"` is a quest title.
+- The key `" (regression)"` has a leading space. That space is intentional — it separates the suffix from the preceding objective text when concatenated. Every translation must preserve the leading space.
+- The string `"{rt1} SocialQuest: %d/%d %s%s for %s!"` has five positional arguments in order: (1) numFulfilled `%d`, (2) numRequired `%d`, (3) objective text `%s`, (4) regression suffix `%s` (either `" (regression)"` or empty string), (5) quest title `%s`. Translators must preserve all five specifiers in the same order.
 
 ---
 
