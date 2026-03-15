@@ -272,29 +272,31 @@ local function checkAllCompleted(questID, localHasCompleted)
 
     local PlayerQuests = SocialQuestGroupData.PlayerQuests
 
-    -- Step 1: must be in a group (PlayerQuests only contains remote members).
+    -- Must be in a group (PlayerQuests only contains remote members).
     local anyRemote = false
     for _ in pairs(PlayerQuests) do anyRemote = true; break end
     if not anyRemote then return end
 
-    -- Step 2: every group member must have SocialQuest.
+    -- Every group member must have SocialQuest; suppress entirely if any lacks it.
     for _, entry in pairs(PlayerQuests) do
         if not entry.hasSocialQuest then return end
     end
 
-    -- Steps 3-5: build engaged set and verify all completed.
-    -- "Engaged" = currently has the quest active OR has completed it.
+    -- Build engaged set: only players who have or had the quest this session.
+    -- "Engaged" = currently has the quest active OR has completed it THIS session.
     -- Players who never had the quest are excluded entirely.
+    -- Note: IsQuestFlaggedCompleted is NOT used for engagement — it returns true
+    -- for quests completed in prior sessions, which would cause false positives.
     local AQL = SocialQuest.AQL
 
-    -- Local player engagement and completion.
-    local localFlagged  = localHasCompleted or C_QuestLog.IsQuestFlaggedCompleted(questID)
+    -- Local player: engaged if they just completed it or have it active right now.
     local localActive   = AQL and AQL:GetQuest(questID) ~= nil
-    local localEngaged  = localHasCompleted or localActive or localFlagged
+    local localEngaged  = localHasCompleted or localActive
+    local localFlagged  = localHasCompleted or C_QuestLog.IsQuestFlaggedCompleted(questID)
     -- If the local player is engaged but hasn't completed the quest, bail out.
     if localEngaged and not localFlagged then return end
 
-    -- Remote player engagement and completion.
+    -- Remote players: check engagement and completion.
     local anyEngaged = localEngaged
     for _, entry in pairs(PlayerQuests) do
         local hasActive    = entry.quests and entry.quests[questID] ~= nil
@@ -306,26 +308,25 @@ local function checkAllCompleted(questID, localHasCompleted)
         end
     end
 
-    -- Step 4: nobody in the group has or had the quest.
+    -- No one in the group has or had the quest.
     if not anyEngaged then return end
 
-    -- Step 6a: display gating.
+    -- Display gating: same toggle as normal completion banners.
     local section   = getSenderSection()
     local sectionDb = db[section]
     if not sectionDb or not sectionDb.display then return end
     if not sectionDb.display.completed then return end
 
-    -- Step 6c: title resolution (plain text — RaidNotice does not parse hyperlinks).
+    -- Title resolution: plain text — RaidNotice does not parse hyperlinks.
     local info  = AQL and AQL:GetQuest(questID)
     local title = (info and info.title)
                or C_QuestLog.GetTitleForQuestID(questID)
                or ("Quest " .. questID)
 
-    -- Step 6d-e: format and show banner.
     local msg = "Everyone has completed: " .. title
     displayBanner(msg, "all_complete")
 
-    -- Step 6f: chat message only when the local player triggered it (avoids duplicate
+    -- Chat message only when the local player triggered it (avoids duplicate
     -- sends from multiple SQ clients simultaneously detecting the same condition).
     if localHasCompleted and sectionDb.transmit and sectionDb.announce.completed then
         local channelMap = { party = "PARTY", raid = "RAID", battleground = "BATTLEGROUND" }
