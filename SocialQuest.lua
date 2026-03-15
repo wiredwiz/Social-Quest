@@ -166,7 +166,7 @@ function SocialQuest:GetDefaults()
                 },
             },
             guild = {
-                transmit = true,
+                transmit = false,
                 announce = { accepted=false, abandoned=false, finished=false, completed=false, failed=false },
             },
             battleground = {
