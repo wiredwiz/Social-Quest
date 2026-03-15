@@ -84,14 +84,20 @@ function SocialQuestGroupData:OnUpdateReceived(sender, payload)
     local eventType = payload.eventType
     local questID   = payload.questID
 
+    local cachedTitle
     if eventType == "abandoned" or eventType == "completed" or eventType == "failed" then
         if eventType == "completed" then
             entry.completedQuests[questID] = true
         end
+        -- Grab the title we stored when this quest was first received, before removing it.
+        cachedTitle = entry.quests[questID] and entry.quests[questID].title
         entry.quests[questID] = nil
     else
+        local AQL  = SocialQuest.AQL
+        local info = AQL and AQL:GetQuest(questID)
         entry.quests[questID] = {
             questID      = questID,
+            title        = info and info.title,  -- cached for use in later banners
             isComplete   = payload.isComplete  == 1,
             isFailed     = payload.isFailed    == 1,
             snapshotTime = payload.snapshotTime,
@@ -101,7 +107,7 @@ function SocialQuestGroupData:OnUpdateReceived(sender, payload)
     end
 
     -- Trigger banner notification if applicable.
-    SocialQuestAnnounce:OnRemoteQuestEvent(sender, eventType, questID)
+    SocialQuestAnnounce:OnRemoteQuestEvent(sender, eventType, questID, cachedTitle)
 
     SocialQuestGroupFrame:RequestRefresh()
 end

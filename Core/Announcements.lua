@@ -341,7 +341,7 @@ local function checkAllCompleted(questID, localHasCompleted)
     end
 end
 
-function SocialQuestAnnounce:OnRemoteQuestEvent(sender, eventType, questID)
+function SocialQuestAnnounce:OnRemoteQuestEvent(sender, eventType, questID, cachedTitle)
     local db = SocialQuest.db.profile
     if not db.enabled then return end
 
@@ -366,7 +366,9 @@ function SocialQuestAnnounce:OnRemoteQuestEvent(sender, eventType, questID)
         and not C_FriendList.IsFriend(sender) then return end
 
     local AQL   = SocialQuest.AQL
-    local title = (AQL and AQL:GetQuestLink(questID))
+    local info  = AQL and AQL:GetQuest(questID)
+    local title = cachedTitle
+               or (info and info.title)
                or (C_QuestLog.GetTitleForQuestID and C_QuestLog.GetTitleForQuestID(questID))
                or ("Quest " .. questID)
 
