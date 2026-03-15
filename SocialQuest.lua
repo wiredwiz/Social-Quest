@@ -45,6 +45,7 @@ function SocialQuest:OnEnable()
 
     -- Register WoW events (non-quest; quest events come via AQL callbacks).
     self:RegisterEvent("GROUP_ROSTER_UPDATE", "OnGroupRosterUpdate")
+    self:RegisterEvent("PLAYER_LOGIN",        "OnPlayerLogin")
     self:RegisterEvent("AUTOFOLLOW_BEGIN",    "OnAutoFollowBegin")
     self:RegisterEvent("AUTOFOLLOW_END",      "OnAutoFollowEnd")
 
@@ -237,6 +238,11 @@ end
 function SocialQuest:OnGroupRosterUpdate()
     SocialQuestComm:OnGroupChanged()
     SocialQuestGroupData:OnGroupChanged()
+end
+
+-- Re-sync quest data with group after a UI reload (PLAYER_LOGIN fires on /reload).
+function SocialQuest:OnPlayerLogin()
+    SocialQuestComm:OnGroupChanged()
 end
 
 function SocialQuest:OnAutoFollowBegin(event, unit)
