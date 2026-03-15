@@ -12,6 +12,7 @@ PartyTab = {}
 -- localHasIt: true when AQL:GetQuest(questID) is non-nil.
 local function buildPlayerRowsForQuest(questID, localHasIt)
     local AQL     = SocialQuest.AQL
+    if not AQL then return {} end
     local players = {}
 
     -- Local player row (always first when local player has any stake).
