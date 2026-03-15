@@ -55,11 +55,22 @@ end
 function SocialQuestGroupData:OnInitReceived(sender, payload)
     if not self:IsInGroup(sender) then return end
 
+    -- Enrich each quest entry with a title from local AQL where available.
+    -- Titles are never transmitted; we resolve them locally.
+    local AQL    = SocialQuest.AQL
+    local quests = payload.quests or {}
+    for questID, q in pairs(quests) do
+        if not q.title then
+            local info = AQL and AQL:GetQuest(questID)
+            q.title = info and info.title
+        end
+    end
+
     local existing = self.PlayerQuests[sender]
     self.PlayerQuests[sender] = {
         hasSocialQuest  = true,
         lastSync        = GetTime(),
-        quests          = payload.quests or {},
+        quests          = quests,
         completedQuests = (existing and existing.completedQuests) or {},
     }
 
