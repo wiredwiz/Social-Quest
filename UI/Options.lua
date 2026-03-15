@@ -332,6 +332,14 @@ function SocialQuestOptions:Initialize()
                                     .. "objective regression (count went backward).",
                                 func = function() SocialQuestAnnounce:TestEvent("objective_regression") end,
                             },
+                            testAllComplete = {
+                                type = "execute",
+                                name = "Test All Completed",
+                                desc = "Display a demo banner for the 'Everyone has completed' "
+                                    .. "purple notification. No chat preview (this event never "
+                                    .. "generates outbound chat directly).",
+                                func = function() SocialQuestAnnounce:TestEvent("all_complete") end,
+                            },
                         },
                     },
                 },

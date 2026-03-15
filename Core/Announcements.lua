@@ -267,6 +267,8 @@ end
 -- localHasCompleted: true when the local player just triggered this via OnQuestEvent;
 --                    false when a remote player's SQ_UPDATE triggered it.
 local function checkAllCompleted(questID, localHasCompleted)
+    -- db.enabled is checked here rather than relying on callers: this function is
+    -- called from two separate entry points and must be self-contained.
     local db = SocialQuest.db.profile
     if not db.enabled then return end
 
@@ -290,11 +292,13 @@ local function checkAllCompleted(questID, localHasCompleted)
     local AQL = SocialQuest.AQL
 
     -- Local player: engaged if they just completed it or have it active right now.
+    -- IsQuestFlaggedCompleted is intentionally NOT used for engagement — it returns
+    -- true for quests completed in prior sessions and would cause false positives.
     local localActive   = AQL and AQL:GetQuest(questID) ~= nil
     local localEngaged  = localHasCompleted or localActive
+    -- localFlagged is only consulted inside the localEngaged guard below.
     local localFlagged  = localHasCompleted or C_QuestLog.IsQuestFlaggedCompleted(questID)
-    -- If the local player is engaged but hasn't completed the quest, bail out.
-    if localEngaged and not localFlagged then return end
+    if localEngaged and not localFlagged then return end  -- engaged but not done
 
     -- Remote players: check engagement and completion.
     local anyEngaged = localEngaged
@@ -470,6 +474,11 @@ local TEST_DEMOS = {
         outbound = "{rt1} SocialQuest: 2/8 Kobolds Slain (regression) for [A Daunting Task]!",
         banner   = "TestPlayer regressed: [A Daunting Task] (2/8)",
         colorKey = "objective_progress",   -- same color as progress
+    },
+    all_complete = {
+        outbound = nil,   -- no outbound chat for this synthesized event
+        banner   = "Everyone has completed: A Daunting Task",
+        colorKey = "all_complete",
     },
 }
 
