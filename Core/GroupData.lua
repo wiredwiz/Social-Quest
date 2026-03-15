@@ -85,6 +85,9 @@ function SocialQuestGroupData:OnUpdateReceived(sender, payload)
     local questID   = payload.questID
 
     if eventType == "abandoned" or eventType == "completed" or eventType == "failed" then
+        if eventType == "completed" then
+            entry.completedQuests[questID] = true
+        end
         entry.quests[questID] = nil
     else
         entry.quests[questID] = {
