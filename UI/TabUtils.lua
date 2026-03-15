@@ -48,10 +48,15 @@ function SocialQuestTabUtils.BuildLocalObjectives(questInfo)
 end
 
 -- Builds objective rows for a remote player from a GroupData quest entry.
-function SocialQuestTabUtils.BuildRemoteObjectives(pquest)
+-- localInfo: optional AQL quest info for the same quest; used to supply
+--            objective text, which is never transmitted over the wire.
+function SocialQuestTabUtils.BuildRemoteObjectives(pquest, localInfo)
+    local localObjs = localInfo and localInfo.objectives or {}
     local objs = {}
     for i, obj in ipairs(pquest.objectives or {}) do
-        local text = tostring(obj.numFulfilled or 0) .. "/" .. tostring(obj.numRequired or 1)
+        local localObj = localObjs[i]
+        local text = (localObj and localObj.text ~= "" and localObj.text)
+                  or (tostring(obj.numFulfilled or 0) .. "/" .. tostring(obj.numRequired or 1))
         objs[i] = {
             text         = text,
             isFinished   = obj.isFinished,

@@ -63,7 +63,7 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
                 hasSocialQuest = playerData.hasSocialQuest,
                 hasCompleted   = false,
                 needsShare     = false,
-                objectives     = SocialQuestTabUtils.BuildRemoteObjectives(pquest),
+                objectives     = SocialQuestTabUtils.BuildRemoteObjectives(pquest, myInfo),
                 step           = pCI.knownStatus == "known" and pCI.step   or nil,
                 chainLength    = pCI.knownStatus == "known" and pCI.length or nil,
             })

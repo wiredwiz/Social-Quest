@@ -146,7 +146,7 @@ function SharedTab:BuildTree()
                                     hasSocialQuest = playerData and playerData.hasSocialQuest or false,
                                     hasCompleted   = false,
                                     needsShare     = false,
-                                    objectives     = SocialQuestTabUtils.BuildRemoteObjectives(pEng.qdata or {}),
+                                    objectives     = SocialQuestTabUtils.BuildRemoteObjectives(pEng.qdata or {}, localInfo),
                                     step           = pEng.step,
                                     chainLength    = pEng.chainLength,
                                 })

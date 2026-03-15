@@ -155,10 +155,12 @@ function SocialQuestGroupData:OnObjectiveReceived(sender, payload)
     SocialQuestGroupFrame:RequestRefresh()
 end
 
--- Sweep the local quest log via UnitIsOnQuest for a non-SocialQuest member.
+-- Called when a non-SocialQuest group member's quest log changes.
 -- UNIT_QUEST_LOG_CHANGED fires for party members even without the addon.
--- UnitIsOnQuest(questLogIndex, unit) checks if `unit` is on the quest at index.
--- We must skip header entries (isHeader = true) when iterating.
+-- Ensures they have a hasSocialQuest=false stub so the "all completed" check
+-- correctly suppresses when a non-SQ member is present.
+-- Note: UnitIsOnQuest does not exist in TBC Classic, so shared quest detection
+-- is not possible here. The entry is created with an empty quests table.
 function SocialQuestGroupData:OnUnitQuestLogChanged(unit)
     -- Only handle party/raid units, not "player".
     if not unit or unit == "player" then return end
@@ -170,31 +172,10 @@ function SocialQuestGroupData:OnUnitQuestLogChanged(unit)
     local entry = self.PlayerQuests[fullName]
     if entry and entry.hasSocialQuest then return end  -- Full data already available.
 
-    -- Partial data: find which of OUR quests this unit also has.
-    local sharedQuestIDs = {}
-    local numEntries = GetNumQuestLogEntries()
-    for i = 1, numEntries do
-        -- GetQuestLogTitle in TBC Classic returns: title, level, suggestedGroup, isHeader, ...
-        -- isHeader is the 4th return value (not 5th).
-        local title, level, suggestedGroup, isHeader = GetQuestLogTitle(i)
-        if not isHeader and UnitIsOnQuest(i, unit) then
-            local info = C_QuestLog.GetInfo(i)
-            if info then
-                table.insert(sharedQuestIDs, info.questID)
-            end
-        end
-    end
-
-    -- Build a minimal quest entry with only the questIDs we know about.
-    local questData = {}
-    for _, questID in ipairs(sharedQuestIDs) do
-        questData[questID] = { questID = questID, objectives = {} }
-    end
-
     self.PlayerQuests[fullName] = {
         hasSocialQuest  = false,
         lastSync        = GetTime(),
-        quests          = questData,
+        quests          = {},
         completedQuests = {},
     }
 
