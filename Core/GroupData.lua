@@ -55,11 +55,22 @@ end
 function SocialQuestGroupData:OnInitReceived(sender, payload)
     if not self:IsInGroup(sender) then return end
 
+    -- Enrich each quest entry with a title from local AQL where available.
+    -- Titles are never transmitted; we resolve them locally.
+    local AQL    = SocialQuest.AQL
+    local quests = payload.quests or {}
+    for questID, q in pairs(quests) do
+        if not q.title then
+            local info = AQL and AQL:GetQuest(questID)
+            q.title = info and info.title
+        end
+    end
+
     local existing = self.PlayerQuests[sender]
     self.PlayerQuests[sender] = {
         hasSocialQuest  = true,
         lastSync        = GetTime(),
-        quests          = payload.quests or {},
+        quests          = quests,
         completedQuests = (existing and existing.completedQuests) or {},
     }
 
@@ -84,14 +95,20 @@ function SocialQuestGroupData:OnUpdateReceived(sender, payload)
     local eventType = payload.eventType
     local questID   = payload.questID
 
+    local cachedTitle
     if eventType == "abandoned" or eventType == "completed" or eventType == "failed" then
         if eventType == "completed" then
             entry.completedQuests[questID] = true
         end
+        -- Grab the title we stored when this quest was first received, before removing it.
+        cachedTitle = entry.quests[questID] and entry.quests[questID].title
         entry.quests[questID] = nil
     else
+        local AQL  = SocialQuest.AQL
+        local info = AQL and AQL:GetQuest(questID)
         entry.quests[questID] = {
             questID      = questID,
+            title        = info and info.title,  -- cached for use in later banners
             isComplete   = payload.isComplete  == 1,
             isFailed     = payload.isFailed    == 1,
             snapshotTime = payload.snapshotTime,
@@ -101,7 +118,7 @@ function SocialQuestGroupData:OnUpdateReceived(sender, payload)
     end
 
     -- Trigger banner notification if applicable.
-    SocialQuestAnnounce:OnRemoteQuestEvent(sender, eventType, questID)
+    SocialQuestAnnounce:OnRemoteQuestEvent(sender, eventType, questID, cachedTitle)
 
     SocialQuestGroupFrame:RequestRefresh()
 end
