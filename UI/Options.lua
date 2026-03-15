@@ -62,7 +62,7 @@ function SocialQuestOptions:Initialize()
                 .. "'Announce Objectives' setting is enabled.",
                 { sectionKey, "announce", "objective_complete" })
         end
-        return { type = "group", name = "Announce in Chat", inline = true, args = args }
+        return { type = "group", name = "Announce in Chat", inline = true, order = 3, args = args }
     end
 
     -- Builds the "Own Quest Banners" inline group under General.
@@ -105,6 +105,7 @@ function SocialQuestOptions:Initialize()
             type   = "group",
             name   = "Display Events",
             inline = true,
+            order  = 4,
             args   = {
                 accepted  = toggle("Accepted",
                     "Show a banner on screen when a group member accepts a quest.",
@@ -169,11 +170,11 @@ function SocialQuestOptions:Initialize()
                 args  = {
                     transmit        = toggle("Enable transmission",
                         "Broadcast your quest events to party members via addon comm.",
-                        { "party", "transmit" }),
+                        { "party", "transmit" }, 1),
                     displayReceived = toggle("Show received events",
                         "Allow banner notifications from party members (subject to "
                         .. "Display Events toggles below).",
-                        { "party", "displayReceived" }),
+                        { "party", "displayReceived" }, 2),
                     announceChat    = announceChatGroup("party", false),
                     displayEvents   = displayEventsGroup("party"),
                 },
