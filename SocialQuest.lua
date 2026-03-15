@@ -120,7 +120,7 @@ function SocialQuest:GetDefaults()
             general = {
                 displayReceived  = true,
                 colorblindMode   = false,
-                displayOwn       = true,
+                displayOwn       = false,
                 displayOwnEvents = {
                     accepted           = true,
                     abandoned          = true,
