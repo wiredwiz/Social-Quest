@@ -108,7 +108,7 @@ function SharedTab:BuildTree()
                     local entry = {
                         questID        = eng.questID,
                         title          = (localInfo and localInfo.title)
-                                         or C_QuestLog.GetQuestInfo(eng.questID)
+                                         or AQL:GetQuestTitle(eng.questID)
                                          or ("Quest " .. eng.questID),
                         level          = localInfo and localInfo.level or 0,
                         zone           = zoneName,
@@ -180,7 +180,7 @@ function SharedTab:BuildTree()
             local entry = {
                 questID        = questID,
                 title          = (localInfo and localInfo.title)
-                                 or C_QuestLog.GetQuestInfo(questID)
+                                 or AQL:GetQuestTitle(questID)
                                  or ("Quest " .. questID),
                 level          = localInfo and localInfo.level or 0,
                 zone           = zoneName,

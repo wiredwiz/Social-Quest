@@ -170,7 +170,7 @@ function SocialQuestAnnounce:OnQuestEvent(eventType, questID)
     local AQL   = SocialQuest.AQL
     local info  = AQL and AQL:GetQuest(questID)
     local title = (info and info.title)
-               or C_QuestLog.GetQuestInfo(questID)
+               or (AQL and AQL:GetQuestTitle(questID))
                or ("Quest " .. questID)
     local msg   = formatOutboundQuestMsg(eventType, title)
 
@@ -297,7 +297,7 @@ local function checkAllCompleted(questID, localHasCompleted)
     local localActive   = AQL and AQL:GetQuest(questID) ~= nil
     local localEngaged  = localHasCompleted or localActive
     -- localFlagged is only consulted inside the localEngaged guard below.
-    local localFlagged  = localHasCompleted or C_QuestLog.IsQuestFlaggedCompleted(questID)
+    local localFlagged  = localHasCompleted or (AQL and AQL:HasCompletedQuest(questID))
     if localEngaged and not localFlagged then return end  -- engaged but not done
 
     -- Remote players: check engagement and completion.
@@ -324,7 +324,7 @@ local function checkAllCompleted(questID, localHasCompleted)
     -- Title resolution: plain text — RaidNotice does not parse hyperlinks.
     local info  = AQL and AQL:GetQuest(questID)
     local title = (info and info.title)
-               or C_QuestLog.GetQuestInfo(questID)
+               or (AQL and AQL:GetQuestTitle(questID))
                or ("Quest " .. questID)
 
     local msg = "Everyone has completed: " .. title
@@ -369,7 +369,7 @@ function SocialQuestAnnounce:OnRemoteQuestEvent(sender, eventType, questID, cach
     local info  = AQL and AQL:GetQuest(questID)
     local title = cachedTitle
                or (info and info.title)
-               or C_QuestLog.GetQuestInfo(questID)
+               or (AQL and AQL:GetQuestTitle(questID))
                or ("Quest " .. questID)
 
     local msg = formatQuestBannerMsg(sender, eventType, title)
@@ -396,7 +396,7 @@ function SocialQuestAnnounce:OnRemoteObjectiveEvent(sender, questID, numFulfille
 
     local AQL   = SocialQuest.AQL
     local title = (AQL and AQL:GetQuestLink(questID))
-               or C_QuestLog.GetQuestInfo(questID)
+               or (AQL and AQL:GetQuestTitle(questID))
                or ("Quest " .. questID)
 
     local msg = formatObjectiveBannerMsg(sender, title, numFulfilled, numRequired, isComplete, isRegression)
