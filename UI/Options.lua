@@ -8,11 +8,12 @@ function SocialQuestOptions:Initialize()
     local AceConfigDialog = LibStub("AceConfigDialog-3.0")
     local db = SocialQuest.db.profile
 
-    local function toggle(label, desc, path)
+    local function toggle(label, desc, path, order)
         return {
             type    = "toggle",
             name    = label,
             desc    = desc,
+            order   = order,
             get     = function(info)
                 local t = db
                 for _, k in ipairs(path) do t = t[k] end
@@ -70,6 +71,7 @@ function SocialQuestOptions:Initialize()
             type   = "group",
             name   = "Own Quest Banners",
             inline = true,
+            order  = 5,
             args   = {
                 accepted  = toggle("Accepted",
                     "Show a banner when you accept a quest.",
@@ -142,20 +144,20 @@ function SocialQuestOptions:Initialize()
                 args  = {
                     enabled         = toggle("Enable SocialQuest",
                         "Master on/off switch for all SocialQuest functionality.",
-                        { "enabled" }),
+                        { "enabled" }, 1),
                     displayReceived = toggle("Show received events",
                         "Master switch: allow any banner notifications to appear. "
                         .. "Individual 'Display Events' groups below control which event "
                         .. "types are shown per section.",
-                        { "general", "displayReceived" }),
+                        { "general", "displayReceived" }, 2),
                     colorblindMode  = toggle("Colorblind Mode",
                         "Use colorblind-friendly colors for all SocialQuest banners and "
                         .. "UI text. It is unnecessary to enable this if Color Blind mode is "
                         .. "already enabled in the game client.",
-                        { "general", "colorblindMode" }),
+                        { "general", "colorblindMode" }, 3),
                     displayOwn      = toggle("Show banners for your own quest events",
                         "Show a banner on screen for your own quest events.",
-                        { "general", "displayOwn" }),
+                        { "general", "displayOwn" }, 4),
                     ownDisplayEvents = ownDisplayEventsGroup(),
                 },
             },
