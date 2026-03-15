@@ -2,6 +2,18 @@
 -- Drives all chat announcements (outbound from local player's quest events)
 -- and banner notifications (inbound from other SocialQuest users).
 --
+-- Structure (top to bottom):
+--   1. Throttle queue: enqueueChat, startThrottleTicker  (unchanged)
+--   2. Pure message formatters (no I/O, no game-state reads)
+--   3. Display primitives: displayBanner, displayChatPreview
+--   4. Questie suppression: QUESTIE_FLAG_FOR, questieWouldAnnounce
+--   5. Section detection: getSenderSection
+--   6. Public event handlers: OnQuestEvent, OnObjectiveEvent,
+--      OnRemoteQuestEvent, OnRemoteObjectiveEvent, OnOwnQuestEvent,
+--      OnOwnObjectiveEvent
+--   7. Debug test entry point: TestEvent
+--   8. Follow notifications + WhisperFriends helpers  (unchanged)
+--
 -- Chat queue: all SendChatMessage calls pass through a FIFO queue with a
 -- 1-second minimum interval to avoid bot-detection throttling. Duplicate
 -- messages are dropped before enqueue.
@@ -39,153 +51,442 @@ local function enqueueChat(text, channel, target)
 end
 
 ------------------------------------------------------------------------
--- Message formatting
+-- Pure message formatters (no I/O, no game-state reads)
 ------------------------------------------------------------------------
 
--- Format a quest event announcement. Returns a plain string.
--- Text is always resolved locally from AQL — never transmitted.
-local function formatQuestMessage(eventType, questTitle)
-    local templates = {
-        accepted  = "Quest accepted: %s",
-        abandoned = "Quest abandoned: %s",
-        finished  = "Quest complete (objectives done): %s",
-        completed = "Quest turned in: %s",
-        failed    = "Quest failed: %s",
-    }
-    local tmpl = templates[eventType] or "Quest event (%s): %s"
+local OUTBOUND_QUEST_TEMPLATES = {
+    accepted  = "Quest accepted: %s",
+    abandoned = "Quest abandoned: %s",
+    finished  = "Quest complete (objectives done): %s",
+    completed = "Quest turned in: %s",
+    failed    = "Quest failed: %s",
+}
+
+local function formatOutboundQuestMsg(eventType, questTitle)
+    local tmpl = OUTBOUND_QUEST_TEMPLATES[eventType] or "Quest event: %s"
     return string.format(tmpl, questTitle)
 end
 
-local function formatObjectiveMessage(questTitle, objectiveText)
-    return string.format("Quest progress — %s: %s", questTitle, objectiveText)
+-- isRegression appends " (regression)" to distinguish direction.
+local function formatOutboundObjectiveMsg(questTitle, objText, numFulfilled, numRequired, isRegression)
+    local suffix = isRegression and " (regression)" or ""
+    return string.format("{rt1} SocialQuest: %d/%d %s%s for %s!",
+        numFulfilled, numRequired, objText, suffix, questTitle)
+end
+
+local BANNER_QUEST_TEMPLATES = {
+    accepted  = "%s accepted: %s",
+    abandoned = "%s abandoned: %s",
+    finished  = "%s finished objectives: %s",
+    completed = "%s completed: %s",
+    failed    = "%s failed: %s",
+}
+
+local function formatQuestBannerMsg(sender, eventType, questTitle)
+    local tmpl = BANNER_QUEST_TEMPLATES[eventType]
+    if not tmpl then return nil end
+    return string.format(tmpl, sender, questTitle)
+end
+
+local function formatObjectiveBannerMsg(sender, questTitle, numFulfilled, numRequired, isComplete, isRegression)
+    if isComplete then
+        return string.format("%s completed objective: %s (%d/%d)",
+            sender, questTitle, numFulfilled, numRequired)
+    elseif isRegression then
+        return string.format("%s regressed: %s (%d/%d)",
+            sender, questTitle, numFulfilled, numRequired)
+    else
+        return string.format("%s progressed: %s (%d/%d)",
+            sender, questTitle, numFulfilled, numRequired)
+    end
 end
 
 ------------------------------------------------------------------------
--- Determine which channels to announce to
+-- Display primitives
 ------------------------------------------------------------------------
 
-local function getAnnouncementChannels(eventType)
-    local db  = SocialQuest.db.profile
-    local channels = {}
+local function displayBanner(msg, eventType)
+    if not RaidWarningFrame then return end
+    local color = SocialQuestColors.GetEventColor(eventType)
+    local colorInfo = color and { r = color.r, g = color.g, b = color.b }
+                   or { r = 1, g = 1, b = 0 }
+    RaidNotice_AddMessage(RaidWarningFrame, msg, colorInfo)
+end
 
-    -- Party
-    if IsInGroup(LE_PARTY_CATEGORY_HOME) and not IsInRaid() then
-        if db.party.transmit and db.party.announce[eventType] then
-            table.insert(channels, { channel = "PARTY" })
-        end
-    end
+local function displayChatPreview(msg)
+    DEFAULT_CHAT_FRAME:AddMessage("|cFF00CCFFSocialQuest (preview):|r " .. msg)
+end
 
-    -- Raid
+------------------------------------------------------------------------
+-- Questie suppression
+------------------------------------------------------------------------
+
+-- Maps SocialQuest event type → the Questie profile flag that controls the same message.
+-- Event types absent from this table are never suppressed (Questie has no equivalent).
+-- Research note: Questie only announces objective_complete (threshold reached),
+-- never partial progress — so objective_progress is intentionally absent.
+local QUESTIE_FLAG_FOR = {
+    accepted           = "questAnnounceAccepted",
+    abandoned          = "questAnnounceAbandoned",
+    completed          = "questAnnounceCompleted",
+    objective_complete = "questAnnounceObjectives",
+}
+
+local function questieWouldAnnounce(eventType)
+    local flag = QUESTIE_FLAG_FOR[eventType]
+    if not flag then return false end
+    if type(Questie) ~= "table" then return false end
+    local profile = Questie.db and Questie.db.profile
+    if not profile then return false end
+    if not profile[flag] then return false end
+    return profile.questAnnounceChannel ~= "disabled"
+end
+
+------------------------------------------------------------------------
+-- Section detection
+------------------------------------------------------------------------
+
+-- Returns "raid", "battleground", or "party" only.
+-- "whisperFriends" is never returned: whisper-to-friends is outbound only;
+-- inbound addon-comm messages always arrive via PARTY, RAID, or BATTLEGROUND.
+local function getSenderSection()
     if IsInRaid() then
-        if db.raid.transmit and db.raid.announce[eventType] then
-            table.insert(channels, { channel = "RAID" })
-        end
+        return "raid"
+    elseif IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
+        return "battleground"
+    else
+        return "party"
     end
-
-    -- Guild
-    if IsInGuild() then
-        if db.guild.transmit and db.guild.announce[eventType] then
-            table.insert(channels, { channel = "GUILD" })
-        end
-    end
-
-    -- Battleground
-    if IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
-        if db.battleground.transmit and db.battleground.announce[eventType] then
-            table.insert(channels, { channel = "BATTLEGROUND" })
-        end
-    end
-
-    return channels
 end
 
 ------------------------------------------------------------------------
--- Local quest event announcements (from our own AQL callbacks)
+-- Local quest event announcements (from AQL callbacks)
 ------------------------------------------------------------------------
 
-function SocialQuestAnnounce:OnQuestEvent(eventType, questInfo)
+function SocialQuestAnnounce:OnQuestEvent(eventType, questID)
     local db = SocialQuest.db.profile
     if not db.enabled then return end
 
-    local title = questInfo.title
-    local msg   = formatQuestMessage(eventType, title)
-    local chans = getAnnouncementChannels(eventType)
+    local AQL   = SocialQuest.AQL
+    local info  = AQL and AQL:GetQuest(questID)
+    local title = (info and info.title)
+               or C_QuestLog.GetTitleForQuestID(questID)
+               or ("Quest " .. questID)
+    local msg   = formatOutboundQuestMsg(eventType, title)
 
-    for _, chan in ipairs(chans) do
-        enqueueChat(msg, chan.channel, chan.target)
+    if not questieWouldAnnounce(eventType) then
+        -- Party
+        if IsInGroup(LE_PARTY_CATEGORY_HOME) and not IsInRaid() then
+            if db.party.transmit and db.party.announce[eventType] then
+                enqueueChat(msg, "PARTY")
+            end
+        end
+
+        -- Raid
+        if IsInRaid() then
+            if db.raid.transmit and db.raid.announce[eventType] then
+                enqueueChat(msg, "RAID")
+            end
+        end
+
+        -- Guild
+        if IsInGuild() then
+            if db.guild.transmit and db.guild.announce[eventType] then
+                enqueueChat(msg, "GUILD")
+            end
+        end
+
+        -- Battleground
+        if IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
+            if db.battleground.transmit and db.battleground.announce[eventType] then
+                enqueueChat(msg, "BATTLEGROUND")
+            end
+        end
+
+        -- Whisper friends
+        if db.whisperFriends.enabled and db.whisperFriends.announce[eventType] then
+            self:WhisperFriends(msg, db.whisperFriends.groupOnly)
+        end
     end
 
-    -- Whisper friends.
-    if db.whisperFriends.enabled and db.whisperFriends.announce[eventType] then
-        self:WhisperFriends(msg, db.whisperFriends.groupOnly)
+    -- Own-quest banner: fires regardless of chat suppression.
+    self:OnOwnQuestEvent(eventType, title)
+
+    -- Party-wide completion check: fires "Everyone has completed" when all engaged
+    -- group members have turned in this quest.
+    if eventType == "completed" then
+        checkAllCompleted(questID, true)
     end
 end
 
--- Objective progress (party + whisper friends only per announcement matrix).
-function SocialQuestAnnounce:OnObjectiveEvent(eventType, questInfo, objective)
+-- Objective progress/complete/regression — party + battleground + whisper only.
+-- isRegression is true when the count decreased (e.g. party member died).
+function SocialQuestAnnounce:OnObjectiveEvent(eventType, questInfo, objective, isRegression)
     local db = SocialQuest.db.profile
     if not db.enabled then return end
 
-    local title = questInfo.title
-    local msg   = formatObjectiveMessage(title, objective.text or "")
+    if not questieWouldAnnounce(eventType) then
+        local msg = formatOutboundObjectiveMsg(
+            questInfo.title,
+            objective.text or "",
+            objective.numFulfilled,
+            objective.numRequired,
+            isRegression)
 
-    -- Party and Battleground get objective progress; Raid and Guild do not (per announcement matrix).
-    if IsInGroup(LE_PARTY_CATEGORY_HOME) and not IsInRaid() then
-        if db.party.transmit and db.party.announce["objective"] then
-            enqueueChat(msg, "PARTY")
+        -- Party
+        if IsInGroup(LE_PARTY_CATEGORY_HOME) and not IsInRaid() then
+            if db.party.transmit and db.party.announce[eventType] then
+                enqueueChat(msg, "PARTY")
+            end
+        end
+
+        -- Battleground
+        if IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
+            if db.battleground.transmit and db.battleground.announce[eventType] then
+                enqueueChat(msg, "BATTLEGROUND")
+            end
+        end
+
+        -- Whisper friends
+        if db.whisperFriends.enabled and db.whisperFriends.announce[eventType] then
+            self:WhisperFriends(msg, db.whisperFriends.groupOnly)
         end
     end
 
-    if IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
-        if db.battleground.transmit and db.battleground.announce["objective"] then
-            enqueueChat(msg, "BATTLEGROUND")
-        end
-    end
-
-    -- Whisper friends.
-    if db.whisperFriends.enabled and db.whisperFriends.announce["objective"] then
-        self:WhisperFriends(msg, db.whisperFriends.groupOnly)
-    end
+    -- Own-quest banner: fires regardless of chat suppression.
+    self:OnOwnObjectiveEvent(eventType, questInfo, objective, isRegression)
 end
 
 ------------------------------------------------------------------------
--- Remote event banner notifications (from SQ_UPDATE received from others)
+-- Remote event banner notifications (inbound from other SocialQuest users)
 ------------------------------------------------------------------------
+
+-- Fires "Everyone has completed [Quest Name]" when every engaged group member
+-- (those who have or had the quest) has turned it in.
+-- Suppressed entirely if any group member lacks SocialQuest (hasSocialQuest == false).
+-- localHasCompleted: true when the local player just triggered this via OnQuestEvent;
+--                    false when a remote player's SQ_UPDATE triggered it.
+local function checkAllCompleted(questID, localHasCompleted)
+    -- db.enabled is checked here rather than relying on callers: this function is
+    -- called from two separate entry points and must be self-contained.
+    local db = SocialQuest.db.profile
+    if not db.enabled then return end
+
+    local PlayerQuests = SocialQuestGroupData.PlayerQuests
+
+    -- Must be in a group (PlayerQuests only contains remote members).
+    local anyRemote = false
+    for _ in pairs(PlayerQuests) do anyRemote = true; break end
+    if not anyRemote then return end
+
+    -- Every group member must have SocialQuest; suppress entirely if any lacks it.
+    for _, entry in pairs(PlayerQuests) do
+        if not entry.hasSocialQuest then return end
+    end
+
+    -- Build engaged set: only players who have or had the quest this session.
+    -- "Engaged" = currently has the quest active OR has completed it THIS session.
+    -- Players who never had the quest are excluded entirely.
+    -- Note: IsQuestFlaggedCompleted is NOT used for engagement — it returns true
+    -- for quests completed in prior sessions, which would cause false positives.
+    local AQL = SocialQuest.AQL
+
+    -- Local player: engaged if they just completed it or have it active right now.
+    -- IsQuestFlaggedCompleted is intentionally NOT used for engagement — it returns
+    -- true for quests completed in prior sessions and would cause false positives.
+    local localActive   = AQL and AQL:GetQuest(questID) ~= nil
+    local localEngaged  = localHasCompleted or localActive
+    -- localFlagged is only consulted inside the localEngaged guard below.
+    local localFlagged  = localHasCompleted or C_QuestLog.IsQuestFlaggedCompleted(questID)
+    if localEngaged and not localFlagged then return end  -- engaged but not done
+
+    -- Remote players: check engagement and completion.
+    local anyEngaged = localEngaged
+    for _, entry in pairs(PlayerQuests) do
+        local hasActive    = entry.quests and entry.quests[questID] ~= nil
+        local hasCompleted = entry.completedQuests and entry.completedQuests[questID] == true
+        local engaged      = hasActive or hasCompleted
+        if engaged then
+            anyEngaged = true
+            if not hasCompleted then return end  -- engaged but not done
+        end
+    end
+
+    -- No one in the group has or had the quest.
+    if not anyEngaged then return end
+
+    -- Display gating: same toggle as normal completion banners.
+    local section   = getSenderSection()
+    local sectionDb = db[section]
+    if not sectionDb or not sectionDb.display then return end
+    if not sectionDb.display.completed then return end
+
+    -- Title resolution: plain text — RaidNotice does not parse hyperlinks.
+    local info  = AQL and AQL:GetQuest(questID)
+    local title = (info and info.title)
+               or C_QuestLog.GetTitleForQuestID(questID)
+               or ("Quest " .. questID)
+
+    local msg = "Everyone has completed: " .. title
+    displayBanner(msg, "all_complete")
+
+    -- Chat message only when the local player triggered it (avoids duplicate
+    -- sends from multiple SQ clients simultaneously detecting the same condition).
+    if localHasCompleted and sectionDb.transmit and sectionDb.announce.completed then
+        local channelMap = { party = "PARTY", raid = "RAID", battleground = "BATTLEGROUND" }
+        local channel = channelMap[section]
+        if channel then
+            enqueueChat(msg, channel)
+        end
+    end
+end
 
 function SocialQuestAnnounce:OnRemoteQuestEvent(sender, eventType, questID)
     local db = SocialQuest.db.profile
-    if not db.enabled or not db.general.displayReceived then return end
-    if not db.general.receive[eventType] then return end
+    if not db.enabled then return end
 
-    -- Check friends-only filter for raid/BG.
-    local inRaid = IsInRaid()
-    local inBG   = IsInGroup(LE_PARTY_CATEGORY_INSTANCE)
-    if inRaid and db.raid.friendsOnly and not C_FriendList.IsFriend(sender) then return end
-    if inBG   and db.battleground.friendsOnly and not C_FriendList.IsFriend(sender) then return end
-
-    -- Resolve quest title locally from AQL.
-    local AQL = SocialQuest.AQL
-    local title = AQL and AQL:GetQuestLink(questID) or C_QuestLog.GetTitleForQuestID(questID) or ("Quest "..questID)
-
-    local templates = {
-        accepted  = "%s accepted: %s",
-        abandoned = "%s abandoned: %s",
-        finished  = "%s finished objectives: %s",
-        completed = "%s completed: %s",
-        failed    = "%s failed: %s",
-    }
-    local tmpl = templates[eventType]
-    if not tmpl then return end
-
-    local bannerMsg = string.format(tmpl, sender, title)
-    local color = SocialQuestColors.event[eventType]
-    if RaidWarningFrame then
-        if color then
-            RaidWarningFrame:AddMessage(bannerMsg, color.r, color.g, color.b)
-        else
-            RaidWarningFrame:AddMessage(bannerMsg)
-        end
+    -- Party-wide completion check: fires regardless of displayReceived, because
+    -- "Everyone has completed" is a synthesized local event, not a raw inbound banner.
+    if eventType == "completed" then
+        checkAllCompleted(questID, false)
     end
+
+    if not db.general.displayReceived then return end
+
+    local section   = getSenderSection()
+    local sectionDb = db[section]
+    if not sectionDb or not sectionDb.display then return end
+    if not sectionDb.displayReceived then return end
+    if not sectionDb.display[eventType] then return end
+
+    -- Friends-only filter.
+    if section == "raid" and db.raid.friendsOnly
+        and not C_FriendList.IsFriend(sender) then return end
+    if section == "battleground" and db.battleground.friendsOnly
+        and not C_FriendList.IsFriend(sender) then return end
+
+    local AQL   = SocialQuest.AQL
+    local title = (AQL and AQL:GetQuestLink(questID))
+               or C_QuestLog.GetTitleForQuestID(questID)
+               or ("Quest " .. questID)
+
+    local msg = formatQuestBannerMsg(sender, eventType, title)
+    if msg then displayBanner(msg, eventType) end
+end
+
+function SocialQuestAnnounce:OnRemoteObjectiveEvent(sender, questID, numFulfilled, numRequired, isComplete, isRegression)
+    local db = SocialQuest.db.profile
+    if not db.enabled or not db.general.displayReceived then return end
+
+    local section   = getSenderSection()
+    local sectionDb = db[section]
+    if not sectionDb or not sectionDb.display then return end
+    if not sectionDb.displayReceived then return end
+
+    local eventType = isComplete and "objective_complete" or "objective_progress"
+    if not sectionDb.display[eventType] then return end
+
+    -- Friends-only filter.
+    if section == "raid" and db.raid.friendsOnly
+        and not C_FriendList.IsFriend(sender) then return end
+    if section == "battleground" and db.battleground.friendsOnly
+        and not C_FriendList.IsFriend(sender) then return end
+
+    local AQL   = SocialQuest.AQL
+    local title = (AQL and AQL:GetQuestLink(questID))
+               or C_QuestLog.GetTitleForQuestID(questID)
+               or ("Quest " .. questID)
+
+    local msg = formatObjectiveBannerMsg(sender, title, numFulfilled, numRequired, isComplete, isRegression)
+    displayBanner(msg, eventType)
+end
+
+------------------------------------------------------------------------
+-- Own-quest banners (local player's own events, opt-in)
+------------------------------------------------------------------------
+
+function SocialQuestAnnounce:OnOwnQuestEvent(eventType, questTitle)
+    local db = SocialQuest.db.profile
+    if not db.enabled then return end
+    if not db.general.displayOwn then return end
+    if not db.general.displayOwnEvents[eventType] then return end
+
+    local msg = formatQuestBannerMsg("You", eventType, questTitle)
+    if msg then displayBanner(msg, eventType) end
+end
+
+function SocialQuestAnnounce:OnOwnObjectiveEvent(eventType, questInfo, objective, isRegression)
+    local db = SocialQuest.db.profile
+    if not db.enabled then return end
+    if not db.general.displayOwn then return end
+    if not db.general.displayOwnEvents[eventType] then return end
+
+    local msg = formatObjectiveBannerMsg(
+        "You", questInfo.title,
+        objective.numFulfilled, objective.numRequired,
+        eventType == "objective_complete", isRegression)
+    displayBanner(msg, eventType)
+end
+
+------------------------------------------------------------------------
+-- Debug test entry point
+------------------------------------------------------------------------
+
+-- "objective_regression" is a pseudo-type used only by the test panel; it shares
+-- the objective_progress color and toggle but has distinct demo text.
+local TEST_DEMOS = {
+    accepted = {
+        outbound = "Quest accepted: A Daunting Task",
+        banner   = "TestPlayer accepted: [A Daunting Task]",
+        colorKey = "accepted",
+    },
+    abandoned = {
+        outbound = "Quest abandoned: A Daunting Task",
+        banner   = "TestPlayer abandoned: [A Daunting Task]",
+        colorKey = "abandoned",
+    },
+    finished = {
+        outbound = "Quest complete (objectives done): A Daunting Task",
+        banner   = "TestPlayer finished objectives: [A Daunting Task]",
+        colorKey = "finished",
+    },
+    completed = {
+        outbound = "Quest turned in: A Daunting Task",
+        banner   = "TestPlayer completed: [A Daunting Task]",
+        colorKey = "completed",
+    },
+    failed = {
+        outbound = "Quest failed: A Daunting Task",
+        banner   = "TestPlayer failed: [A Daunting Task]",
+        colorKey = "failed",
+    },
+    objective_progress = {
+        outbound = "{rt1} SocialQuest: 3/8 Kobolds Slain for [A Daunting Task]!",
+        banner   = "TestPlayer progressed: [A Daunting Task] (3/8)",
+        colorKey = "objective_progress",
+    },
+    objective_complete = {
+        outbound = "{rt1} SocialQuest: 8/8 Kobolds Slain for [A Daunting Task]!",
+        banner   = "TestPlayer completed objective: [A Daunting Task] (8/8)",
+        colorKey = "objective_complete",
+    },
+    objective_regression = {
+        outbound = "{rt1} SocialQuest: 2/8 Kobolds Slain (regression) for [A Daunting Task]!",
+        banner   = "TestPlayer regressed: [A Daunting Task] (2/8)",
+        colorKey = "objective_progress",   -- same color as progress
+    },
+    all_complete = {
+        outbound = nil,   -- no outbound chat for this synthesized event
+        banner   = "Everyone has completed: A Daunting Task",
+        colorKey = "all_complete",
+    },
+}
+
+function SocialQuestAnnounce:TestEvent(eventType)
+    local demo = TEST_DEMOS[eventType]
+    if not demo then return end
+    displayBanner(demo.banner, demo.colorKey)
+    displayChatPreview(demo.outbound)
 end
 
 ------------------------------------------------------------------------

@@ -150,7 +150,7 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     -- Determine badge text. "Complete" trumps "Group".
     local badgeText = ""
     if questEntry.isComplete then
-        badgeText = C.completed .. "(Complete)" .. C.reset
+        badgeText = SocialQuestColors.GetUIColor("completed") .. "(Complete)" .. C.reset
     elseif questEntry.suggestedGroup and questEntry.suggestedGroup > 0 then
         badgeText = C.chain .. "(Group)" .. C.reset
     end
@@ -219,7 +219,7 @@ end
 function RowFactory.AddObjectiveRow(contentFrame, y, objectiveEntry, indent)
     local C  = SocialQuestColors
     local x  = indent or 0
-    local clr = objectiveEntry.isFinished and C.completed or C.active
+    local clr = objectiveEntry.isFinished and SocialQuestColors.GetUIColor("completed") or C.active
 
     local fs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
@@ -248,7 +248,7 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent)
         fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
         fs:SetWidth(CONTENT_WIDTH - x - 4)
         fs:SetJustifyH("LEFT")
-        fs:SetText(C.completed .. name .. " FINISHED" .. C.reset)
+        fs:SetText(SocialQuestColors.GetUIColor("completed") .. name .. " FINISHED" .. C.reset)
         return y + ROW_H + 2
 
     elseif playerEntry.needsShare then

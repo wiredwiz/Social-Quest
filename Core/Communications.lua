@@ -86,7 +86,6 @@ local function buildQuestPayload(questInfo, eventType)
         eventType    = eventType,
         isComplete   = questInfo.isComplete  and 1 or 0,
         isFailed     = questInfo.isFailed    and 1 or 0,
-        isTracked    = questInfo.isTracked   and 1 or 0,
         -- snapshotTime is the sender's GetTime() AT MOMENT OF TRANSMISSION, not
         -- the time AQL built its local cache. This gives receivers an accurate
         -- reference for timer estimation: remaining = timerSeconds - (GetTime() - snapshotTime).
@@ -113,7 +112,6 @@ local function buildInitPayload()
             questID      = questID,
             isComplete   = info.isComplete  and 1 or 0,
             isFailed     = info.isFailed    and 1 or 0,
-            isTracked    = info.isTracked   and 1 or 0,
             snapshotTime = GetTime(),  -- stamp at transmission time, not AQL cache build time
             timerSeconds = info.timerSeconds,
             objectives   = objs,

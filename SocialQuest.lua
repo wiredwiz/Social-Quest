@@ -60,6 +60,7 @@ function SocialQuest:OnEnable()
     AQL.RegisterCallback(self, "AQL_QUEST_UNTRACKED",        "OnQuestUntracked")
     AQL.RegisterCallback(self, "AQL_OBJECTIVE_PROGRESSED",   "OnObjectiveProgressed")
     AQL.RegisterCallback(self, "AQL_OBJECTIVE_REGRESSED",    "OnObjectiveRegressed")
+    AQL.RegisterCallback(self, "AQL_OBJECTIVE_COMPLETED",    "OnObjectiveCompleted")
     AQL.RegisterCallback(self, "AQL_UNIT_QUEST_LOG_CHANGED", "OnUnitQuestLogChanged")
 
     -- Minimap button via LibDBIcon-1.0.
@@ -75,11 +76,14 @@ function SocialQuest:OnEnable()
             OnClick = function(_, button)
                 if button == "LeftButton" then
                     SocialQuestGroupFrame:Toggle()
+                elseif button == "RightButton" then
+                    LibStub("AceConfigDialog-3.0"):Open("SocialQuest")
                 end
             end,
             OnTooltipShow = function(tooltip)
                 tooltip:SetText("SocialQuest")
-                tooltip:AddLine("Click to open group quest frame.", 1, 1, 1)
+                tooltip:AddLine("Left-click to open group quest frame.", 1, 1, 1)
+                tooltip:AddLine("Right-click to open settings.", 1, 1, 1)
                 tooltip:Show()
             end,
         })
@@ -100,6 +104,7 @@ function SocialQuest:OnDisable()
         AQL.UnregisterCallback(self, "AQL_QUEST_UNTRACKED")
         AQL.UnregisterCallback(self, "AQL_OBJECTIVE_PROGRESSED")
         AQL.UnregisterCallback(self, "AQL_OBJECTIVE_REGRESSED")
+        AQL.UnregisterCallback(self, "AQL_OBJECTIVE_COMPLETED")
         AQL.UnregisterCallback(self, "AQL_UNIT_QUEST_LOG_CHANGED")
     end
 end
@@ -113,34 +118,95 @@ function SocialQuest:GetDefaults()
         profile = {
             enabled = true,
             general = {
-                displayReceived = true,
-                receive = { accepted=true, abandoned=true, finished=true, completed=true, failed=true },
+                displayReceived  = true,
+                colorblindMode   = false,
+                displayOwn       = false,
+                displayOwnEvents = {
+                    accepted           = true,
+                    abandoned          = true,
+                    finished           = true,
+                    completed          = true,
+                    failed             = true,
+                    objective_progress = true,
+                    objective_complete = true,
+                },
             },
             party = {
-                transmit = true,
+                transmit        = true,
                 displayReceived = true,
-                announce = { accepted=true, abandoned=true, finished=true, completed=true, failed=true, objective=true },
+                announce = {
+                    accepted           = true,
+                    abandoned          = true,
+                    finished           = true,
+                    completed          = true,
+                    failed             = true,
+                    objective_progress = true,
+                    objective_complete = true,
+                },
+                display = {
+                    accepted           = true,
+                    abandoned          = true,
+                    finished           = true,
+                    completed          = true,
+                    failed             = true,
+                    objective_progress = true,
+                    objective_complete = true,
+                },
             },
             raid = {
-                transmit = true,
+                transmit        = true,
                 displayReceived = true,
-                friendsOnly = false,
-                announce = { accepted=true, abandoned=true, finished=true, completed=true, failed=true },
+                friendsOnly     = false,
+                announce = { accepted=false, abandoned=false, finished=false, completed=false, failed=false },
+                display = {
+                    accepted           = true,
+                    abandoned          = true,
+                    finished           = true,
+                    completed          = true,
+                    failed             = true,
+                    objective_progress = true,
+                    objective_complete = true,
+                },
             },
             guild = {
-                transmit = true,
-                announce = { accepted=true, abandoned=true, finished=true, completed=true, failed=true },
+                transmit = false,
+                announce = { accepted=false, abandoned=false, finished=false, completed=false, failed=false },
             },
             battleground = {
-                transmit = true,
+                transmit        = true,
                 displayReceived = true,
-                friendsOnly = false,
-                announce = { accepted=true, abandoned=true, finished=true, completed=true, failed=true, objective=true },
+                friendsOnly     = false,
+                announce = {
+                    accepted           = false,
+                    abandoned          = false,
+                    finished           = false,
+                    completed          = false,
+                    failed             = false,
+                    objective_progress = false,
+                    objective_complete = false,
+                },
+                display = {
+                    accepted           = true,
+                    abandoned          = true,
+                    finished           = true,
+                    completed          = true,
+                    failed             = true,
+                    objective_progress = true,
+                    objective_complete = true,
+                },
             },
             whisperFriends = {
-                enabled = false,
+                enabled   = false,
                 groupOnly = false,
-                announce = { accepted=true, abandoned=true, finished=true, completed=true, failed=true, objective=false },
+                announce = {
+                    accepted           = true,
+                    abandoned          = true,
+                    finished           = true,
+                    completed          = true,
+                    failed             = true,
+                    objective_progress = false,
+                    objective_complete = false,
+                },
             },
             follow = {
                 enabled = true,
@@ -199,27 +265,27 @@ end
 ------------------------------------------------------------------------
 
 function SocialQuest:OnQuestAccepted(event, questInfo)
-    SocialQuestAnnounce:OnQuestEvent("accepted", questInfo)
+    SocialQuestAnnounce:OnQuestEvent("accepted", questInfo.questID)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "accepted")
 end
 
 function SocialQuest:OnQuestAbandoned(event, questInfo)
-    SocialQuestAnnounce:OnQuestEvent("abandoned", questInfo)
+    SocialQuestAnnounce:OnQuestEvent("abandoned", questInfo.questID)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "abandoned")
 end
 
 function SocialQuest:OnQuestFinished(event, questInfo)
-    SocialQuestAnnounce:OnQuestEvent("finished", questInfo)
+    SocialQuestAnnounce:OnQuestEvent("finished", questInfo.questID)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "finished")
 end
 
 function SocialQuest:OnQuestCompleted(event, questInfo)
-    SocialQuestAnnounce:OnQuestEvent("completed", questInfo)
+    SocialQuestAnnounce:OnQuestEvent("completed", questInfo.questID)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "completed")
 end
 
 function SocialQuest:OnQuestFailed(event, questInfo)
-    SocialQuestAnnounce:OnQuestEvent("failed", questInfo)
+    SocialQuestAnnounce:OnQuestEvent("failed", questInfo.questID)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "failed")
 end
 
@@ -232,13 +298,23 @@ function SocialQuest:OnQuestUntracked(event, questInfo)
 end
 
 function SocialQuest:OnObjectiveProgressed(event, questInfo, objective, delta)
-    SocialQuestAnnounce:OnObjectiveEvent("objective", questInfo, objective)
+    -- Always broadcast so remote PlayerQuests tables stay accurate.
     SocialQuestComm:BroadcastObjectiveUpdate(questInfo, objective)
+
+    -- Suppress progress announce when threshold is crossed; COMPLETED fires next.
+    if objective.numFulfilled >= objective.numRequired then return end
+
+    SocialQuestAnnounce:OnObjectiveEvent("objective_progress", questInfo, objective, false)
+end
+
+function SocialQuest:OnObjectiveCompleted(event, questInfo, objective)
+    -- Comm already broadcast by OnObjectiveProgressed. Only announce here.
+    SocialQuestAnnounce:OnObjectiveEvent("objective_complete", questInfo, objective, false)
 end
 
 function SocialQuest:OnObjectiveRegressed(event, questInfo, objective, delta)
-    -- Broadcast regression so remote PlayerQuests tables stay accurate.
     SocialQuestComm:BroadcastObjectiveUpdate(questInfo, objective)
+    SocialQuestAnnounce:OnObjectiveEvent("objective_progress", questInfo, objective, true)
 end
 
 function SocialQuest:OnUnitQuestLogChanged(event, unit)
