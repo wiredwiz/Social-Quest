@@ -76,21 +76,32 @@ function SocialQuestAnnounce:OnRemoteObjectiveEvent(sender, questID, numFulfille
 function SocialQuestAnnounce:OnRemoteObjectiveEvent(sender, questID, objIndex, numFulfilled, numRequired, isComplete, isRegression)
 ```
 
-Objective text lookup inside `OnRemoteObjectiveEvent`:
+Objective text and title lookup inside `OnRemoteObjectiveEvent`:
 
 ```lua
 local AQL     = SocialQuest.AQL
-local info    = AQL and AQL:GetQuest(questID)
-local objInfo = info and info.objectives and info.objectives[objIndex]
+local objs    = AQL and AQL:GetQuestObjectives(questID)
+local objInfo = objs and objs[objIndex]
 local objText = (objInfo and objInfo.text) or ""
-local title   = (info and info.title)
-             or (AQL and AQL:GetQuestTitle(questID))
+local title   = (AQL and AQL:GetQuestTitle(questID))
              or ("Quest " .. questID)
 ```
 
-If the local player does not have the quest (info is nil), `objText` falls back to `""`
-and the format string renders as `"PlayerName progressed: Quest 1234 —  (3/5)"`.
-This is acceptable — the local player has no data to display.
+`AQL:GetQuestObjectives(questID)` checks the AQL cache first, then falls back to
+`C_QuestLog.GetQuestObjectives(questID)`. That WoW API only returns data for quests
+in the player's active log, so `objText` is `""` when the local player doesn't have
+the quest. The format string then renders as
+`"PlayerName progressed: Quest Title —  (3/5)"`, which is acceptable.
+
+`AQL:GetQuestTitle(questID)` uses three-tier resolution (cache → WoW log scan →
+`C_QuestLog.GetQuestInfo(questID)`). The third tier returns a title string for any
+known questID even when the quest is not in the player's log, so the "Quest N" numeric
+fallback is only reached if the provider has no data for that questID.
+
+Note: the existing `OnRemoteObjectiveEvent` code uses `AQL:GetQuestLink(questID)` as
+its first-tier title lookup (which returns a hyperlink string). This is intentionally
+dropped here in favour of `AQL:GetQuestTitle(questID)` — `RaidNotice_AddMessage` does
+not parse hyperlinks, so a plain title string is correct for banner display.
 
 **`GroupData:OnObjectiveReceived` — forward `objIndex`:**
 
@@ -209,11 +220,18 @@ end
 
 **`UI/Options.lua` — `set` callbacks for affected options:**
 
-The three options that affect suppression need `set` callbacks that write the value
-and then call `UpdateQuestWatchSuppression`. Currently these options use the default
-AceConfig setter (direct db write). They need explicit `set` functions:
+Three options affect the suppression state. Each needs an explicit `set` callback that
+writes the value and then calls `UpdateQuestWatchSuppression`. Currently all three use
+the generic `toggle()` helper which only writes to the db — they do not trigger any
+suppression update.
 
 ```lua
+-- enabled (master toggle)
+set = function(info, value)
+    SocialQuest.db.profile.enabled = value
+    SocialQuestAnnounce:UpdateQuestWatchSuppression()
+end,
+
 -- general.displayOwn
 set = function(info, value)
     SocialQuest.db.profile.general.displayOwn = value
@@ -227,10 +245,10 @@ set = function(info, value)
 end,
 ```
 
-Note: `db.enabled` (the master toggle) already has a custom `set` in Options.lua that
-calls `SocialQuest:Enable()` / `SocialQuest:Disable()`, which in turn call `OnEnable`
-/ `OnDisable`. The suppression function is already called from those paths — no
-additional change needed for the master toggle.
+Note: `SocialQuest:OnEnable` / `OnDisable` are AceAddon lifecycle hooks, not wired to
+the options panel `enabled` toggle. The `enabled` toggle must have its own explicit
+`set` callback so that disabling the addon via the options panel always re-registers
+`UIErrorsFrame` for `QUEST_WATCH_UPDATE`.
 
 ### Safety Note
 
@@ -246,7 +264,7 @@ state-free implementation.
 |------|--------|
 | `Core/Announcements.lua` | Add `UpdateQuestWatchSuppression` function |
 | `SocialQuest.lua` | Call `UpdateQuestWatchSuppression` from `OnEnable`; call `RegisterEvent` directly in `OnDisable` |
-| `UI/Options.lua` | Add explicit `set` callbacks to `general.displayOwn` and `general.displayOwnEvents.objective_progress` |
+| `UI/Options.lua` | Add explicit `set` callbacks to `enabled`, `general.displayOwn`, and `general.displayOwnEvents.objective_progress` |
 
 ---
 
@@ -257,7 +275,7 @@ state-free implementation.
 2. Progress one objective (kill a mob, collect an item).
 3. Confirm the Social Quest banner shows `"You progressed: Quest Title — Objective Text (n/req)"`.
 4. In a group with another Social Quest user, confirm their banner also shows objective text.
-5. For a quest you don't have in your log, confirm the remote banner degrades gracefully (shows quest ID or title without crashing).
+5. For a quest a remote player has that you don't, confirm the remote banner degrades gracefully — shows `"PlayerName progressed: Quest Title —  (3/5)"` (empty objective text with em dash) without crashing.
 
 **Feature 2:**
 1. Enable `displayOwn` and `objective_progress` in Social Quest settings.
@@ -267,3 +285,4 @@ state-free implementation.
 5. Confirm the default WoW notification reappears.
 6. Re-enable, verify suppression is back.
 7. `/reload` — confirm suppression state matches current settings.
+8. While suppression is active, disable SocialQuest via the options panel master toggle — confirm the default WoW notification reappears immediately (no `/reload` needed).
