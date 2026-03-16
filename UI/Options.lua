@@ -90,9 +90,9 @@ function SocialQuestOptions:Initialize()
                     type = "toggle",
                     name = L["Objective Progress"],
                     desc = L["Show a banner when one of your quest objectives progresses or regresses."],
-                    get  = function(info) return SocialQuest.db.profile.general.displayOwnEvents.objective_progress end,
+                    get  = function(info) return db.general.displayOwnEvents.objective_progress end,
                     set  = function(info, value)
-                        SocialQuest.db.profile.general.displayOwnEvents.objective_progress = value
+                        db.general.displayOwnEvents.objective_progress = value
                         SocialQuestAnnounce:UpdateQuestWatchSuppression()
                     end,
                 },
@@ -152,9 +152,9 @@ function SocialQuestOptions:Initialize()
                         name  = L["Enable SocialQuest"],
                         desc  = L["Master on/off switch for all SocialQuest functionality."],
                         order = 1,
-                        get   = function(info) return SocialQuest.db.profile.enabled end,
+                        get   = function(info) return db.enabled end,
                         set   = function(info, value)
-                            SocialQuest.db.profile.enabled = value
+                            db.enabled = value
                             SocialQuestAnnounce:UpdateQuestWatchSuppression()
                         end,
                     },
@@ -169,9 +169,9 @@ function SocialQuestOptions:Initialize()
                         name  = L["Show banners for your own quest events"],
                         desc  = L["Show a banner on screen for your own quest events."],
                         order = 4,
-                        get   = function(info) return SocialQuest.db.profile.general.displayOwn end,
+                        get   = function(info) return db.general.displayOwn end,
                         set   = function(info, value)
-                            SocialQuest.db.profile.general.displayOwn = value
+                            db.general.displayOwn = value
                             SocialQuestAnnounce:UpdateQuestWatchSuppression()
                         end,
                     },
