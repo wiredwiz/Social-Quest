@@ -434,6 +434,18 @@ function SocialQuestAnnounce:OnOwnObjectiveEvent(eventType, questInfo, objective
     displayBanner(msg, eventType)
 end
 
+function SocialQuestAnnounce:UpdateQuestWatchSuppression()
+    local db = SocialQuest.db.profile
+    local shouldSuppress = db.enabled
+                       and db.general.displayOwn
+                       and db.general.displayOwnEvents.objective_progress
+    if shouldSuppress then
+        UIErrorsFrame:UnregisterEvent("QUEST_WATCH_UPDATE")
+    else
+        UIErrorsFrame:RegisterEvent("QUEST_WATCH_UPDATE")
+    end
+end
+
 ------------------------------------------------------------------------
 -- Debug test entry point
 ------------------------------------------------------------------------
