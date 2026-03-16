@@ -40,10 +40,12 @@ a third argument to `OnOwnQuestEvent`.
 `OnQuestEvent` has five call sites in the current codebase, all in `SocialQuest.lua`:
 `OnQuestAccepted`, `OnQuestCompleted`, `OnQuestFailed`, `OnQuestAbandoned`, and
 `OnQuestFinished`. Four of these are updated to pass `questInfo`. `OnQuestFinished` is
-intentionally left unchanged — it is excluded from step annotation (see "Excluded
-event" section). The test panel calls `SocialQuestAnnounce:TestEvent` directly (which
-calls `displayBanner`), not `OnQuestEvent`, so the test panel is unaffected by the
-signature change.
+intentionally left unchanged — it calls `OnQuestEvent("finished", questID)` with no
+third argument, so `questInfo` is nil, `chainInfo` is nil, and `appendChainStep` is a
+no-op. This is the intended exclusion mechanism, not an oversight — Lua 5.1 treats
+missing arguments as nil, so no guard or sentinel is needed in `OnQuestEvent`. The
+test panel calls `SocialQuestAnnounce:TestEvent` directly (which calls `displayBanner`),
+not `OnQuestEvent`, so the test panel is unaffected by the signature change.
 
 ### Remote events
 
@@ -142,7 +144,10 @@ function SocialQuestAnnounce:OnQuestEvent(eventType, questID, questInfo)
 
 Inside `OnQuestEvent`:
 - Extract `local chainInfo = questInfo and questInfo.chainInfo`
-- Apply `appendChainStep(msg, eventType, chainInfo)` to the outbound chat message (after `formatOutboundQuestMsg`)
+- Apply `appendChainStep(msg, eventType, chainInfo)` to the outbound chat message (after
+  `formatOutboundQuestMsg`). `formatOutboundQuestMsg` always returns a non-nil string
+  (it uses a fallback template `L["Quest event: %s"]` for unknown event types), so no
+  nil-guard is needed before `appendChainStep`.
 - Pass `chainInfo` to `OnOwnQuestEvent` as a third argument
 
 ```lua
@@ -157,9 +162,18 @@ Inside `OnOwnQuestEvent`:
 
 Inside `OnRemoteQuestEvent`, replace the existing `AQL:GetQuest(questID)` and
 `AQL:GetQuestTitle(questID)` title lookups with a single `AQL:GetQuestInfo(questID)`
-call that provides both title and chainInfo. The `checkAllCompleted(questID, false)`
-call that exists in the current implementation must be preserved unchanged — it is not
-shown in the snippet below but must remain in place before the AQL lookups.
+call that provides both title and chainInfo:
+
+- `AQL:GetQuest` is a cache-only lookup. `AQL:GetQuestInfo` Tier 1 is the same cache,
+  so replacing it is safe with no behavioral regression; Tiers 2 and 3 add more.
+- `AQL:GetQuestTitle` delegates internally to `AQL:GetQuestInfo`, so it adds no
+  title-resolution capability beyond the single `GetQuestInfo` call.
+- `cachedTitle` is a parameter of `OnRemoteQuestEvent` (present in the existing
+  function signature). It is retained as-is — the snippet below is a drop-in
+  replacement for only the AQL lookup block, not the full function.
+- The `checkAllCompleted(questID, false)` call that exists in the current implementation
+  must be preserved unchanged — it is not shown in the snippet below but must remain
+  in place before the AQL lookups.
 
 ```lua
 -- (checkAllCompleted call preserved here — not shown, not changed)
@@ -187,6 +201,10 @@ abandoned are updated to append `" (Step 2)"`. These strings are unconditional
 design-preview strings — they always show the fully annotated form regardless of whether
 a provider is installed, because the test panel exists to demonstrate what the feature
 looks like when active, not to simulate the no-provider fallback path.
+
+The existing `TEST_DEMOS` banner strings use `[Quest Title]` with square brackets as an
+aesthetic convention to suggest a hyperlink-style title. The runtime output uses plain
+strings from AQL with no brackets. Both are correct in their respective contexts.
 
 ```lua
 accepted = {
@@ -257,8 +275,10 @@ No changes to `GroupData.lua`, `Communications.lua`, or any UI files.
 2. Confirm outbound chat shows `"Quest accepted: <title> (Step N)"`.
 3. With `displayOwn` enabled, confirm own banner shows `"You accepted: <title> (Step N)"`.
 4. Turn in the quest (`completed` event); confirm outbound chat shows
-   `"Quest turned in: <title> (Step N)"` and own banner shows
-   `"You completed: <title> (Step N)"`.
+   `"Quest turned in: <title> (Step N)"` (the `completed` outbound template is
+   `L["Quest turned in: %s"]`) and own banner shows `"You completed: <title> (Step N)"`
+   (the `completed` banner template is `L["%s completed: %s"]`, rendering as
+   "You completed: …" for own events).
 5. Accept the follow-up quest; confirm step increments correctly.
 6. Accept a standalone (non-chain) quest; confirm no `(Step N)` appears.
 7. With no Questie/QuestWeaver installed (NullProvider), confirm no `(Step N)` appears
