@@ -53,6 +53,7 @@ L["Click here to copy the wowhead quest url"] = "Clique aqui para copiar o URL d
 L["(Complete)"]                            = "(Completa)"
 L["(Group)"]                               = "(Grupo)"
 L[" (Step %s of %s)"]                      = " (Passo %s de %s)"
+L["(Step %s)"]                             = "(Passo %s)"
 L["%s FINISHED"]                           = "%s CONCLUÍDA"
 L["%s Needs it Shared"]                    = "%s precisa que seja compartilhada"
 L["%s (no data)"]                          = "%s (sem dados)"

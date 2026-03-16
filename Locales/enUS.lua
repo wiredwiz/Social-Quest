@@ -67,6 +67,7 @@ L["(Group)"]                                = true
 -- Leading space is intentional: appended directly after quest title.
 -- %s args: (1) step number, (2) chain length. Both are already tostring'd before format.
 L[" (Step %s of %s)"]                       = true
+L["(Step %s)"]                              = true
 -- %s = player character name
 L["%s FINISHED"]                            = true
 L["%s Needs it Shared"]                     = true

@@ -53,6 +53,7 @@ L["Click here to copy the wowhead quest url"] = "여기를 클릭하여 Wowhead 
 L["(Complete)"]                            = "(완료)"
 L["(Group)"]                               = "(그룹)"
 L[" (Step %s of %s)"]                      = " (%s/%s 단계)"
+L["(Step %s)"]                             = "(단계 %s)"
 L["%s FINISHED"]                           = "%s 완료"
 L["%s Needs it Shared"]                    = "%s에게 공유 필요"
 L["%s (no data)"]                          = "%s (데이터 없음)"
