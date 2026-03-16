@@ -20,6 +20,7 @@ Locales\ptBR.lua
 Locales\itIT.lua
 Locales\koKR.lua
 Locales\ruRU.lua
+Locales\jaJP.lua
 SocialQuest.lua
 Core\GroupData.lua
 Core\Communications.lua
