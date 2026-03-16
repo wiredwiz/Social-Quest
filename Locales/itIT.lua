@@ -1,0 +1,188 @@
+-- Locales/itIT.lua
+local L = LibStub("AceLocale-3.0"):NewLocale("SocialQuest", "itIT")
+if not L then return end
+
+-- Core/Announcements.lua — outbound chat templates
+L["Quest accepted: %s"]                   = "Missione accettata: %s"
+L["Quest abandoned: %s"]                  = "Missione abbandonata: %s"
+L["Quest complete (objectives done): %s"] = "Missione completata (obiettivi raggiunti): %s"
+L["Quest turned in: %s"]                  = "Missione consegnata: %s"
+L["Quest failed: %s"]                     = "Missione fallita: %s"
+L["Quest event: %s"]                      = "Evento missione: %s"
+
+-- Core/Announcements.lua — outbound objective chat
+L[" (regression)"]                        = " (regressione)"
+L["{rt1} SocialQuest: %d/%d %s%s for %s!"] = "{rt1} SocialQuest: %d/%d %s%s per %s!"
+
+-- Core/Announcements.lua — inbound banner templates
+L["%s accepted: %s"]                      = "%s accettata: %s"
+L["%s abandoned: %s"]                     = "%s abbandonata: %s"
+L["%s finished objectives: %s"]           = "%s ha completato gli obiettivi: %s"
+L["%s completed: %s"]                     = "%s completata: %s"
+L["%s failed: %s"]                        = "%s fallita: %s"
+L["%s completed objective: %s (%d/%d)"]   = "%s ha completato l'obiettivo: %s (%d/%d)"
+L["%s regressed: %s (%d/%d)"]             = "%s è regredito: %s (%d/%d)"
+L["%s progressed: %s (%d/%d)"]            = "%s ha progredito: %s (%d/%d)"
+
+-- Core/Announcements.lua — chat preview label
+L["|cFF00CCFFSocialQuest (preview):|r "]  = "|cFF00CCFFSocialQuest (anteprima):|r "
+
+-- Core/Announcements.lua — all-completed banner
+L["Everyone has completed: %s"]           = "Tutti hanno completato: %s"
+
+-- Core/Announcements.lua — own-quest banner sender label
+L["You"]                                  = "Tu"
+
+-- Core/Announcements.lua — follow notifications
+L["%s started following you."]            = "%s ha iniziato a seguirti."
+L["%s stopped following you."]            = "%s ha smesso di seguirti."
+
+-- SocialQuest.lua
+L["ERROR: AbsoluteQuestLog-1.0 is not installed. SocialQuest is disabled."] = "ERRORE: AbsoluteQuestLog-1.0 non è installato. SocialQuest è disabilitato."
+L["Left-click to open group quest frame."]  = "Clic sinistro per aprire il pannello delle missioni di gruppo."
+L["Right-click to open settings."]          = "Clic destro per aprire le impostazioni."
+
+-- UI/GroupFrame.lua
+L["SocialQuest — Group Quests"]            = "SocialQuest — Missioni di gruppo"
+L["Quest URL (Ctrl+C to copy)"]            = "URL missione (Ctrl+C per copiare)"
+
+-- UI/RowFactory.lua
+L["expand all"]                            = "espandi tutto"
+L["collapse all"]                          = "comprimi tutto"
+L["Click here to copy the wowhead quest url"] = "Clicca qui per copiare l'URL Wowhead della missione"
+L["(Complete)"]                            = "(Completata)"
+L["(Group)"]                               = "(Gruppo)"
+L[" (Step %s of %s)"]                      = " (Fase %s di %s)"
+L["%s FINISHED"]                           = "%s COMPLETATA"
+L["%s Needs it Shared"]                    = "%s ha bisogno che venga condivisa"
+L["%s (no data)"]                          = "%s (nessun dato)"
+
+-- UI/Tooltips.lua
+L["Group Progress"]                        = "Progresso del gruppo"
+L["(shared, no data)"]                     = "(condivisa, nessun dato)"
+L["Objectives complete"]                   = "Obiettivi completati"
+L["(no data)"]                             = "(nessun dato)"
+
+-- UI tab labels
+L["Mine"]                                  = "Mie"
+L["Other Quests"]                          = "Altre missioni"
+L["Party"]                                 = "Gruppo"
+L["(You)"]                                 = "(Tu)"
+L["Shared"]                                = "Condivise"
+
+-- UI/Options.lua — toggle names
+L["Accepted"]                              = "Accettata"
+L["Abandoned"]                             = "Abbandonata"
+L["Finished"]                              = "Terminata"
+L["Completed"]                             = "Completata"
+L["Failed"]                                = "Fallita"
+L["Objective Progress"]                    = "Progresso obiettivo"
+L["Objective Complete"]                    = "Obiettivo completato"
+
+-- UI/Options.lua — announce chat toggle descriptions
+L["Send a chat message when you accept a quest."]                        = "Invia un messaggio in chat quando accetti una missione."
+L["Send a chat message when you abandon a quest."]                       = "Invia un messaggio in chat quando abbandoni una missione."
+L["Send a chat message when all your quest objectives are complete (before turning in)."] = "Invia un messaggio in chat quando tutti gli obiettivi della missione sono completati (prima della consegna)."
+L["Send a chat message when you turn in a quest."]                       = "Invia un messaggio in chat quando consegni una missione."
+L["Send a chat message when a quest fails."]                             = "Invia un messaggio in chat quando una missione fallisce."
+L["Send a chat message when a quest objective progresses or regresses. Format matches Questie's style. Never suppressed by Questie — Questie does not announce partial progress."] = "Invia un messaggio in chat quando un obiettivo della missione progredisce o regredisce. Il formato corrisponde allo stile di Questie. Non viene mai soppresso da Questie — Questie non annuncia il progresso parziale."
+L["Send a chat message when a quest objective reaches its goal (e.g. 8/8 Kobolds). Suppressed automatically if Questie is installed and its 'Announce Objectives' setting is enabled."] = "Invia un messaggio in chat quando un obiettivo della missione raggiunge il suo traguardo (es. 8/8 Coboldi). Soppresso automaticamente se Questie è installato e la sua impostazione 'Annuncia Obiettivi' è abilitata."
+
+-- UI/Options.lua — group headers
+L["Announce in Chat"]                      = "Annuncia in Chat"
+L["Own Quest Banners"]                     = "Banner missioni personali"
+L["Display Events"]                        = "Mostra eventi"
+L["General"]                               = "Generale"
+L["Raid"]                                  = "Raid"
+L["Guild"]                                 = "Gilda"
+L["Battleground"]                          = "Campo di battaglia"
+L["Whisper Friends"]                       = "Sussurra agli amici"
+L["Follow Notifications"]                  = "Notifiche di seguimento"
+L["Debug"]                                 = "Debug"
+
+-- UI/Options.lua — own-quest banner toggle descriptions
+L["Show a banner when you accept a quest."]                                            = "Mostra un banner quando accetti una missione."
+L["Show a banner when you abandon a quest."]                                           = "Mostra un banner quando abbandoni una missione."
+L["Show a banner when all objectives on a quest are complete (before turning in)."]    = "Mostra un banner quando tutti gli obiettivi di una missione sono completati (prima della consegna)."
+L["Show a banner when you turn in a quest."]                                           = "Mostra un banner quando consegni una missione."
+L["Show a banner when a quest fails."]                                                 = "Mostra un banner quando una missione fallisce."
+L["Show a banner when one of your quest objectives progresses or regresses."]          = "Mostra un banner quando uno dei tuoi obiettivi della missione progredisce o regredisce."
+L["Show a banner when one of your quest objectives reaches its goal (e.g. 8/8)."]     = "Mostra un banner quando uno dei tuoi obiettivi della missione raggiunge il suo traguardo (es. 8/8)."
+
+-- UI/Options.lua — display events toggle descriptions
+L["Show a banner on screen when a group member accepts a quest."]                      = "Mostra un banner quando un membro del gruppo accetta una missione."
+L["Show a banner on screen when a group member abandons a quest."]                     = "Mostra un banner quando un membro del gruppo abbandona una missione."
+L["Show a banner on screen when a group member finishes all objectives on a quest."]   = "Mostra un banner quando un membro del gruppo completa tutti gli obiettivi di una missione."
+L["Show a banner on screen when a group member turns in a quest."]                     = "Mostra un banner quando un membro del gruppo consegna una missione."
+L["Show a banner on screen when a group member fails a quest."]                        = "Mostra un banner quando un membro del gruppo fallisce una missione."
+L["Show a banner on screen when a group member's quest objective count changes (includes partial progress and regression)."] = "Mostra un banner quando il conteggio degli obiettivi di missione di un membro del gruppo cambia (include progresso parziale e regressione)."
+L["Show a banner on screen when a group member completes a quest objective (e.g. 8/8)."] = "Mostra un banner quando un membro del gruppo completa un obiettivo di missione (es. 8/8)."
+
+-- UI/Options.lua — general toggles
+L["Enable SocialQuest"]                    = "Abilita SocialQuest"
+L["Master on/off switch for all SocialQuest functionality."]             = "Interruttore principale per tutte le funzionalità di SocialQuest."
+L["Show received events"]                  = "Mostra eventi ricevuti"
+L["Master switch: allow any banner notifications to appear. Individual 'Display Events' groups below control which event types are shown per section."] = "Interruttore principale: consente la visualizzazione delle notifiche banner. I gruppi 'Mostra eventi' qui sotto controllano quali tipi di eventi vengono mostrati per sezione."
+L["Colorblind Mode"]                       = "Modalità daltonismo"
+L["Use colorblind-friendly colors for all SocialQuest banners and UI text. It is unnecessary to enable this if Color Blind mode is already enabled in the game client."] = "Usa colori adatti ai daltonici per tutti i banner e i testi dell'interfaccia di SocialQuest. Non è necessario abilitarlo se la modalità daltonismo è già attiva nel client di gioco."
+L["Show banners for your own quest events"] = "Mostra banner per i tuoi eventi missione"
+L["Show a banner on screen for your own quest events."]                  = "Mostra un banner sullo schermo per i tuoi eventi missione."
+
+-- UI/Options.lua — party section
+L["Enable transmission"]                   = "Abilita trasmissione"
+L["Broadcast your quest events to party members via addon comm."]        = "Trasmetti i tuoi eventi missione ai membri del gruppo tramite comunicazione addon."
+L["Allow banner notifications from party members (subject to Display Events toggles below)."] = "Consenti notifiche banner dai membri del gruppo (soggette alle opzioni Mostra eventi qui sotto)."
+
+-- UI/Options.lua — raid section
+L["Broadcast your quest events to raid members via addon comm."]         = "Trasmetti i tuoi eventi missione ai membri del raid tramite comunicazione addon."
+L["Allow banner notifications from raid members."]                       = "Consenti notifiche banner dai membri del raid."
+L["Only show notifications from friends"]  = "Mostra solo notifiche dagli amici"
+L["Only show banner notifications from players on your friends list, suppressing banners from strangers in large raids."] = "Mostra solo notifiche banner dai giocatori nella tua lista amici, sopprimendo i banner degli sconosciuti nei raid di grandi dimensioni."
+
+-- UI/Options.lua — guild section
+L["Enable chat announcements"]             = "Abilita annunci in chat"
+L["Announce your quest events in guild chat. Guild members do not need SocialQuest installed to see these messages."] = "Annuncia i tuoi eventi missione nella chat di gilda. I membri della gilda non hanno bisogno di SocialQuest installato per vedere questi messaggi."
+
+-- UI/Options.lua — battleground section
+L["Broadcast your quest events to battleground members via addon comm."] = "Trasmetti i tuoi eventi missione ai membri del campo di battaglia tramite comunicazione addon."
+L["Allow banner notifications from battleground members."]               = "Consenti notifiche banner dai membri del campo di battaglia."
+L["Only show banner notifications from friends in the battleground."]    = "Mostra solo notifiche banner dagli amici nel campo di battaglia."
+
+-- UI/Options.lua — whisper friends section
+L["Enable whispers to friends"]            = "Abilita sussurri agli amici"
+L["Send your quest events as whispers to online friends."]               = "Invia i tuoi eventi missione come sussurri agli amici online."
+L["Group members only"]                    = "Solo membri del gruppo"
+L["Restrict whispers to friends currently in your group."]               = "Limita i sussurri agli amici attualmente nel tuo gruppo."
+
+-- UI/Options.lua — follow notifications section
+L["Enable follow notifications"]           = "Abilita notifiche di seguimento"
+L["Send a whisper to players you start or stop following, and receive notifications when someone follows you."] = "Invia un sussurro ai giocatori che inizi o smetti di seguire, e ricevi notifiche quando qualcuno ti segue."
+L["Announce when you follow someone"]      = "Annuncia quando segui qualcuno"
+L["Whisper the player you begin following so they know you are following them."] = "Sussurra al giocatore che inizi a seguire in modo che sappia che lo stai seguendo."
+L["Announce when followed"]                = "Annuncia quando sei seguito"
+L["Display a local message when someone starts or stops following you."] = "Mostra un messaggio locale quando qualcuno inizia o smette di seguirti."
+
+-- UI/Options.lua — debug section
+L["Enable debug mode"]                     = "Abilita modalità debug"
+L["Print internal debug messages to the chat frame. Useful for diagnosing comm issues or event flow problems."] = "Stampa i messaggi di debug interni nel frame chat. Utile per diagnosticare problemi di comunicazione o di flusso eventi."
+
+-- UI/Options.lua — test banners group and buttons
+L["Test Banners and Chat"]                 = "Testa banner e chat"
+L["Test Accepted"]                         = "Testa Accettata"
+L["Display a demo banner and local chat preview for the 'Quest accepted' event. Bypasses all display filters."] = "Mostra un banner dimostrativo e un'anteprima chat locale per l'evento 'Missione accettata'. Bypassa tutti i filtri di visualizzazione."
+L["Test Abandoned"]                        = "Testa Abbandonata"
+L["Display a demo banner and local chat preview for the 'Quest abandoned' event."] = "Mostra un banner dimostrativo e un'anteprima chat locale per l'evento 'Missione abbandonata'."
+L["Test Finished"]                         = "Testa Terminata"
+L["Display a demo banner and local chat preview for the 'Quest finished objectives' event."] = "Mostra un banner dimostrativo e un'anteprima chat locale per l'evento 'Obiettivi missione completati'."
+L["Test Completed"]                        = "Testa Completata"
+L["Display a demo banner and local chat preview for the 'Quest turned in' event."] = "Mostra un banner dimostrativo e un'anteprima chat locale per l'evento 'Missione consegnata'."
+L["Test Failed"]                           = "Testa Fallita"
+L["Display a demo banner and local chat preview for the 'Quest failed' event."]    = "Mostra un banner dimostrativo e un'anteprima chat locale per l'evento 'Missione fallita'."
+L["Test Obj. Progress"]                    = "Testa progresso obiettivo"
+L["Display a demo banner and local chat preview for a partial objective progress update (e.g. 3/8)."] = "Mostra un banner dimostrativo e un'anteprima chat locale per un aggiornamento di progresso parziale dell'obiettivo (es. 3/8)."
+L["Test Obj. Complete"]                    = "Testa obiettivo completato"
+L["Display a demo banner and local chat preview for an objective completion (e.g. 8/8)."] = "Mostra un banner dimostrativo e un'anteprima chat locale per il completamento di un obiettivo (es. 8/8)."
+L["Test Obj. Regression"]                  = "Testa regressione obiettivo"
+L["Display a demo banner and local chat preview for an objective regression (count went backward)."] = "Mostra un banner dimostrativo e un'anteprima chat locale per una regressione dell'obiettivo (il conteggio è andato indietro)."
+L["Test All Completed"]                    = "Testa tutti completati"
+L["Display a demo banner for the 'Everyone has completed' purple notification. No chat preview (this event never generates outbound chat directly)."] = "Mostra un banner dimostrativo per la notifica viola 'Tutti hanno completato'. Nessuna anteprima chat (questo evento non genera mai chat in uscita direttamente)."
