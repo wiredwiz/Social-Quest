@@ -5,12 +5,14 @@
 
 SharedTab = {}
 
+local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
+
 ------------------------------------------------------------------------
 -- Tab provider interface
 ------------------------------------------------------------------------
 
 function SharedTab:GetLabel()
-    return "Shared"
+    return L["Shared"]
 end
 
 -- Builds the zone/chain/quest tree for quests engaged by 2+ players.
@@ -73,7 +75,7 @@ function SharedTab:BuildTree()
         for _ in pairs(engaged) do count = count + 1 end
         if count >= 2 then
             -- Determine zone: prefer local player's zone; fall back to "Other Quests".
-            local zoneName = "Other Quests"
+            local zoneName = L["Other Quests"]
             for _, eng in pairs(engaged) do
                 if eng.isLocal then
                     local info = AQL:GetQuest(eng.questID)

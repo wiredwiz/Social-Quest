@@ -4,6 +4,8 @@
 
 SocialQuestTabUtils = {}
 
+local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
+
 local WOWHEAD_QUEST_BASE = "https://www.wowhead.com/tbc/quest="
 
 -- Builds the Wowhead quest URL from a questID.
@@ -16,7 +18,7 @@ end
 function SocialQuestTabUtils.GetZoneForQuestID(questID)
     local info = SocialQuest.AQL:GetQuest(questID)
     if info and info.zone then return info.zone end
-    return "Other Quests"
+    return L["Other Quests"]
 end
 
 -- Returns chainInfo for any questID; queries the provider for remote quests

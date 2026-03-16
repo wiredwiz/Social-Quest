@@ -4,6 +4,8 @@
 
 PartyTab = {}
 
+local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
+
 ------------------------------------------------------------------------
 -- Private helpers
 ------------------------------------------------------------------------
@@ -20,7 +22,7 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
     if myInfo then
         local ci = myInfo.chainInfo
         table.insert(players, {
-            name           = "(You)",
+            name           = L["(You)"],
             isMe           = true,
             hasSocialQuest = true,
             hasCompleted   = false,
@@ -31,7 +33,7 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
         })
     elseif AQL:HasCompletedQuest(questID) then
         table.insert(players, {
-            name           = "(You)",
+            name           = L["(You)"],
             isMe           = true,
             hasSocialQuest = true,
             hasCompleted   = true,
@@ -90,7 +92,7 @@ end
 ------------------------------------------------------------------------
 
 function PartyTab:GetLabel()
-    return "Party"
+    return L["Party"]
 end
 
 -- Builds the zone/chain/quest tree from all party members + local player.
