@@ -9,6 +9,17 @@
 Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
 Libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
 Util\Colors.lua
+Locales\enUS.lua
+Locales\deDE.lua
+Locales\frFR.lua
+Locales\esES.lua
+Locales\esMX.lua
+Locales\zhCN.lua
+Locales\zhTW.lua
+Locales\ptBR.lua
+Locales\itIT.lua
+Locales\koKR.lua
+Locales\ruRU.lua
 SocialQuest.lua
 Core\GroupData.lua
 Core\Communications.lua
