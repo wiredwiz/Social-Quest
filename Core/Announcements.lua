@@ -447,13 +447,16 @@ function SocialQuestAnnounce:UpdateQuestWatchSuppression()
     end
 end
 
--- Hook UIErrorsFrame_OnEvent as a belt-and-suspenders guard for TBC Classic builds
--- where UIErrorsFrame:UnregisterEvent("QUEST_WATCH_UPDATE") alone is not sufficient.
+-- Hook UIErrorsFrame's OnEvent script as a belt-and-suspenders guard for TBC Classic
+-- builds where UIErrorsFrame:UnregisterEvent("QUEST_WATCH_UPDATE") alone is not
+-- sufficient.  We use GetScript/SetScript rather than replacing the global
+-- UIErrorsFrame_OnEvent: frames capture the function reference at SetScript time, so
+-- reassigning the global has no effect on the already-registered script.
 -- Called once from SocialQuest:OnInitialize().
 function SocialQuestAnnounce:InitEventHooks()
-    if UIErrorsFrame_OnEvent then
-        local orig = UIErrorsFrame_OnEvent
-        UIErrorsFrame_OnEvent = function(self, event, ...)
+    local orig = UIErrorsFrame:GetScript("OnEvent")
+    if orig then
+        UIErrorsFrame:SetScript("OnEvent", function(self, event, ...)
             if event == "QUEST_WATCH_UPDATE" then
                 local db = SocialQuest.db.profile
                 if db and db.enabled and db.general.displayOwn
@@ -462,7 +465,7 @@ function SocialQuestAnnounce:InitEventHooks()
                 end
             end
             return orig(self, event, ...)
-        end
+        end)
     end
 end
 
