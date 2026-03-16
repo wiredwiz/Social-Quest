@@ -3,6 +3,8 @@
 
 SocialQuestTooltips = {}
 
+local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
+
 local function addGroupProgressToTooltip(tooltip, questID)
     local C = SocialQuestColors
     local AQL = SocialQuest.AQL
@@ -15,7 +17,7 @@ local function addGroupProgressToTooltip(tooltip, questID)
             -- Add the header on the first matching entry, then subsequent entries
             -- fall through to the player rows below.
             if not hasAnyGroupData then
-                tooltip:AddLine(C.header .. "Group Progress" .. C.reset)
+                tooltip:AddLine(C.header .. L["Group Progress"] .. C.reset)
                 hasAnyGroupData = true
             end
 
@@ -23,16 +25,16 @@ local function addGroupProgressToTooltip(tooltip, questID)
             local statusStr
 
             if not entry.hasSocialQuest then
-                statusStr = C.unknown .. "(shared, no data)" .. C.reset
+                statusStr = C.unknown .. L["(shared, no data)"] .. C.reset
             elseif qdata.isComplete then
-                statusStr = C.completed .. "Objectives complete" .. C.reset
+                statusStr = C.completed .. L["Objectives complete"] .. C.reset
             else
                 -- Show objective progress.
                 local parts = {}
                 for i, obj in ipairs(qdata.objectives or {}) do
                     table.insert(parts, obj.numFulfilled .. "/" .. obj.numRequired)
                 end
-                statusStr = #parts > 0 and table.concat(parts, "  ") or C.unknown .. "(no data)" .. C.reset
+                statusStr = #parts > 0 and table.concat(parts, "  ") or C.unknown .. L["(no data)"] .. C.reset
             end
 
             tooltip:AddDoubleLine(

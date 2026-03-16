@@ -1,6 +1,8 @@
 -- UI/Options.lua
 -- AceConfig options table. Accessible via /sq config or Interface Options.
 
+local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
+
 SocialQuestOptions = {}
 
 function SocialQuestOptions:Initialize()
@@ -32,67 +34,63 @@ function SocialQuestOptions:Initialize()
     -- questOnly = false → all 7 keys (party, battleground, whisperFriends).
     local function announceChatGroup(sectionKey, questOnly)
         local args = {
-            accepted  = toggle("Accepted",
-                "Send a chat message when you accept a quest.",
+            accepted  = toggle(L["Accepted"],
+                L["Send a chat message when you accept a quest."],
                 { sectionKey, "announce", "accepted"  }),
-            abandoned = toggle("Abandoned",
-                "Send a chat message when you abandon a quest.",
+            abandoned = toggle(L["Abandoned"],
+                L["Send a chat message when you abandon a quest."],
                 { sectionKey, "announce", "abandoned" }),
-            finished  = toggle("Finished",
-                "Send a chat message when all your quest objectives are complete (before turning in).",
+            finished  = toggle(L["Finished"],
+                L["Send a chat message when all your quest objectives are complete (before turning in)."],
                 { sectionKey, "announce", "finished"  }),
-            completed = toggle("Completed",
-                "Send a chat message when you turn in a quest.",
+            completed = toggle(L["Completed"],
+                L["Send a chat message when you turn in a quest."],
                 { sectionKey, "announce", "completed" }),
-            failed    = toggle("Failed",
-                "Send a chat message when a quest fails.",
+            failed    = toggle(L["Failed"],
+                L["Send a chat message when a quest fails."],
                 { sectionKey, "announce", "failed"    }),
         }
         if not questOnly then
             args.objective_progress = toggle(
-                "Objective Progress",
-                "Send a chat message when a quest objective progresses or regresses. "
-                .. "Format matches Questie's style. Never suppressed by Questie — "
-                .. "Questie does not announce partial progress.",
+                L["Objective Progress"],
+                L["Send a chat message when a quest objective progresses or regresses. Format matches Questie's style. Never suppressed by Questie — Questie does not announce partial progress."],
                 { sectionKey, "announce", "objective_progress" })
             args.objective_complete = toggle(
-                "Objective Complete",
-                "Send a chat message when a quest objective reaches its goal (e.g. 8/8 Kobolds). "
-                .. "Suppressed automatically if Questie is installed and its "
-                .. "'Announce Objectives' setting is enabled.",
+                L["Objective Complete"],
+                L["Send a chat message when a quest objective reaches its goal (e.g. 8/8 Kobolds). Suppressed automatically if Questie is installed and its 'Announce Objectives' setting is enabled."],
                 { sectionKey, "announce", "objective_complete" })
         end
-        return { type = "group", name = "Announce in Chat", inline = true, order = 3, args = args }
+        return { type = "group", name = L["Announce in Chat"], inline = true, order = 3, args = args }
     end
 
     -- Builds the "Own Quest Banners" inline group under General.
     local function ownDisplayEventsGroup()
         return {
             type   = "group",
-            name   = "Own Quest Banners",
+            name   = L["Own Quest Banners"],
             inline = true,
             order  = 5,
             args   = {
-                accepted  = toggle("Accepted",
-                    "Show a banner when you accept a quest.",
+                accepted  = toggle(L["Accepted"],
+                    L["Show a banner when you accept a quest."],
                     { "general", "displayOwnEvents", "accepted"  }),
-                abandoned = toggle("Abandoned",
-                    "Show a banner when you abandon a quest.",
+                abandoned = toggle(L["Abandoned"],
+                    L["Show a banner when you abandon a quest."],
                     { "general", "displayOwnEvents", "abandoned" }),
-                finished  = toggle("Finished",
-                    "Show a banner when all objectives on a quest are complete (before turning in).",
+                finished  = toggle(L["Finished"],
+                    L["Show a banner when all objectives on a quest are complete (before turning in)."],
                     { "general", "displayOwnEvents", "finished"  }),
-                completed = toggle("Completed",
-                    "Show a banner when you turn in a quest.",
+                completed = toggle(L["Completed"],
+                    L["Show a banner when you turn in a quest."],
                     { "general", "displayOwnEvents", "completed" }),
-                failed    = toggle("Failed",
-                    "Show a banner when a quest fails.",
+                failed    = toggle(L["Failed"],
+                    L["Show a banner when a quest fails."],
                     { "general", "displayOwnEvents", "failed"    }),
-                objective_progress = toggle("Objective Progress",
-                    "Show a banner when one of your quest objectives progresses or regresses.",
+                objective_progress = toggle(L["Objective Progress"],
+                    L["Show a banner when one of your quest objectives progresses or regresses."],
                     { "general", "displayOwnEvents", "objective_progress" }),
-                objective_complete = toggle("Objective Complete",
-                    "Show a banner when one of your quest objectives reaches its goal (e.g. 8/8).",
+                objective_complete = toggle(L["Objective Complete"],
+                    L["Show a banner when one of your quest objectives reaches its goal (e.g. 8/8)."],
                     { "general", "displayOwnEvents", "objective_complete" }),
             },
         }
@@ -103,31 +101,30 @@ function SocialQuestOptions:Initialize()
     local function displayEventsGroup(sectionKey)
         return {
             type   = "group",
-            name   = "Display Events",
+            name   = L["Display Events"],
             inline = true,
             order  = 4,
             args   = {
-                accepted  = toggle("Accepted",
-                    "Show a banner on screen when a group member accepts a quest.",
+                accepted  = toggle(L["Accepted"],
+                    L["Show a banner on screen when a group member accepts a quest."],
                     { sectionKey, "display", "accepted"  }),
-                abandoned = toggle("Abandoned",
-                    "Show a banner on screen when a group member abandons a quest.",
+                abandoned = toggle(L["Abandoned"],
+                    L["Show a banner on screen when a group member abandons a quest."],
                     { sectionKey, "display", "abandoned" }),
-                finished  = toggle("Finished",
-                    "Show a banner on screen when a group member finishes all objectives on a quest.",
+                finished  = toggle(L["Finished"],
+                    L["Show a banner on screen when a group member finishes all objectives on a quest."],
                     { sectionKey, "display", "finished"  }),
-                completed = toggle("Completed",
-                    "Show a banner on screen when a group member turns in a quest.",
+                completed = toggle(L["Completed"],
+                    L["Show a banner on screen when a group member turns in a quest."],
                     { sectionKey, "display", "completed" }),
-                failed    = toggle("Failed",
-                    "Show a banner on screen when a group member fails a quest.",
+                failed    = toggle(L["Failed"],
+                    L["Show a banner on screen when a group member fails a quest."],
                     { sectionKey, "display", "failed"    }),
-                objective_progress = toggle("Objective Progress",
-                    "Show a banner on screen when a group member's quest objective count changes "
-                    .. "(includes partial progress and regression).",
+                objective_progress = toggle(L["Objective Progress"],
+                    L["Show a banner on screen when a group member's quest objective count changes (includes partial progress and regression)."],
                     { sectionKey, "display", "objective_progress" }),
-                objective_complete = toggle("Objective Complete",
-                    "Show a banner on screen when a group member completes a quest objective (e.g. 8/8).",
+                objective_complete = toggle(L["Objective Complete"],
+                    L["Show a banner on screen when a group member completes a quest objective (e.g. 8/8)."],
                     { sectionKey, "display", "objective_complete" }),
             },
         }
@@ -140,24 +137,20 @@ function SocialQuestOptions:Initialize()
 
             general = {
                 type  = "group",
-                name  = "General",
+                name  = L["General"],
                 order = 1,
                 args  = {
-                    enabled         = toggle("Enable SocialQuest",
-                        "Master on/off switch for all SocialQuest functionality.",
+                    enabled         = toggle(L["Enable SocialQuest"],
+                        L["Master on/off switch for all SocialQuest functionality."],
                         { "enabled" }, 1),
-                    displayReceived = toggle("Show received events",
-                        "Master switch: allow any banner notifications to appear. "
-                        .. "Individual 'Display Events' groups below control which event "
-                        .. "types are shown per section.",
+                    displayReceived = toggle(L["Show received events"],
+                        L["Master switch: allow any banner notifications to appear. Individual 'Display Events' groups below control which event types are shown per section."],
                         { "general", "displayReceived" }, 2),
-                    colorblindMode  = toggle("Colorblind Mode",
-                        "Use colorblind-friendly colors for all SocialQuest banners and "
-                        .. "UI text. It is unnecessary to enable this if Color Blind mode is "
-                        .. "already enabled in the game client.",
+                    colorblindMode  = toggle(L["Colorblind Mode"],
+                        L["Use colorblind-friendly colors for all SocialQuest banners and UI text. It is unnecessary to enable this if Color Blind mode is already enabled in the game client."],
                         { "general", "colorblindMode" }, 3),
-                    displayOwn      = toggle("Show banners for your own quest events",
-                        "Show a banner on screen for your own quest events.",
+                    displayOwn      = toggle(L["Show banners for your own quest events"],
+                        L["Show a banner on screen for your own quest events."],
                         { "general", "displayOwn" }, 4),
                     ownDisplayEvents = ownDisplayEventsGroup(),
                 },
@@ -165,15 +158,14 @@ function SocialQuestOptions:Initialize()
 
             party = {
                 type  = "group",
-                name  = "Party",
+                name  = L["Party"],
                 order = 2,
                 args  = {
-                    transmit        = toggle("Enable transmission",
-                        "Broadcast your quest events to party members via addon comm.",
+                    transmit        = toggle(L["Enable transmission"],
+                        L["Broadcast your quest events to party members via addon comm."],
                         { "party", "transmit" }, 1),
-                    displayReceived = toggle("Show received events",
-                        "Allow banner notifications from party members (subject to "
-                        .. "Display Events toggles below).",
+                    displayReceived = toggle(L["Show received events"],
+                        L["Allow banner notifications from party members (subject to Display Events toggles below)."],
                         { "party", "displayReceived" }, 2),
                     announceChat    = announceChatGroup("party", false),
                     displayEvents   = displayEventsGroup("party"),
@@ -182,18 +174,17 @@ function SocialQuestOptions:Initialize()
 
             raid = {
                 type  = "group",
-                name  = "Raid",
+                name  = L["Raid"],
                 order = 3,
                 args  = {
-                    transmit        = toggle("Enable transmission",
-                        "Broadcast your quest events to raid members via addon comm.",
+                    transmit        = toggle(L["Enable transmission"],
+                        L["Broadcast your quest events to raid members via addon comm."],
                         { "raid", "transmit" }, 1),
-                    displayReceived = toggle("Show received events",
-                        "Allow banner notifications from raid members.",
+                    displayReceived = toggle(L["Show received events"],
+                        L["Allow banner notifications from raid members."],
                         { "raid", "displayReceived" }, 2),
-                    friendsOnly     = toggle("Only show notifications from friends",
-                        "Only show banner notifications from players on your friends list, "
-                        .. "suppressing banners from strangers in large raids.",
+                    friendsOnly     = toggle(L["Only show notifications from friends"],
+                        L["Only show banner notifications from players on your friends list, suppressing banners from strangers in large raids."],
                         { "raid", "friendsOnly" }, 3),
                     announceChat    = announceChatGroup("raid", true),
                     displayEvents   = displayEventsGroup("raid"),
@@ -202,12 +193,11 @@ function SocialQuestOptions:Initialize()
 
             guild = {
                 type  = "group",
-                name  = "Guild",
+                name  = L["Guild"],
                 order = 4,
                 args  = {
-                    transmit     = toggle("Enable chat announcements",
-                        "Announce your quest events in guild chat. Guild members do not "
-                        .. "need SocialQuest installed to see these messages.",
+                    transmit     = toggle(L["Enable chat announcements"],
+                        L["Announce your quest events in guild chat. Guild members do not need SocialQuest installed to see these messages."],
                         { "guild", "transmit" }, 1),
                     announceChat = announceChatGroup("guild", true),
                 },
@@ -215,17 +205,17 @@ function SocialQuestOptions:Initialize()
 
             battleground = {
                 type  = "group",
-                name  = "Battleground",
+                name  = L["Battleground"],
                 order = 5,
                 args  = {
-                    transmit        = toggle("Enable transmission",
-                        "Broadcast your quest events to battleground members via addon comm.",
+                    transmit        = toggle(L["Enable transmission"],
+                        L["Broadcast your quest events to battleground members via addon comm."],
                         { "battleground", "transmit" }, 1),
-                    displayReceived = toggle("Show received events",
-                        "Allow banner notifications from battleground members.",
+                    displayReceived = toggle(L["Show received events"],
+                        L["Allow banner notifications from battleground members."],
                         { "battleground", "displayReceived" }, 2),
-                    friendsOnly     = toggle("Only show notifications from friends",
-                        "Only show banner notifications from friends in the battleground.",
+                    friendsOnly     = toggle(L["Only show notifications from friends"],
+                        L["Only show banner notifications from friends in the battleground."],
                         { "battleground", "friendsOnly" }, 3),
                     announceChat    = announceChatGroup("battleground", false),
                     displayEvents   = displayEventsGroup("battleground"),
@@ -234,14 +224,14 @@ function SocialQuestOptions:Initialize()
 
             whisperFriends = {
                 type  = "group",
-                name  = "Whisper Friends",
+                name  = L["Whisper Friends"],
                 order = 6,
                 args  = {
-                    enabled      = toggle("Enable whispers to friends",
-                        "Send your quest events as whispers to online friends.",
+                    enabled      = toggle(L["Enable whispers to friends"],
+                        L["Send your quest events as whispers to online friends."],
                         { "whisperFriends", "enabled" }, 1),
-                    groupOnly    = toggle("Group members only",
-                        "Restrict whispers to friends currently in your group.",
+                    groupOnly    = toggle(L["Group members only"],
+                        L["Restrict whispers to friends currently in your group."],
                         { "whisperFriends", "groupOnly" }, 2),
                     announceChat = announceChatGroup("whisperFriends", false),
                 },
@@ -249,98 +239,86 @@ function SocialQuestOptions:Initialize()
 
             follow = {
                 type  = "group",
-                name  = "Follow Notifications",
+                name  = L["Follow Notifications"],
                 order = 7,
                 args  = {
-                    enabled           = toggle("Enable follow notifications",
-                        "Send a whisper to players you start or stop following, and "
-                        .. "receive notifications when someone follows you.",
+                    enabled           = toggle(L["Enable follow notifications"],
+                        L["Send a whisper to players you start or stop following, and receive notifications when someone follows you."],
                         { "follow", "enabled" }),
-                    announceFollowing = toggle("Announce when you follow someone",
-                        "Whisper the player you begin following so they know you are following them.",
+                    announceFollowing = toggle(L["Announce when you follow someone"],
+                        L["Whisper the player you begin following so they know you are following them."],
                         { "follow", "announceFollowing" }),
-                    announceFollowed  = toggle("Announce when followed",
-                        "Display a local message when someone starts or stops following you.",
+                    announceFollowed  = toggle(L["Announce when followed"],
+                        L["Display a local message when someone starts or stops following you."],
                         { "follow", "announceFollowed"  }),
                 },
             },
 
             debug = {
                 type  = "group",
-                name  = "Debug",
+                name  = L["Debug"],
                 order = 8,
                 args  = {
-                    enabled = toggle("Enable debug mode",
-                        "Print internal debug messages to the chat frame. Useful for "
-                        .. "diagnosing comm issues or event flow problems.",
+                    enabled = toggle(L["Enable debug mode"],
+                        L["Print internal debug messages to the chat frame. Useful for diagnosing comm issues or event flow problems."],
                         { "debug", "enabled" }),
                     testBanners = {
                         type   = "group",
-                        name   = "Test Banners and Chat",
+                        name   = L["Test Banners and Chat"],
                         inline = true,
                         args   = {
                             testAccepted = {
                                 type = "execute",
-                                name = "Test Accepted",
-                                desc = "Display a demo banner and local chat preview for the "
-                                    .. "'Quest accepted' event. Bypasses all display filters.",
+                                name = L["Test Accepted"],
+                                desc = L["Display a demo banner and local chat preview for the 'Quest accepted' event. Bypasses all display filters."],
                                 func = function() SocialQuestAnnounce:TestEvent("accepted") end,
                             },
                             testAbandoned = {
                                 type = "execute",
-                                name = "Test Abandoned",
-                                desc = "Display a demo banner and local chat preview for the "
-                                    .. "'Quest abandoned' event.",
+                                name = L["Test Abandoned"],
+                                desc = L["Display a demo banner and local chat preview for the 'Quest abandoned' event."],
                                 func = function() SocialQuestAnnounce:TestEvent("abandoned") end,
                             },
                             testFinished = {
                                 type = "execute",
-                                name = "Test Finished",
-                                desc = "Display a demo banner and local chat preview for the "
-                                    .. "'Quest finished objectives' event.",
+                                name = L["Test Finished"],
+                                desc = L["Display a demo banner and local chat preview for the 'Quest finished objectives' event."],
                                 func = function() SocialQuestAnnounce:TestEvent("finished") end,
                             },
                             testCompleted = {
                                 type = "execute",
-                                name = "Test Completed",
-                                desc = "Display a demo banner and local chat preview for the "
-                                    .. "'Quest turned in' event.",
+                                name = L["Test Completed"],
+                                desc = L["Display a demo banner and local chat preview for the 'Quest turned in' event."],
                                 func = function() SocialQuestAnnounce:TestEvent("completed") end,
                             },
                             testFailed = {
                                 type = "execute",
-                                name = "Test Failed",
-                                desc = "Display a demo banner and local chat preview for the "
-                                    .. "'Quest failed' event.",
+                                name = L["Test Failed"],
+                                desc = L["Display a demo banner and local chat preview for the 'Quest failed' event."],
                                 func = function() SocialQuestAnnounce:TestEvent("failed") end,
                             },
                             testObjProgress = {
                                 type = "execute",
-                                name = "Test Obj. Progress",
-                                desc = "Display a demo banner and local chat preview for a "
-                                    .. "partial objective progress update (e.g. 3/8).",
+                                name = L["Test Obj. Progress"],
+                                desc = L["Display a demo banner and local chat preview for a partial objective progress update (e.g. 3/8)."],
                                 func = function() SocialQuestAnnounce:TestEvent("objective_progress") end,
                             },
                             testObjComplete = {
                                 type = "execute",
-                                name = "Test Obj. Complete",
-                                desc = "Display a demo banner and local chat preview for an "
-                                    .. "objective completion (e.g. 8/8).",
+                                name = L["Test Obj. Complete"],
+                                desc = L["Display a demo banner and local chat preview for an objective completion (e.g. 8/8)."],
                                 func = function() SocialQuestAnnounce:TestEvent("objective_complete") end,
                             },
                             testObjRegression = {
                                 type = "execute",
-                                name = "Test Obj. Regression",
-                                desc = "Display a demo banner and local chat preview for an "
-                                    .. "objective regression (count went backward).",
+                                name = L["Test Obj. Regression"],
+                                desc = L["Display a demo banner and local chat preview for an objective regression (count went backward)."],
                                 func = function() SocialQuestAnnounce:TestEvent("objective_regression") end,
                             },
                             testAllComplete = {
                                 type = "execute",
-                                name = "Test All Completed",
-                                desc = "Display a demo banner for the 'Everyone has completed' "
-                                    .. "purple notification. No chat preview (this event never "
-                                    .. "generates outbound chat directly).",
+                                name = L["Test All Completed"],
+                                desc = L["Display a demo banner for the 'Everyone has completed' purple notification. No chat preview (this event never generates outbound chat directly)."],
                                 func = function() SocialQuestAnnounce:TestEvent("all_complete") end,
                             },
                         },

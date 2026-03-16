@@ -8,6 +8,7 @@ SocialQuestGroupFrame = {}
 local frame          = nil
 local refreshPending = false
 local urlPopup       = nil
+local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 
 -- Ordered tab providers. The id must match the collapsedZones subtable key.
 -- MineTab/PartyTab/SharedTab are loaded before GroupFrame per TOC order, so
@@ -36,7 +37,7 @@ local function createUrlPopup()
     p:SetScript("OnDragStop", p.StopMovingOrSizing)
     p:Hide()
 
-    p.TitleText:SetText("Quest URL (Ctrl+C to copy)")
+    p.TitleText:SetText(L["Quest URL (Ctrl+C to copy)"])
 
     local eb = CreateFrame("EditBox", nil, p)
     eb:SetSize(300, 20)
@@ -97,7 +98,7 @@ local function createFrame()
     f:SetScript("OnMouseDown", function(self) self:Raise() end)
     f:Hide()
 
-    f.TitleText:SetText("SocialQuest — Group Quests")
+    f.TitleText:SetText(L["SocialQuest — Group Quests"])
 
     -- Tab buttons.
     local function makeTab(id, label, offsetX)

@@ -26,6 +26,7 @@ local THROTTLE_DELAY = 1.0  -- seconds between chat sends
 
 -- Ticker drives the throttle queue. Created once and kept running.
 local ticker = nil
+local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 
 local function startThrottleTicker()
     if ticker then return end
@@ -55,31 +56,31 @@ end
 ------------------------------------------------------------------------
 
 local OUTBOUND_QUEST_TEMPLATES = {
-    accepted  = "Quest accepted: %s",
-    abandoned = "Quest abandoned: %s",
-    finished  = "Quest complete (objectives done): %s",
-    completed = "Quest turned in: %s",
-    failed    = "Quest failed: %s",
+    accepted  = L["Quest accepted: %s"],
+    abandoned = L["Quest abandoned: %s"],
+    finished  = L["Quest complete (objectives done): %s"],
+    completed = L["Quest turned in: %s"],
+    failed    = L["Quest failed: %s"],
 }
 
 local function formatOutboundQuestMsg(eventType, questTitle)
-    local tmpl = OUTBOUND_QUEST_TEMPLATES[eventType] or "Quest event: %s"
+    local tmpl = OUTBOUND_QUEST_TEMPLATES[eventType] or L["Quest event: %s"]
     return string.format(tmpl, questTitle)
 end
 
 -- isRegression appends " (regression)" to distinguish direction.
 local function formatOutboundObjectiveMsg(questTitle, objText, numFulfilled, numRequired, isRegression)
-    local suffix = isRegression and " (regression)" or ""
-    return string.format("{rt1} SocialQuest: %d/%d %s%s for %s!",
+    local suffix = isRegression and L[" (regression)"] or ""
+    return string.format(L["{rt1} SocialQuest: %d/%d %s%s for %s!"],
         numFulfilled, numRequired, objText, suffix, questTitle)
 end
 
 local BANNER_QUEST_TEMPLATES = {
-    accepted  = "%s accepted: %s",
-    abandoned = "%s abandoned: %s",
-    finished  = "%s finished objectives: %s",
-    completed = "%s completed: %s",
-    failed    = "%s failed: %s",
+    accepted  = L["%s accepted: %s"],
+    abandoned = L["%s abandoned: %s"],
+    finished  = L["%s finished objectives: %s"],
+    completed = L["%s completed: %s"],
+    failed    = L["%s failed: %s"],
 }
 
 local function formatQuestBannerMsg(sender, eventType, questTitle)
@@ -90,13 +91,13 @@ end
 
 local function formatObjectiveBannerMsg(sender, questTitle, numFulfilled, numRequired, isComplete, isRegression)
     if isComplete then
-        return string.format("%s completed objective: %s (%d/%d)",
+        return string.format(L["%s completed objective: %s (%d/%d)"],
             sender, questTitle, numFulfilled, numRequired)
     elseif isRegression then
-        return string.format("%s regressed: %s (%d/%d)",
+        return string.format(L["%s regressed: %s (%d/%d)"],
             sender, questTitle, numFulfilled, numRequired)
     else
-        return string.format("%s progressed: %s (%d/%d)",
+        return string.format(L["%s progressed: %s (%d/%d)"],
             sender, questTitle, numFulfilled, numRequired)
     end
 end
@@ -114,7 +115,7 @@ local function displayBanner(msg, eventType)
 end
 
 local function displayChatPreview(msg)
-    DEFAULT_CHAT_FRAME:AddMessage("|cFF00CCFFSocialQuest (preview):|r " .. msg)
+    DEFAULT_CHAT_FRAME:AddMessage(L["|cFF00CCFFSocialQuest (preview):|r "] .. msg)
 end
 
 ------------------------------------------------------------------------
@@ -327,7 +328,7 @@ local function checkAllCompleted(questID, localHasCompleted)
                or (AQL and AQL:GetQuestTitle(questID))
                or ("Quest " .. questID)
 
-    local msg = "Everyone has completed: " .. title
+    local msg = string.format(L["Everyone has completed: %s"], title)
     displayBanner(msg, "all_complete")
 
     -- Chat message only when the local player triggered it (avoids duplicate
@@ -413,7 +414,7 @@ function SocialQuestAnnounce:OnOwnQuestEvent(eventType, questTitle)
     if not db.general.displayOwn then return end
     if not db.general.displayOwnEvents[eventType] then return end
 
-    local msg = formatQuestBannerMsg("You", eventType, questTitle)
+    local msg = formatQuestBannerMsg(L["You"], eventType, questTitle)
     if msg then displayBanner(msg, eventType) end
 end
 
@@ -424,7 +425,7 @@ function SocialQuestAnnounce:OnOwnObjectiveEvent(eventType, questInfo, objective
     if not db.general.displayOwnEvents[eventType] then return end
 
     local msg = formatObjectiveBannerMsg(
-        "You", questInfo.title,
+        L["You"], questInfo.title,
         objective.numFulfilled, objective.numRequired,
         eventType == "objective_complete", isRegression)
     displayBanner(msg, eventType)
@@ -498,13 +499,13 @@ end
 function SocialQuestAnnounce:OnFollowStart(sender)
     local db = SocialQuest.db.profile
     if not db.follow.enabled or not db.follow.announceFollowed then return end
-    SocialQuest:Print(sender .. " started following you.")
+    SocialQuest:Print(string.format(L["%s started following you."], sender))
 end
 
 function SocialQuestAnnounce:OnFollowStop(sender)
     local db = SocialQuest.db.profile
     if not db.follow.enabled or not db.follow.announceFollowed then return end
-    SocialQuest:Print(sender .. " stopped following you.")
+    SocialQuest:Print(string.format(L["%s stopped following you."], sender))
 end
 
 ------------------------------------------------------------------------

@@ -11,6 +11,7 @@ SocialQuest = LibStub("AceAddon-3.0"):NewAddon(
 )
 
 local AQL  -- set in OnInitialize
+local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 
 ------------------------------------------------------------------------
 -- Lifecycle
@@ -20,7 +21,7 @@ function SocialQuest:OnInitialize()
     -- Verify AQL is present before doing anything else.
     AQL = LibStub("AbsoluteQuestLog-1.0", true)
     if not AQL then
-        self:Print("|cFFFF0000ERROR:|r AbsoluteQuestLog-1.0 is not installed. SocialQuest is disabled.")
+        self:Print(L["ERROR: AbsoluteQuestLog-1.0 is not installed. SocialQuest is disabled."])
         return
     end
 
@@ -83,8 +84,8 @@ function SocialQuest:OnEnable()
             end,
             OnTooltipShow = function(tooltip)
                 tooltip:SetText("SocialQuest")
-                tooltip:AddLine("Left-click to open group quest frame.", 1, 1, 1)
-                tooltip:AddLine("Right-click to open settings.", 1, 1, 1)
+                tooltip:AddLine(L["Left-click to open group quest frame."], 1, 1, 1)
+                tooltip:AddLine(L["Right-click to open settings."], 1, 1, 1)
                 tooltip:Show()
             end,
         })

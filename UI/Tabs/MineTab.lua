@@ -5,12 +5,14 @@
 
 MineTab = {}
 
+local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
+
 ------------------------------------------------------------------------
 -- Tab provider interface
 ------------------------------------------------------------------------
 
 function MineTab:GetLabel()
-    return "Mine"
+    return L["Mine"]
 end
 
 -- Builds the zone/chain/quest tree from local AQL data + GroupData chain peers.
@@ -23,7 +25,7 @@ function MineTab:BuildTree()
     local orderIdx = 0
 
     for questID, questInfo in pairs(AQL:GetAllQuests()) do
-        local zoneName = questInfo.zone or "Other Quests"
+        local zoneName = questInfo.zone or L["Other Quests"]
 
         if not tree.zones[zoneName] then
             orderIdx = orderIdx + 1

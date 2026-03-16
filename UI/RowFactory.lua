@@ -8,6 +8,7 @@ RowFactory = {}
 local CONTENT_WIDTH = 360
 local ROW_H         = 18     -- standard row height in pixels
 local INDENT_STEP   = 16     -- pixels per indent level
+local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 
 ------------------------------------------------------------------------
 -- Private helpers
@@ -59,7 +60,7 @@ function RowFactory.AddExpandCollapseHeader(contentFrame, y, onExpand, onCollaps
     expandLabel:SetSize(mid - 24, ROW_H)
     expandLabel:SetJustifyH("LEFT")
     expandLabel:SetJustifyV("MIDDLE")
-    expandLabel:SetText(C.white .. "expand all" .. C.reset)
+    expandLabel:SetText(C.white .. L["expand all"] .. C.reset)
 
     local collapseBtn = CreateFrame("Button", nil, contentFrame)
     collapseBtn:SetSize(22, ROW_H)
@@ -74,7 +75,7 @@ function RowFactory.AddExpandCollapseHeader(contentFrame, y, onExpand, onCollaps
     collapseLabel:SetSize(CONTENT_WIDTH - mid - 24, ROW_H)
     collapseLabel:SetJustifyH("LEFT")
     collapseLabel:SetJustifyV("MIDDLE")
-    collapseLabel:SetText(C.white .. "collapse all" .. C.reset)
+    collapseLabel:SetText(C.white .. L["collapse all"] .. C.reset)
 
     return y + ROW_H + 4
 end
@@ -139,7 +140,7 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     end)
     linkBtn:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText("Click here to copy the wowhead quest url", 1, 1, 1)
+        GameTooltip:SetText(L["Click here to copy the wowhead quest url"], 1, 1, 1)
         GameTooltip:Show()
     end)
     linkBtn:SetScript("OnLeave", function()
@@ -150,9 +151,9 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     -- Determine badge text. "Complete" trumps "Group".
     local badgeText = ""
     if questEntry.isComplete then
-        badgeText = SocialQuestColors.GetUIColor("completed") .. "(Complete)" .. C.reset
+        badgeText = SocialQuestColors.GetUIColor("completed") .. L["(Complete)"] .. C.reset
     elseif questEntry.suggestedGroup and questEntry.suggestedGroup > 0 then
-        badgeText = C.chain .. "(Group)" .. C.reset
+        badgeText = C.chain .. L["(Group)"] .. C.reset
     end
     local badgeWidth = badgeText ~= "" and 80 or 0
 
@@ -166,8 +167,7 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     local ci = questEntry.chainInfo
     if ci and ci.knownStatus == "known" then
         titleText = titleText
-            .. " (Step " .. tostring(ci.step   or "?")
-            .. " of "    .. tostring(ci.length or "?") .. ")"
+            .. string.format(L[" (Step %s of %s)"], tostring(ci.step or "?"), tostring(ci.length or "?"))
     end
     local timeStr = formatTimeRemaining(questEntry.timerSeconds, questEntry.snapshotTime)
     if timeStr then
@@ -248,7 +248,7 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent)
         fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
         fs:SetWidth(CONTENT_WIDTH - x - 4)
         fs:SetJustifyH("LEFT")
-        fs:SetText(SocialQuestColors.GetUIColor("completed") .. name .. " FINISHED" .. C.reset)
+        fs:SetText(SocialQuestColors.GetUIColor("completed") .. string.format(L["%s FINISHED"], name) .. C.reset)
         return y + ROW_H + 2
 
     elseif playerEntry.needsShare then
@@ -256,7 +256,7 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent)
         fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
         fs:SetWidth(CONTENT_WIDTH - x - 4)
         fs:SetJustifyH("LEFT")
-        fs:SetText(C.unknown .. name .. " Needs it Shared" .. C.reset)
+        fs:SetText(C.unknown .. string.format(L["%s Needs it Shared"], name) .. C.reset)
         return y + ROW_H + 2
 
     elseif not playerEntry.hasSocialQuest
@@ -265,7 +265,7 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent)
         fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
         fs:SetWidth(CONTENT_WIDTH - x - 4)
         fs:SetJustifyH("LEFT")
-        fs:SetText(C.unknown .. name .. " (no data)" .. C.reset)
+        fs:SetText(C.unknown .. string.format(L["%s (no data)"], name) .. C.reset)
         return y + ROW_H + 2
 
     else
