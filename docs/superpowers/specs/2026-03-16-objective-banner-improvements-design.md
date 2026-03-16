@@ -42,13 +42,13 @@ local function formatObjectiveBannerMsg(sender, questTitle, objText, numFulfille
 
 ```lua
 if isComplete then
-    return string.format(L["%s completed objective: %s \226\128\148 %s (%d/%d)"],
+    return string.format(L["%s completed objective: %s — %s (%d/%d)"],
         sender, questTitle, objText, numFulfilled, numRequired)
 elseif isRegression then
-    return string.format(L["%s regressed: %s \226\128\148 %s (%d/%d)"],
+    return string.format(L["%s regressed: %s — %s (%d/%d)"],
         sender, questTitle, objText, numFulfilled, numRequired)
 else
-    return string.format(L["%s progressed: %s \226\128\148 %s (%d/%d)"],
+    return string.format(L["%s progressed: %s — %s (%d/%d)"],
         sender, questTitle, objText, numFulfilled, numRequired)
 end
 ```
