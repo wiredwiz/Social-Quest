@@ -11,7 +11,7 @@ L["Quest failed: %s"]                     = "任務失敗：%s"
 L["Quest event: %s"]                      = "任務事件：%s"
 
 -- Core/Announcements.lua — outbound objective chat
-L[" (regression)"]                        = "（退步）"
+L[" (regression)"]                        = " （退步）"
 L["{rt1} SocialQuest: %d/%d %s%s for %s!"] = "{rt1} SocialQuest：%d/%d %s%s，任務：%s！"
 
 -- Core/Announcements.lua — inbound banner templates
@@ -52,7 +52,7 @@ L["collapse all"]                          = "全部收合"
 L["Click here to copy the wowhead quest url"] = "點擊此處複製 Wowhead 任務連結"
 L["(Complete)"]                            = "（已完成）"
 L["(Group)"]                               = "（團隊）"
-L[" (Step %s of %s)"]                      = "（第 %s/%s 步）"
+L[" (Step %s of %s)"]                      = " （第 %s/%s 步）"
 L["%s FINISHED"]                           = "%s 已完成"
 L["%s Needs it Shared"]                    = "%s 需要分享"
 L["%s (no data)"]                          = "%s（無資料）"
