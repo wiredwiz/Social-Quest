@@ -33,6 +33,10 @@ function SocialQuest:OnInitialize()
 
     -- Register options panel.
     SocialQuestOptions:Initialize()
+
+    -- Hook UIErrorsFrame_OnEvent to suppress the default objective progress
+    -- notification when Social Quest's own banner is active.
+    SocialQuestAnnounce:InitEventHooks()
 end
 
 function SocialQuest:OnEnable()

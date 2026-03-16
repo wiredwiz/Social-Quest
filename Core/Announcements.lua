@@ -11,7 +11,8 @@
 --   6. Public event handlers: OnQuestEvent, OnObjectiveEvent,
 --      OnRemoteQuestEvent, OnRemoteObjectiveEvent, OnOwnQuestEvent,
 --      OnOwnObjectiveEvent
---   7. Debug test entry point: TestEvent
+--   7. InitEventHooks: UIErrorsFrame_OnEvent hook for suppression backup
+--   8. Debug test entry point: TestEvent
 --   8. Follow notifications + WhisperFriends helpers  (unchanged)
 --
 -- Chat queue: all SendChatMessage calls pass through a FIFO queue with a
@@ -229,7 +230,7 @@ function SocialQuestAnnounce:OnObjectiveEvent(eventType, questInfo, objective, i
     if not questieWouldAnnounce(eventType) then
         local msg = formatOutboundObjectiveMsg(
             questInfo.title,
-            objective.text or "",
+            objective.name or "",
             objective.numFulfilled,
             objective.numRequired,
             isRegression)
@@ -398,7 +399,7 @@ function SocialQuestAnnounce:OnRemoteObjectiveEvent(sender, questID, objIndex, n
     local AQL     = SocialQuest.AQL
     local objs    = AQL and AQL:GetQuestObjectives(questID)
     local objInfo = objs and objs[objIndex]
-    local objText = (objInfo and objInfo.text) or ""
+    local objText = (objInfo and objInfo.name) or ""
     local title   = (AQL and AQL:GetQuestTitle(questID))
                  or ("Quest " .. questID)
 
@@ -428,7 +429,7 @@ function SocialQuestAnnounce:OnOwnObjectiveEvent(eventType, questInfo, objective
 
     local msg = formatObjectiveBannerMsg(
         L["You"], questInfo.title,
-        objective.text or "",
+        objective.name or "",
         objective.numFulfilled, objective.numRequired,
         eventType == "objective_complete", isRegression)
     displayBanner(msg, eventType)
@@ -443,6 +444,25 @@ function SocialQuestAnnounce:UpdateQuestWatchSuppression()
         UIErrorsFrame:UnregisterEvent("QUEST_WATCH_UPDATE")
     else
         UIErrorsFrame:RegisterEvent("QUEST_WATCH_UPDATE")
+    end
+end
+
+-- Hook UIErrorsFrame_OnEvent as a belt-and-suspenders guard for TBC Classic builds
+-- where UIErrorsFrame:UnregisterEvent("QUEST_WATCH_UPDATE") alone is not sufficient.
+-- Called once from SocialQuest:OnInitialize().
+function SocialQuestAnnounce:InitEventHooks()
+    if UIErrorsFrame_OnEvent then
+        local orig = UIErrorsFrame_OnEvent
+        UIErrorsFrame_OnEvent = function(self, event, ...)
+            if event == "QUEST_WATCH_UPDATE" then
+                local db = SocialQuest.db.profile
+                if db and db.enabled and db.general.displayOwn
+                        and db.general.displayOwnEvents.objective_progress then
+                    return
+                end
+            end
+            return orig(self, event, ...)
+        end
     end
 end
 
