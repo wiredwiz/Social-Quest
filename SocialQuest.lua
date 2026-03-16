@@ -280,27 +280,29 @@ end
 ------------------------------------------------------------------------
 
 function SocialQuest:OnQuestAccepted(event, questInfo)
-    SocialQuestAnnounce:OnQuestEvent("accepted", questInfo.questID)
+    SocialQuestAnnounce:OnQuestEvent("accepted", questInfo.questID, questInfo)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "accepted")
 end
 
 function SocialQuest:OnQuestAbandoned(event, questInfo)
-    SocialQuestAnnounce:OnQuestEvent("abandoned", questInfo.questID)
+    SocialQuestAnnounce:OnQuestEvent("abandoned", questInfo.questID, questInfo)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "abandoned")
 end
 
 function SocialQuest:OnQuestFinished(event, questInfo)
+    -- questInfo intentionally NOT passed: "finished" is excluded from chain-step
+    -- annotation. See CHAIN_STEP_EVENTS in Core/Announcements.lua.
     SocialQuestAnnounce:OnQuestEvent("finished", questInfo.questID)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "finished")
 end
 
 function SocialQuest:OnQuestCompleted(event, questInfo)
-    SocialQuestAnnounce:OnQuestEvent("completed", questInfo.questID)
+    SocialQuestAnnounce:OnQuestEvent("completed", questInfo.questID, questInfo)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "completed")
 end
 
 function SocialQuest:OnQuestFailed(event, questInfo)
-    SocialQuestAnnounce:OnQuestEvent("failed", questInfo.questID)
+    SocialQuestAnnounce:OnQuestEvent("failed", questInfo.questID, questInfo)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "failed")
 end
 
