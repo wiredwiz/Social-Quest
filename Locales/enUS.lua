@@ -27,9 +27,9 @@ L["%s abandoned: %s"]                     = true
 L["%s finished objectives: %s"]           = true
 L["%s completed: %s"]                     = true
 L["%s failed: %s"]                        = true
-L["%s completed objective: %s (%d/%d)"]   = true
-L["%s regressed: %s (%d/%d)"]             = true
-L["%s progressed: %s (%d/%d)"]            = true
+L["%s completed objective: %s — %s (%d/%d)"] = true
+L["%s regressed: %s — %s (%d/%d)"]           = true
+L["%s progressed: %s — %s (%d/%d)"]          = true
 
 -- Core/Announcements.lua — chat preview label
 -- Trailing space after |r is intentional: separates label from banner text.

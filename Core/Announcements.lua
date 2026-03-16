@@ -89,16 +89,16 @@ local function formatQuestBannerMsg(sender, eventType, questTitle)
     return string.format(tmpl, sender, questTitle)
 end
 
-local function formatObjectiveBannerMsg(sender, questTitle, numFulfilled, numRequired, isComplete, isRegression)
+local function formatObjectiveBannerMsg(sender, questTitle, objText, numFulfilled, numRequired, isComplete, isRegression)
     if isComplete then
-        return string.format(L["%s completed objective: %s (%d/%d)"],
-            sender, questTitle, numFulfilled, numRequired)
+        return string.format(L["%s completed objective: %s — %s (%d/%d)"],
+            sender, questTitle, objText, numFulfilled, numRequired)
     elseif isRegression then
-        return string.format(L["%s regressed: %s (%d/%d)"],
-            sender, questTitle, numFulfilled, numRequired)
+        return string.format(L["%s regressed: %s — %s (%d/%d)"],
+            sender, questTitle, objText, numFulfilled, numRequired)
     else
-        return string.format(L["%s progressed: %s (%d/%d)"],
-            sender, questTitle, numFulfilled, numRequired)
+        return string.format(L["%s progressed: %s — %s (%d/%d)"],
+            sender, questTitle, objText, numFulfilled, numRequired)
     end
 end
 
@@ -377,7 +377,7 @@ function SocialQuestAnnounce:OnRemoteQuestEvent(sender, eventType, questID, cach
     if msg then displayBanner(msg, eventType) end
 end
 
-function SocialQuestAnnounce:OnRemoteObjectiveEvent(sender, questID, numFulfilled, numRequired, isComplete, isRegression)
+function SocialQuestAnnounce:OnRemoteObjectiveEvent(sender, questID, objIndex, numFulfilled, numRequired, isComplete, isRegression)
     local db = SocialQuest.db.profile
     if not db.enabled or not db.general.displayReceived then return end
 
@@ -395,12 +395,14 @@ function SocialQuestAnnounce:OnRemoteObjectiveEvent(sender, questID, numFulfille
     if section == "battleground" and db.battleground.friendsOnly
         and not C_FriendList.IsFriend(sender) then return end
 
-    local AQL   = SocialQuest.AQL
-    local title = (AQL and AQL:GetQuestLink(questID))
-               or (AQL and AQL:GetQuestTitle(questID))
-               or ("Quest " .. questID)
+    local AQL     = SocialQuest.AQL
+    local objs    = AQL and AQL:GetQuestObjectives(questID)
+    local objInfo = objs and objs[objIndex]
+    local objText = (objInfo and objInfo.text) or ""
+    local title   = (AQL and AQL:GetQuestTitle(questID))
+                 or ("Quest " .. questID)
 
-    local msg = formatObjectiveBannerMsg(sender, title, numFulfilled, numRequired, isComplete, isRegression)
+    local msg = formatObjectiveBannerMsg(sender, title, objText, numFulfilled, numRequired, isComplete, isRegression)
     displayBanner(msg, eventType)
 end
 
@@ -426,6 +428,7 @@ function SocialQuestAnnounce:OnOwnObjectiveEvent(eventType, questInfo, objective
 
     local msg = formatObjectiveBannerMsg(
         L["You"], questInfo.title,
+        objective.text or "",
         objective.numFulfilled, objective.numRequired,
         eventType == "objective_complete", isRegression)
     displayBanner(msg, eventType)
@@ -465,17 +468,17 @@ local TEST_DEMOS = {
     },
     objective_progress = {
         outbound = "{rt1} SocialQuest: 3/8 Kobolds Slain for [A Daunting Task]!",
-        banner   = "TestPlayer progressed: [A Daunting Task] (3/8)",
+        banner   = "TestPlayer progressed: [A Daunting Task] — Kobolds Slain (3/8)",
         colorKey = "objective_progress",
     },
     objective_complete = {
         outbound = "{rt1} SocialQuest: 8/8 Kobolds Slain for [A Daunting Task]!",
-        banner   = "TestPlayer completed objective: [A Daunting Task] (8/8)",
+        banner   = "TestPlayer completed objective: [A Daunting Task] — Kobolds Slain (8/8)",
         colorKey = "objective_complete",
     },
     objective_regression = {
         outbound = "{rt1} SocialQuest: 2/8 Kobolds Slain (regression) for [A Daunting Task]!",
-        banner   = "TestPlayer regressed: [A Daunting Task] (2/8)",
+        banner   = "TestPlayer regressed: [A Daunting Task] — Kobolds Slain (2/8)",
         colorKey = "objective_progress",   -- same color as progress
     },
     all_complete = {

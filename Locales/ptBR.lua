@@ -20,9 +20,9 @@ L["%s abandoned: %s"]                     = "%s abandonada: %s"
 L["%s finished objectives: %s"]           = "%s concluiu os objetivos: %s"
 L["%s completed: %s"]                     = "%s completada: %s"
 L["%s failed: %s"]                        = "%s falhou: %s"
-L["%s completed objective: %s (%d/%d)"]   = "%s concluiu objetivo: %s (%d/%d)"
-L["%s regressed: %s (%d/%d)"]             = "%s regrediu: %s (%d/%d)"
-L["%s progressed: %s (%d/%d)"]            = "%s progrediu: %s (%d/%d)"
+L["%s completed objective: %s — %s (%d/%d)"] = "%s concluiu objetivo: %s — %s (%d/%d)"
+L["%s regressed: %s — %s (%d/%d)"]           = "%s regrediu: %s — %s (%d/%d)"
+L["%s progressed: %s — %s (%d/%d)"]          = "%s progrediu: %s — %s (%d/%d)"
 
 -- Core/Announcements.lua — chat preview label
 L["|cFF00CCFFSocialQuest (preview):|r "]  = "|cFF00CCFFSocialQuest (prévia):|r "

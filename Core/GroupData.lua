@@ -149,6 +149,7 @@ function SocialQuestGroupData:OnObjectiveReceived(sender, payload)
     -- Banner notification.
     SocialQuestAnnounce:OnRemoteObjectiveEvent(
         sender, payload.questID,
+        payload.objIndex,
         payload.numFulfilled, payload.numRequired,
         isComplete, isRegression)
 
