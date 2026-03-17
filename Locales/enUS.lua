@@ -44,6 +44,12 @@ L["Everyone has completed: %s"]           = true
 -- Used as the sender name in "You accepted: [Quest]" banners. No parentheses.
 L["You"]                                  = true
 
+-- Core/Announcements.lua — chain step annotation
+-- Appended to accepted/completed/failed/abandoned messages when the quest is a known
+-- chain step. No leading space: the space separator is provided by appendChainStep.
+-- %s = step number (integer coerced to string by string.format in Lua 5.1).
+L["(Step %s)"]                            = true
+
 -- Core/Announcements.lua — follow notifications
 -- %s = player character name
 L["%s started following you."]            = true
@@ -67,7 +73,6 @@ L["(Group)"]                                = true
 -- Leading space is intentional: appended directly after quest title.
 -- %s args: (1) step number, (2) chain length. Both are already tostring'd before format.
 L[" (Step %s of %s)"]                       = true
-L["(Step %s)"]                              = true
 -- %s = player character name
 L["%s FINISHED"]                            = true
 L["%s Needs it Shared"]                     = true
