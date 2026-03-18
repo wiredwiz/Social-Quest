@@ -467,38 +467,28 @@ function SocialQuestAnnounce:OnOwnObjectiveEvent(eventType, questInfo, objective
     displayBanner(msg, eventType)
 end
 
-function SocialQuestAnnounce:UpdateQuestWatchSuppression()
-    local db = SocialQuest.db.profile
-    local shouldSuppress = db.enabled
-                       and db.general.displayOwn
-                       and db.general.displayOwnEvents.objective_progress
-    if shouldSuppress then
-        UIErrorsFrame:UnregisterEvent("QUEST_WATCH_UPDATE")
-    else
-        UIErrorsFrame:RegisterEvent("QUEST_WATCH_UPDATE")
-    end
-end
-
--- Hook UIErrorsFrame's OnEvent script as a belt-and-suspenders guard for TBC Classic
--- builds where UIErrorsFrame:UnregisterEvent("QUEST_WATCH_UPDATE") alone is not
--- sufficient.  We use GetScript/SetScript rather than replacing the global
--- UIErrorsFrame_OnEvent: frames capture the function reference at SetScript time, so
--- reassigning the global has no effect on the already-registered script.
+-- Intercept UIErrorsFrame's OnEvent to suppress the native WoW objective-progress
+-- floating text when SocialQuest's own banner is active. In TBC Classic (20505),
+-- quest objective progress notifications arrive via UI_INFO_MESSAGE, not
+-- QUEST_WATCH_UPDATE. We use GetScript/SetScript so the hook chains correctly to any
+-- other addon that installed its own OnEvent before us.
 -- Called once from SocialQuest:OnInitialize().
 function SocialQuestAnnounce:InitEventHooks()
     local orig = UIErrorsFrame:GetScript("OnEvent")
-    if orig then
-        UIErrorsFrame:SetScript("OnEvent", function(self, event, ...)
-            if event == "QUEST_WATCH_UPDATE" then
-                local db = SocialQuest.db.profile
-                if db and db.enabled and db.general.displayOwn
-                        and db.general.displayOwnEvents.objective_progress then
-                    return
-                end
+    if not orig then return end
+    UIErrorsFrame:SetScript("OnEvent", function(self, event, messageType, msg, ...)
+        if event == "UI_INFO_MESSAGE" then
+            local db = SocialQuest.db.profile
+            local AQL = SocialQuest.AQL
+            if db and db.enabled
+                    and db.general.displayOwn
+                    and db.general.displayOwnEvents.objective_progress
+                    and AQL and AQL:IsQuestObjectiveText(msg) then
+                return
             end
-            return orig(self, event, ...)
-        end)
-    end
+        end
+        return orig(self, event, messageType, msg, ...)
+    end)
 end
 
 ------------------------------------------------------------------------
