@@ -37,6 +37,50 @@ local function formatTimeRemaining(timerSeconds, snapshotTime)
     return string.format("%d:%02d", math.floor(remaining / 60), math.floor(remaining % 60))
 end
 
+-- Opens the WoW Quest Log and selects the given questID.
+-- Expands collapsed zone headers one at a time to locate the quest,
+-- collapsing them back if the quest is not in them, so only the zone
+-- containing the target quest ends up expanded.
+-- If the quest is not found (stale data), the log is opened but nothing
+-- is selected.
+local function openQuestLogToQuest(questID)
+    ShowUIPanel(QuestLogFrame)
+    local numEntries = GetNumQuestLogEntries()
+    local i = 1
+    while i <= numEntries do
+        local _, _, _, isHeader, isCollapsed, _, _, id = GetQuestLogTitle(i)
+        if isHeader and isCollapsed then
+            local headerIdx = i
+            ExpandQuestHeader(headerIdx)
+            numEntries = GetNumQuestLogEntries()
+            local found = false
+            i = i + 1
+            while i <= numEntries do
+                local _, _, _, subIsHeader, _, _, _, subId = GetQuestLogTitle(i)
+                if subIsHeader then break end
+                if subId == questID then
+                    found = true
+                    QuestLog_SetSelection(i)
+                    QuestLog_Update()
+                    return
+                end
+                i = i + 1
+            end
+            if not found then
+                CollapseQuestHeader(headerIdx)
+                numEntries = GetNumQuestLogEntries()
+                i = headerIdx + 1
+            end
+        elseif not isHeader and id == questID then
+            QuestLog_SetSelection(i)
+            QuestLog_Update()
+            return
+        else
+            i = i + 1
+        end
+    end
+end
+
 ------------------------------------------------------------------------
 -- Public API
 ------------------------------------------------------------------------
@@ -192,13 +236,19 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     titleFs:SetJustifyV("MIDDLE")
     titleFs:SetText(colorCode .. titleText .. "|r")
 
-    -- Invisible click overlay (shift-click to track/untrack).
+    -- Invisible click overlay: left-click opens quest log, shift-click tracks/untracks.
+    -- Guard is callbacks.onTitleShiftClick: present on My Quests tab (MineTab), nil on
+    -- Party/Shared tabs (those tabs pass {} as callbacks). Party/Shared tab entries can
+    -- have a non-nil logIndex when the local player also has the quest, so logIndex > 0
+    -- is NOT a safe guard — callbacks.onTitleShiftClick is the authoritative indicator.
     if callbacks and callbacks.onTitleShiftClick then
         local titleBtn = CreateFrame("Button", nil, contentFrame)
         titleBtn:SetAllPoints(titleFs)
         titleBtn:SetScript("OnClick", function()
             if IsShiftKeyDown() then
                 callbacks.onTitleShiftClick(questEntry.logIndex, questEntry.isTracked)
+            else
+                openQuestLogToQuest(questEntry.questID)
             end
         end)
     end
