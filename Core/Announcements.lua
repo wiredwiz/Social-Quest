@@ -11,7 +11,8 @@
 --   6. Public event handlers: OnQuestEvent, OnObjectiveEvent,
 --      OnRemoteQuestEvent, OnRemoteObjectiveEvent, OnOwnQuestEvent,
 --      OnOwnObjectiveEvent
---   7. Debug test entry point: TestEvent
+--   7. InitEventHooks: UIErrorsFrame_OnEvent hook for suppression backup
+--   8. Debug test entry point: TestEvent
 --   8. Follow notifications + WhisperFriends helpers  (unchanged)
 --
 -- Chat queue: all SendChatMessage calls pass through a FIFO queue with a
@@ -27,6 +28,26 @@ local THROTTLE_DELAY = 1.0  -- seconds between chat sends
 -- Ticker drives the throttle queue. Created once and kept running.
 local ticker = nil
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
+
+-- Set of event types that carry chain-step annotation when chainInfo is known.
+-- "finished" is intentionally excluded (objectives done, not yet turned in).
+local CHAIN_STEP_EVENTS = {
+    accepted  = true,
+    completed = true,
+    failed    = true,
+    abandoned = true,
+}
+
+-- Appends " (Step N)" to msg when the quest is a known chain step.
+-- Returns msg unchanged when: event is not in CHAIN_STEP_EVENTS, chainInfo is nil,
+-- knownStatus != "known", or step is nil. Never errors on nil inputs.
+local function appendChainStep(msg, eventType, chainInfo)
+    if not CHAIN_STEP_EVENTS[eventType] then return msg end
+    if not chainInfo or chainInfo.knownStatus ~= "known" or not chainInfo.step then
+        return msg
+    end
+    return msg .. " " .. string.format(L["(Step %s)"], chainInfo.step)
+end
 
 local function startThrottleTicker()
     if ticker then return end
@@ -89,16 +110,16 @@ local function formatQuestBannerMsg(sender, eventType, questTitle)
     return string.format(tmpl, sender, questTitle)
 end
 
-local function formatObjectiveBannerMsg(sender, questTitle, numFulfilled, numRequired, isComplete, isRegression)
+local function formatObjectiveBannerMsg(sender, questTitle, objText, numFulfilled, numRequired, isComplete, isRegression)
     if isComplete then
-        return string.format(L["%s completed objective: %s (%d/%d)"],
-            sender, questTitle, numFulfilled, numRequired)
+        return string.format(L["%s completed objective: %s — %s (%d/%d)"],
+            sender, questTitle, objText, numFulfilled, numRequired)
     elseif isRegression then
-        return string.format(L["%s regressed: %s (%d/%d)"],
-            sender, questTitle, numFulfilled, numRequired)
+        return string.format(L["%s regressed: %s — %s (%d/%d)"],
+            sender, questTitle, objText, numFulfilled, numRequired)
     else
-        return string.format(L["%s progressed: %s (%d/%d)"],
-            sender, questTitle, numFulfilled, numRequired)
+        return string.format(L["%s progressed: %s — %s (%d/%d)"],
+            sender, questTitle, objText, numFulfilled, numRequired)
     end
 end
 
@@ -164,7 +185,7 @@ end
 -- Local quest event announcements (from AQL callbacks)
 ------------------------------------------------------------------------
 
-function SocialQuestAnnounce:OnQuestEvent(eventType, questID)
+function SocialQuestAnnounce:OnQuestEvent(eventType, questID, questInfo)
     local db = SocialQuest.db.profile
     if not db.enabled then return end
 
@@ -174,6 +195,8 @@ function SocialQuestAnnounce:OnQuestEvent(eventType, questID)
                or (AQL and AQL:GetQuestTitle(questID))
                or ("Quest " .. questID)
     local msg   = formatOutboundQuestMsg(eventType, title)
+    local chainInfo = questInfo and questInfo.chainInfo
+    msg = appendChainStep(msg, eventType, chainInfo)
 
     if not questieWouldAnnounce(eventType) then
         -- Party
@@ -211,7 +234,7 @@ function SocialQuestAnnounce:OnQuestEvent(eventType, questID)
     end
 
     -- Own-quest banner: fires regardless of chat suppression.
-    self:OnOwnQuestEvent(eventType, title)
+    self:OnOwnQuestEvent(eventType, title, chainInfo)
 
     -- Party-wide completion check: fires "Everyone has completed" when all engaged
     -- group members have turned in this quest.
@@ -229,7 +252,7 @@ function SocialQuestAnnounce:OnObjectiveEvent(eventType, questInfo, objective, i
     if not questieWouldAnnounce(eventType) then
         local msg = formatOutboundObjectiveMsg(
             questInfo.title,
-            objective.text or "",
+            objective.name or "",
             objective.numFulfilled,
             objective.numRequired,
             isRegression)
@@ -367,17 +390,24 @@ function SocialQuestAnnounce:OnRemoteQuestEvent(sender, eventType, questID, cach
         and not C_FriendList.IsFriend(sender) then return end
 
     local AQL   = SocialQuest.AQL
-    local info  = AQL and AQL:GetQuest(questID)
+    local info  = AQL and AQL:GetQuestInfo(questID)
     local title = cachedTitle
                or (info and info.title)
-               or (AQL and AQL:GetQuestTitle(questID))
                or ("Quest " .. questID)
+    -- Note: AQL:GetQuestTitle fallback is intentionally removed. It delegates
+    -- internally to AQL:GetQuestInfo, so if GetQuestInfo returns nil (AQL unavailable
+    -- or quest unknown), GetQuestTitle would also return nil — the fallback adds no
+    -- resolution capability beyond what the single GetQuestInfo call already provides.
+    local chainInfo = info and info.chainInfo
 
     local msg = formatQuestBannerMsg(sender, eventType, title)
-    if msg then displayBanner(msg, eventType) end
+    if msg then
+        msg = appendChainStep(msg, eventType, chainInfo)
+        displayBanner(msg, eventType)
+    end
 end
 
-function SocialQuestAnnounce:OnRemoteObjectiveEvent(sender, questID, numFulfilled, numRequired, isComplete, isRegression)
+function SocialQuestAnnounce:OnRemoteObjectiveEvent(sender, questID, objIndex, numFulfilled, numRequired, isComplete, isRegression)
     local db = SocialQuest.db.profile
     if not db.enabled or not db.general.displayReceived then return end
 
@@ -395,12 +425,14 @@ function SocialQuestAnnounce:OnRemoteObjectiveEvent(sender, questID, numFulfille
     if section == "battleground" and db.battleground.friendsOnly
         and not C_FriendList.IsFriend(sender) then return end
 
-    local AQL   = SocialQuest.AQL
-    local title = (AQL and AQL:GetQuestLink(questID))
-               or (AQL and AQL:GetQuestTitle(questID))
-               or ("Quest " .. questID)
+    local AQL     = SocialQuest.AQL
+    local objs    = AQL and AQL:GetQuestObjectives(questID)
+    local objInfo = objs and objs[objIndex]
+    local objText = (objInfo and objInfo.name) or ""
+    local title   = (AQL and AQL:GetQuestTitle(questID))
+                 or ("Quest " .. questID)
 
-    local msg = formatObjectiveBannerMsg(sender, title, numFulfilled, numRequired, isComplete, isRegression)
+    local msg = formatObjectiveBannerMsg(sender, title, objText, numFulfilled, numRequired, isComplete, isRegression)
     displayBanner(msg, eventType)
 end
 
@@ -408,14 +440,17 @@ end
 -- Own-quest banners (local player's own events, opt-in)
 ------------------------------------------------------------------------
 
-function SocialQuestAnnounce:OnOwnQuestEvent(eventType, questTitle)
+function SocialQuestAnnounce:OnOwnQuestEvent(eventType, questTitle, chainInfo)
     local db = SocialQuest.db.profile
     if not db.enabled then return end
     if not db.general.displayOwn then return end
     if not db.general.displayOwnEvents[eventType] then return end
 
     local msg = formatQuestBannerMsg(L["You"], eventType, questTitle)
-    if msg then displayBanner(msg, eventType) end
+    if msg then
+        msg = appendChainStep(msg, eventType, chainInfo)
+        displayBanner(msg, eventType)
+    end
 end
 
 function SocialQuestAnnounce:OnOwnObjectiveEvent(eventType, questInfo, objective, isRegression)
@@ -426,9 +461,34 @@ function SocialQuestAnnounce:OnOwnObjectiveEvent(eventType, questInfo, objective
 
     local msg = formatObjectiveBannerMsg(
         L["You"], questInfo.title,
+        objective.name or "",
         objective.numFulfilled, objective.numRequired,
         eventType == "objective_complete", isRegression)
     displayBanner(msg, eventType)
+end
+
+-- Intercept UIErrorsFrame's OnEvent to suppress the native WoW objective-progress
+-- floating text when SocialQuest's own banner is active. In TBC Classic (20505),
+-- quest objective progress notifications arrive via UI_INFO_MESSAGE, not
+-- QUEST_WATCH_UPDATE. We use GetScript/SetScript so the hook chains correctly to any
+-- other addon that installed its own OnEvent before us.
+-- Called once from SocialQuest:OnInitialize().
+function SocialQuestAnnounce:InitEventHooks()
+    local orig = UIErrorsFrame:GetScript("OnEvent")
+    if not orig then return end
+    UIErrorsFrame:SetScript("OnEvent", function(self, event, messageType, msg, ...)
+        if event == "UI_INFO_MESSAGE" then
+            local db = SocialQuest.db.profile
+            local AQL = SocialQuest.AQL
+            if db and db.enabled
+                    and db.general.displayOwn
+                    and db.general.displayOwnEvents.objective_progress
+                    and AQL and AQL:IsQuestObjectiveText(msg) then
+                return
+            end
+        end
+        return orig(self, event, messageType, msg, ...)
+    end)
 end
 
 ------------------------------------------------------------------------
@@ -439,13 +499,13 @@ end
 -- the objective_progress color and toggle but has distinct demo text.
 local TEST_DEMOS = {
     accepted = {
-        outbound = "Quest accepted: A Daunting Task",
-        banner   = "TestPlayer accepted: [A Daunting Task]",
+        outbound = "Quest accepted: A Daunting Task (Step 2)",
+        banner   = "TestPlayer accepted: [A Daunting Task] (Step 2)",
         colorKey = "accepted",
     },
     abandoned = {
-        outbound = "Quest abandoned: A Daunting Task",
-        banner   = "TestPlayer abandoned: [A Daunting Task]",
+        outbound = "Quest abandoned: A Daunting Task (Step 2)",
+        banner   = "TestPlayer abandoned: [A Daunting Task] (Step 2)",
         colorKey = "abandoned",
     },
     finished = {
@@ -454,28 +514,28 @@ local TEST_DEMOS = {
         colorKey = "finished",
     },
     completed = {
-        outbound = "Quest turned in: A Daunting Task",
-        banner   = "TestPlayer completed: [A Daunting Task]",
+        outbound = "Quest turned in: A Daunting Task (Step 2)",
+        banner   = "TestPlayer completed: [A Daunting Task] (Step 2)",
         colorKey = "completed",
     },
     failed = {
-        outbound = "Quest failed: A Daunting Task",
-        banner   = "TestPlayer failed: [A Daunting Task]",
+        outbound = "Quest failed: A Daunting Task (Step 2)",
+        banner   = "TestPlayer failed: [A Daunting Task] (Step 2)",
         colorKey = "failed",
     },
     objective_progress = {
         outbound = "{rt1} SocialQuest: 3/8 Kobolds Slain for [A Daunting Task]!",
-        banner   = "TestPlayer progressed: [A Daunting Task] (3/8)",
+        banner   = "TestPlayer progressed: [A Daunting Task] — Kobolds Slain (3/8)",
         colorKey = "objective_progress",
     },
     objective_complete = {
         outbound = "{rt1} SocialQuest: 8/8 Kobolds Slain for [A Daunting Task]!",
-        banner   = "TestPlayer completed objective: [A Daunting Task] (8/8)",
+        banner   = "TestPlayer completed objective: [A Daunting Task] — Kobolds Slain (8/8)",
         colorKey = "objective_complete",
     },
     objective_regression = {
         outbound = "{rt1} SocialQuest: 2/8 Kobolds Slain (regression) for [A Daunting Task]!",
-        banner   = "TestPlayer regressed: [A Daunting Task] (2/8)",
+        banner   = "TestPlayer regressed: [A Daunting Task] — Kobolds Slain (2/8)",
         colorKey = "objective_progress",   -- same color as progress
     },
     all_complete = {

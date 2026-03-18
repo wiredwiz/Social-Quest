@@ -86,9 +86,15 @@ function SocialQuestOptions:Initialize()
                 failed    = toggle(L["Failed"],
                     L["Show a banner when a quest fails."],
                     { "general", "displayOwnEvents", "failed"    }),
-                objective_progress = toggle(L["Objective Progress"],
-                    L["Show a banner when one of your quest objectives progresses or regresses."],
-                    { "general", "displayOwnEvents", "objective_progress" }),
+                objective_progress = {
+                    type = "toggle",
+                    name = L["Objective Progress"],
+                    desc = L["Show a banner when one of your quest objectives progresses or regresses."],
+                    get  = function(info) return db.general.displayOwnEvents.objective_progress end,
+                    set  = function(info, value)
+                        db.general.displayOwnEvents.objective_progress = value
+                    end,
+                },
                 objective_complete = toggle(L["Objective Complete"],
                     L["Show a banner when one of your quest objectives reaches its goal (e.g. 8/8)."],
                     { "general", "displayOwnEvents", "objective_complete" }),
@@ -140,18 +146,32 @@ function SocialQuestOptions:Initialize()
                 name  = L["General"],
                 order = 1,
                 args  = {
-                    enabled         = toggle(L["Enable SocialQuest"],
-                        L["Master on/off switch for all SocialQuest functionality."],
-                        { "enabled" }, 1),
+                    enabled         = {
+                        type  = "toggle",
+                        name  = L["Enable SocialQuest"],
+                        desc  = L["Master on/off switch for all SocialQuest functionality."],
+                        order = 1,
+                        get   = function(info) return db.enabled end,
+                        set   = function(info, value)
+                            db.enabled = value
+                        end,
+                    },
                     displayReceived = toggle(L["Show received events"],
                         L["Master switch: allow any banner notifications to appear. Individual 'Display Events' groups below control which event types are shown per section."],
                         { "general", "displayReceived" }, 2),
                     colorblindMode  = toggle(L["Colorblind Mode"],
                         L["Use colorblind-friendly colors for all SocialQuest banners and UI text. It is unnecessary to enable this if Color Blind mode is already enabled in the game client."],
                         { "general", "colorblindMode" }, 3),
-                    displayOwn      = toggle(L["Show banners for your own quest events"],
-                        L["Show a banner on screen for your own quest events."],
-                        { "general", "displayOwn" }, 4),
+                    displayOwn      = {
+                        type  = "toggle",
+                        name  = L["Show banners for your own quest events"],
+                        desc  = L["Show a banner on screen for your own quest events."],
+                        order = 4,
+                        get   = function(info) return db.general.displayOwn end,
+                        set   = function(info, value)
+                            db.general.displayOwn = value
+                        end,
+                    },
                     ownDisplayEvents = ownDisplayEventsGroup(),
                 },
             },

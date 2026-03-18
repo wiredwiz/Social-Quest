@@ -27,9 +27,9 @@ L["%s abandoned: %s"]                     = true
 L["%s finished objectives: %s"]           = true
 L["%s completed: %s"]                     = true
 L["%s failed: %s"]                        = true
-L["%s completed objective: %s (%d/%d)"]   = true
-L["%s regressed: %s (%d/%d)"]             = true
-L["%s progressed: %s (%d/%d)"]            = true
+L["%s completed objective: %s — %s (%d/%d)"] = true
+L["%s regressed: %s — %s (%d/%d)"]           = true
+L["%s progressed: %s — %s (%d/%d)"]          = true
 
 -- Core/Announcements.lua — chat preview label
 -- Trailing space after |r is intentional: separates label from banner text.
@@ -43,6 +43,12 @@ L["Everyone has completed: %s"]           = true
 -- Core/Announcements.lua — own-quest banner sender label
 -- Used as the sender name in "You accepted: [Quest]" banners. No parentheses.
 L["You"]                                  = true
+
+-- Core/Announcements.lua — chain step annotation
+-- Appended to accepted/completed/failed/abandoned messages when the quest is a known
+-- chain step. No leading space: the space separator is provided by appendChainStep.
+-- %s = step number (integer coerced to string by string.format in Lua 5.1).
+L["(Step %s)"]                            = true
 
 -- Core/Announcements.lua — follow notifications
 -- %s = player character name
