@@ -194,7 +194,15 @@ function SocialQuestAnnounce:OnQuestEvent(eventType, questID, questInfo)
     local title = (info and info.title)
                or (AQL and AQL:GetQuestTitle(questID))
                or ("Quest " .. questID)
-    local msg   = formatOutboundQuestMsg(eventType, title)
+    -- Prefer the WoW quest hyperlink string from the AQL snapshot so that recipients
+    -- can ctrl-click the quest link in chat. Falls back to info.link (from the live
+    -- QuestCache) then plain title. The finished event passes no questInfo (questInfo
+    -- is nil) so the info.link fallback is the primary path for that event type.
+    -- RaidNotice_AddMessage (banners) cannot render hyperlinks — title is used there.
+    local display = (questInfo and questInfo.link)
+                 or (info and info.link)
+                 or title
+    local msg   = formatOutboundQuestMsg(eventType, display)
     local chainInfo = questInfo and questInfo.chainInfo
     msg = appendChainStep(msg, eventType, chainInfo)
 
