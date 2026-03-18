@@ -28,11 +28,10 @@ the count from the previous rebuild.
 
 ## Fix
 
-Replace the exact-match `obj.text == msg` in `AQL:IsQuestObjectiveText` with a
-**base-name match** that strips the `": X/Y"` count suffix from both sides before
-comparing. Because the objective description (everything before the last colon and
-count) is the same regardless of which frame the count is at, the timing of the cache
-rebuild no longer matters.
+Replace the exact-match `obj.text == msg` with a **prefix match**: extract the
+base name from `msg` once (stripping the `": X/Y"` count suffix), then check whether
+each cached `obj.text` starts with that base. No pattern matching is needed inside
+the loop — only a single `string.sub` comparison per objective.
 
 ### `obj.text` Source
 
@@ -43,7 +42,7 @@ For a kill objective it contains text like `"Tainted Ooze killed: 4/10"`. No fur
 transformation is applied to `obj.text`; only the separate `obj.name` field is
 pre-stripped. `IsQuestObjectiveText` reads `obj.text` directly.
 
-### Pattern
+### Pattern (applied once, outside the loop)
 
 ```lua
 msg:match("^(.+):%s*%d+/%d+$")
@@ -54,14 +53,20 @@ msg:match("^(.+):%s*%d+/%d+$")
   `"Protect Captain Skarloc: Phase 2: 0/1"` → base = `"Protect Captain Skarloc: Phase 2"`).
   A non-greedy `(.-)` (used by `_buildEntry` to build `obj.name` via the pattern
   `"^(.-):%s*%d+/%d+%s*$"`) would stop at the first colon and produce the wrong base
-  for such names; `IsQuestObjectiveText` must use greedy to be consistent with
-  `UI_INFO_MESSAGE` text, which carries the full objective description through the
-  last colon.
+  for such names.
 - If `msg` does not end in `": X/Y"` format, `match` returns `nil` and the function
   returns `false` immediately — non-count info messages pass through unchanged.
-- The same extraction is applied to `obj.text` before comparison, so a cache entry
-  of `"Mosshide Mongrel slain: 0/10"` produces the same base as a message of
-  `"Mosshide Mongrel slain: 1/10"`.
+
+### Inner loop comparison (no regex)
+
+Inside the loop, `obj.text:sub(1, #msgBase) == msgBase` checks whether `obj.text`
+begins with the extracted base. Because `msgBase` is derived from `msg` by stripping
+`": X/Y"`, and `obj.text` for the matching quest will begin with the same description
+followed by `": X/Y"`, this holds for any count value — including the stale previous
+count still in the cache when the event fires.
+
+The theoretical false-positive risk (an objective whose description is a leading
+substring of another) is accepted as negligibly small in practice for TBC quest data.
 
 ### Updated `AQL:IsQuestObjectiveText`
 
@@ -70,10 +75,12 @@ The updated method replaces the existing body in
 directly, consistent with all other internal cache reads in AQL.
 
 ```lua
--- Returns true if msg matches the base name (description without ": X/Y" count)
--- of any objective in the active quest cache. Strips the count suffix before
--- comparing so that a stale cache (previous count) still matches an incoming
--- UI_INFO_MESSAGE (new count). Used by SocialQuest to identify UI_INFO_MESSAGE
+-- Returns true if msg's base name (description without ": X/Y" count) matches
+-- the leading text of any objective in the active quest cache. The pattern is
+-- applied once to msg; each objective is checked with a plain string.sub
+-- comparison so no regex runs inside the loop. A stale cache (previous count)
+-- still matches an incoming UI_INFO_MESSAGE (new count) because only the base
+-- description is compared. Used by SocialQuest to identify UI_INFO_MESSAGE
 -- events that duplicate its own objective-progress banner. Reads from the live
 -- quest cache; the cache is always complete because QuestCache:Rebuild() expands
 -- collapsed zones before reading.
@@ -82,12 +89,12 @@ function AQL:IsQuestObjectiveText(msg)
     if not self.QuestCache then return false end
     local msgBase = msg:match("^(.+):%s*%d+/%d+$")
     if not msgBase then return false end
+    local baseLen = #msgBase
     for _, quest in pairs(self.QuestCache.data) do
         if quest.objectives then
             for _, obj in ipairs(quest.objectives) do
-                if obj.text then
-                    local objBase = obj.text:match("^(.+):%s*%d+/%d+$") or obj.text
-                    if objBase == msgBase then return true end
+                if obj.text and obj.text:sub(1, baseLen) == msgBase then
+                    return true
                 end
             end
         end
@@ -102,17 +109,15 @@ end
   have no `": X/Y"` suffix, so `msgBase` is `nil` and the function returns `false`
   immediately without touching the cache.
 - A `UI_INFO_MESSAGE` arriving before `QUEST_LOG_UPDATE` updates the cache still
-  matches because the base name is count-independent.
-- Count-format messages that do not match any cached objective pass through unchanged
-  — the cache scan finds no base-name match.
-- If `obj.text` has no count suffix (e.g. a completion-type objective like
-  "Speak with the Elder"), `obj.text:match(...)` returns `nil` and the fallback
-  `or obj.text` keeps the full text for comparison. Because `msgBase` is guaranteed
-  non-nil (the early return on line 4 of the function guards this), and full raw text
-  will never equal a stripped base name, no spurious match is possible.
-- The `if obj.text then` guard is defensive courtesy; as noted above, the cache field
-  is always a string. It costs nothing and protects against hypothetical future cache
-  changes.
+  matches because only the base description is compared, not the count.
+- Count-format messages whose base does not match any cached objective pass through
+  unchanged.
+- Completion-type objectives with no count (e.g. "Speak with the Elder") cannot
+  match a count-format `msg`: `msgBase` is always shorter than `obj.text` for
+  count-format objectives, and objectives without counts will never start with a
+  count-format base.
+- The `if obj.text then` guard is defensive courtesy; the cache field is always a
+  string, never `nil`.
 
 ---
 
