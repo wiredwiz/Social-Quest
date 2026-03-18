@@ -110,10 +110,11 @@ function RowFactory.AddChainHeader(contentFrame, y, chainTitle, indent)
     local C = SocialQuestColors
     local x = indent or 0
 
-    local label = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    local label = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     label:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
-    label:SetWidth(CONTENT_WIDTH - x)
+    label:SetSize(CONTENT_WIDTH - x, ROW_H)
     label:SetJustifyH("LEFT")
+    label:SetJustifyV("MIDDLE")
     label:SetText(C.chain .. chainTitle .. C.reset)
 
     return y + ROW_H + 2
