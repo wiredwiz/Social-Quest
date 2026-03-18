@@ -17,11 +17,12 @@ its cache. At hook time the cache still holds the previous count (e.g. `0/10`), 
 
 Confirmed by in-game diagnostic:
 - `msg` captured inside the hook: `"Mosshide Mongrel slain: 1/10"`
+- Cache state at that instant: `obj.text = "Mosshide Mongrel slain: 0/10"` (stale)
 - `AQL:IsQuestObjectiveText(msg)` at that instant: `false`
-- Cache dump immediately afterward: `obj.text = "Mosshide Mongrel slain: 1/10"` (already updated)
+- Cache dump immediately afterward: `obj.text = "Mosshide Mongrel slain: 1/10"` (updated by then)
 
-This shows the cache was stale when the hook ran and current by the time it was
-inspected — the event ordering is `UI_INFO_MESSAGE` → `QUEST_LOG_UPDATE`.
+The event ordering is `UI_INFO_MESSAGE` → `QUEST_LOG_UPDATE`. The hook always sees
+the count from the previous rebuild.
 
 ---
 
@@ -33,6 +34,15 @@ comparing. Because the objective description (everything before the last colon a
 count) is the same regardless of which frame the count is at, the timing of the cache
 rebuild no longer matters.
 
+### `obj.text` Source
+
+`obj.text` in the cache comes from `C_QuestLog.GetQuestObjectives(questID)` via
+`QuestCache:_buildEntry`. The raw API value is normalised through a `local text =
+obj.text or ""` intermediate, so the cache field is always a string, never `nil`.
+For a kill objective it contains text like `"Tainted Ooze killed: 4/10"`. No further
+transformation is applied to `obj.text`; only the separate `obj.name` field is
+pre-stripped. `IsQuestObjectiveText` reads `obj.text` directly.
+
 ### Pattern
 
 ```lua
@@ -40,23 +50,33 @@ msg:match("^(.+):%s*%d+/%d+$")
 ```
 
 - `(.+)` is **greedy**, so it matches up to the *last* colon — correctly handles
-  objective names that contain colons (e.g. `"Kill Ner'zhul: Phase 2: 1/1"` →
-  base = `"Kill Ner'zhul: Phase 2"`).
+  objective names that contain colons (e.g.
+  `"Protect Captain Skarloc: Phase 2: 0/1"` → base = `"Protect Captain Skarloc: Phase 2"`).
+  A non-greedy `(.-)` (used by `_buildEntry` to build `obj.name` via the pattern
+  `"^(.-):%s*%d+/%d+%s*$"`) would stop at the first colon and produce the wrong base
+  for such names; `IsQuestObjectiveText` must use greedy to be consistent with
+  `UI_INFO_MESSAGE` text, which carries the full objective description through the
+  last colon.
 - If `msg` does not end in `": X/Y"` format, `match` returns `nil` and the function
-  returns `false` immediately — non-count info messages (e.g. "New mail") pass
-  through unchanged.
+  returns `false` immediately — non-count info messages pass through unchanged.
 - The same extraction is applied to `obj.text` before comparison, so a cache entry
   of `"Mosshide Mongrel slain: 0/10"` produces the same base as a message of
   `"Mosshide Mongrel slain: 1/10"`.
 
 ### Updated `AQL:IsQuestObjectiveText`
 
+The updated method replaces the existing body in
+`Absolute-Quest-Log/AbsoluteQuestLog.lua`. `self.QuestCache.data` is accessed
+directly, consistent with all other internal cache reads in AQL.
+
 ```lua
--- Returns true if msg matches the base name of any objective in the active quest
--- cache. Strips the ": X/Y" progress count before comparing so that a stale cache
--- (old count) still matches an incoming UI_INFO_MESSAGE (new count). Used by
--- SocialQuest to identify UI_INFO_MESSAGE events that duplicate its own
--- objective-progress banner.
+-- Returns true if msg matches the base name (description without ": X/Y" count)
+-- of any objective in the active quest cache. Strips the count suffix before
+-- comparing so that a stale cache (previous count) still matches an incoming
+-- UI_INFO_MESSAGE (new count). Used by SocialQuest to identify UI_INFO_MESSAGE
+-- events that duplicate its own objective-progress banner. Reads from the live
+-- quest cache; the cache is always complete because QuestCache:Rebuild() expands
+-- collapsed zones before reading.
 function AQL:IsQuestObjectiveText(msg)
     if not msg then return false end
     if not self.QuestCache then return false end
@@ -78,16 +98,21 @@ end
 
 ### Invariants
 
-- Non-count `UI_INFO_MESSAGE` events (e.g. "New mail", "You are now rested") have no
-  `": X/Y"` suffix, so `msgBase` is `nil` and the function returns `false`
+- Non-count `UI_INFO_MESSAGE` events (e.g. "You have new mail", "You are now rested")
+  have no `": X/Y"` suffix, so `msgBase` is `nil` and the function returns `false`
   immediately without touching the cache.
-- Count-format messages that do not match any cached objective (e.g. a hypothetical
-  third-party message ending in `": 2/5"`) pass through unchanged — the cache scan
-  finds no base-name match.
-- If `obj.text` itself has no count suffix (e.g. a completion-type objective like
+- A `UI_INFO_MESSAGE` arriving before `QUEST_LOG_UPDATE` updates the cache still
+  matches because the base name is count-independent.
+- Count-format messages that do not match any cached objective pass through unchanged
+  — the cache scan finds no base-name match.
+- If `obj.text` has no count suffix (e.g. a completion-type objective like
   "Speak with the Elder"), `obj.text:match(...)` returns `nil` and the fallback
-  `or obj.text` keeps the full text for comparison. Such objectives will never match
-  a count-format `msg`, which is correct.
+  `or obj.text` keeps the full text for comparison. Because `msgBase` is guaranteed
+  non-nil (the early return on line 4 of the function guards this), and full raw text
+  will never equal a stripped base name, no spurious match is possible.
+- The `if obj.text then` guard is defensive courtesy; as noted above, the cache field
+  is always a string. It costs nothing and protects against hypothetical future cache
+  changes.
 
 ---
 
@@ -95,7 +120,7 @@ end
 
 | File | Change |
 |------|--------|
-| `Absolute-Quest-Log/AbsoluteQuestLog.lua` | Replace `AQL:IsQuestObjectiveText` body with base-name match |
+| `Absolute-Quest-Log/AbsoluteQuestLog.lua` | Replace `AQL:IsQuestObjectiveText` body and update its comment |
 
 No other files change. `InitEventHooks` in `Social-Quest/Core/Announcements.lua` and
 all callers remain unchanged.
@@ -111,6 +136,5 @@ all callers remain unchanged.
 5. Disable `Objective Progress` in settings.
 6. Kill another mob.
 7. Confirm: the native WoW floating text **does** appear (suppression off).
-8. Trigger a non-objective `UI_INFO_MESSAGE` (e.g. log in/out of a friend to get a
-   "X is now online" message, or receive mail).
+8. Receive in-game mail to trigger a `UI_INFO_MESSAGE` ("You have new mail").
 9. Confirm: that message appears normally (no suppression of non-objective messages).
