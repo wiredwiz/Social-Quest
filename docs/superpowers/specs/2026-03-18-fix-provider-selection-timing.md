@@ -51,19 +51,19 @@ availability check so the provider only reports ready after `Initialize()` has r
 -- or its database has not yet been compiled (Initialize() not yet run).
 -- pcall guards against ImportModule calling error() when the module is not
 -- registered (can happen if Questie is present but partially initialized).
+-- pcall cannot use colon syntax; self must be passed as the first argument explicitly.
 local function getDB()
     if type(QuestieLoader) ~= "table" then return nil end
     local ok, db = pcall(QuestieLoader.ImportModule, QuestieLoader, "QuestieDB")
     if not ok or not db or type(db.GetQuest) ~= "function" then return nil end
+    -- QuestPointers is set by QuestieDB:Initialize(), which runs asynchronously
+    -- after PLAYER_LOGIN. Nil here means the database is not compiled yet.
+    if db.QuestPointers == nil then return nil end
     return db
 end
 
 function QuestieProvider:IsAvailable()
-    local db = getDB()
-    if not db then return false end
-    -- QuestPointers is set by QuestieDB:Initialize(), which runs asynchronously
-    -- after PLAYER_LOGIN. Nil means the database is not compiled yet.
-    return db.QuestPointers ~= nil
+    return getDB() ~= nil
 end
 ```
 
@@ -81,7 +81,7 @@ initial login log line). `AQL.NullProvider` is a pre-existing sentinel field def
 in `Providers/NullProvider.lua`; it is not introduced by this fix.
 
 ```lua
-local MAX_DEFERRED_UPGRADE_ATTEMPTS = 5  -- 1 immediate + 5 deferred (1 s each) = 6 total attempts, up to 5 s
+local MAX_DEFERRED_UPGRADE_ATTEMPTS = 5  -- 1 immediate (t=0) + 5 retries (t=1s–5s) = 6 total checks, up to 5 s
 
 local function tryUpgradeProvider(attemptsLeft)
     if AQL.provider ~= AQL.NullProvider then return end  -- already upgraded
@@ -94,6 +94,7 @@ local function tryUpgradeProvider(attemptsLeft)
         -- fires — quest-accepted/abandoned callbacks are not re-emitted.
         -- Return value (old cache) is intentionally discarded; no diff is needed.
         AQL.QuestCache:Rebuild()
+        -- TODO: log which provider was selected and on which attempt (out of scope for this fix)
         return
     end
 
@@ -153,10 +154,11 @@ is needed in the fallback path.
   diff and fires no AQL callbacks.
 - The direct `Rebuild()` called inside `tryUpgradeProvider` runs after
   `EventEngine.initialized = true`. If a `QUEST_LOG_UPDATE` fires in rapid succession,
-  `handleQuestLogUpdate` would also call `Rebuild()`. Both calls complete
-  independently (QuestCache has no re-entrancy guard) and produce identical results —
-  this is benign. No re-entrancy guard is required; the double-rebuild is benign and
-  adding a guard is out of scope for this fix.
+  `handleQuestLogUpdate` would also call `Rebuild()`. WoW's Lua environment is
+  single-threaded; no two event callbacks execute concurrently, so the two `Rebuild()`
+  calls cannot interleave. Both calls complete independently (QuestCache has no
+  re-entrancy guard) and produce identical results — this is benign. No re-entrancy
+  guard is required; adding one is out of scope for this fix.
 - If neither provider is ready within the upgrade window, chain data remains
   `knownStatus = "unknown"` until the next natural `QUEST_LOG_UPDATE`, where the
   belt-and-suspenders check catches it.
