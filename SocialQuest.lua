@@ -2,6 +2,11 @@
 -- AceAddon entry point. Handles OnInitialize, OnEnable, and AQL callback
 -- registration. All quest logic delegates to sub-modules.
 
+-- Key binding display strings. WoW reads these globals to populate the
+-- Key Bindings UI (Options → Key Bindings → AddOns → Social Quest).
+BINDING_HEADER_SOCIALQUEST_HEADER = "Social Quest"
+BINDING_NAME_SOCIALQUEST_TOGGLE   = "Toggle Social Quest Window"
+
 SocialQuest = LibStub("AceAddon-3.0"):NewAddon(
     "SocialQuest",
     "AceEvent-3.0",

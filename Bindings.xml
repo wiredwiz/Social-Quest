@@ -1,0 +1,6 @@
+<Bindings>
+    <Binding header="SOCIALQUEST_HEADER"/>
+    <Binding name="SOCIALQUEST_TOGGLE" description="Toggle Social Quest Window">
+        SocialQuestGroupFrame:Toggle()
+    </Binding>
+</Bindings>
