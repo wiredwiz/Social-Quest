@@ -93,7 +93,6 @@ function SocialQuestOptions:Initialize()
                     get  = function(info) return db.general.displayOwnEvents.objective_progress end,
                     set  = function(info, value)
                         db.general.displayOwnEvents.objective_progress = value
-                        SocialQuestAnnounce:UpdateQuestWatchSuppression()
                     end,
                 },
                 objective_complete = toggle(L["Objective Complete"],
@@ -155,7 +154,6 @@ function SocialQuestOptions:Initialize()
                         get   = function(info) return db.enabled end,
                         set   = function(info, value)
                             db.enabled = value
-                            SocialQuestAnnounce:UpdateQuestWatchSuppression()
                         end,
                     },
                     displayReceived = toggle(L["Show received events"],
@@ -172,7 +170,6 @@ function SocialQuestOptions:Initialize()
                         get   = function(info) return db.general.displayOwn end,
                         set   = function(info, value)
                             db.general.displayOwn = value
-                            SocialQuestAnnounce:UpdateQuestWatchSuppression()
                         end,
                     },
                     ownDisplayEvents = ownDisplayEventsGroup(),

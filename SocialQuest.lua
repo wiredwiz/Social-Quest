@@ -98,7 +98,6 @@ function SocialQuest:OnEnable()
         end
     end
 
-    SocialQuestAnnounce:UpdateQuestWatchSuppression()
 end
 
 function SocialQuest:OnDisable()
@@ -115,8 +114,6 @@ function SocialQuest:OnDisable()
         AQL.UnregisterCallback(self, "AQL_OBJECTIVE_COMPLETED")
         AQL.UnregisterCallback(self, "AQL_UNIT_QUEST_LOG_CHANGED")
     end
-    -- Always re-register on disable regardless of settings.
-    UIErrorsFrame:RegisterEvent("QUEST_WATCH_UPDATE")
 end
 
 ------------------------------------------------------------------------
