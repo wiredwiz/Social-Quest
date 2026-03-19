@@ -75,6 +75,7 @@ L["(Group)"]                                = true
 L[" (Step %s of %s)"]                       = true
 -- %s = player character name
 L["%s FINISHED"]                            = true
+L["%s Completed"]                           = true
 L["%s Needs it Shared"]                     = true
 L["%s (no data)"]                           = true
 
