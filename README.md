@@ -5,7 +5,9 @@
   every member's quest progress synchronized in real time and surfaces that information exactly
   when and where it is useful — without requiring any setup from your groupmates beyond having
   the addon installed.
+  
   ---
+  
   ## Required Dependencies
   * Absolute Quest Log (library Add-on)
   * Ace3 (library Add-on)
