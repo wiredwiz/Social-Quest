@@ -288,7 +288,7 @@ end
 --   4. otherwise → "[Name]" label (+ "Step X of Y" when step/chainLength set),
 --                  followed by objective rows.
 -- playerEntry fields: name, isMe, hasSocialQuest, hasCompleted, needsShare,
---                     objectives, step (optional), chainLength (optional).
+--                     isComplete (optional), objectives, step (optional), chainLength (optional).
 function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent)
     local C    = SocialQuestColors
     local x    = indent or 0
