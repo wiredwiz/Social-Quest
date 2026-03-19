@@ -81,6 +81,7 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
                 isMe           = false,
                 hasSocialQuest = playerData.hasSocialQuest,
                 hasCompleted   = false,
+                isComplete     = false,
                 needsShare     = true,
                 objectives     = {},
             })
