@@ -218,7 +218,7 @@ function SocialQuestComm:SendResyncRequest()
         return
     end
     SocialQuest:Debug("Resync", "Resync: broadcasting SQ_REQUEST to " .. channel)
-    self:SendCommMessage("SQ_REQUEST", "", channel)
+    LibStub("AceComm-3.0"):SendCommMessage("SQ_REQUEST", serialize({}), channel)
     SocialQuest:Debug("Comm", "Sent SQ_REQUEST to " .. channel)
 end
 
