@@ -194,6 +194,8 @@ L["Display a local message when someone starts or stops following you."] = true
 -- UI/Options.lua — debug section
 L["Enable debug mode"]                      = true
 L["Print internal debug messages to the chat frame. Useful for diagnosing comm issues or event flow problems."] = true
+L["Force Resync"]                           = true
+L["Request a fresh quest snapshot from all current group members. Disabled for 30 seconds after each use."] = true
 
 -- UI/Options.lua — test banners group and buttons
 L["Test Banners and Chat"]                  = true
