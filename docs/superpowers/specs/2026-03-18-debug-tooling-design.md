@@ -21,7 +21,7 @@ On click, `SocialQuestComm:SendResyncRequest()` is called. It determines the act
 | Battleground | INSTANCE_CHAT | Same as raid. |
 | Not in group | — | Silent no-op. |
 
-Respects `db.<section>.transmit`: if transmission is disabled for the current group type, the button does nothing.
+**Transmit guard:** Use the same section-resolution logic as `SocialQuestComm:GetActiveChannel()` — raid takes priority over battleground, which takes priority over party — to determine which `db.<section>.transmit` flag to consult. If transmission is disabled for the resolved section, the button does nothing.
 
 ### Button Cooldown
 
@@ -33,23 +33,23 @@ The button lives inside the existing Debug options group, so it is only visible 
 
 ## Feature 1 Security: SQ_REQUEST Handler Mitigations
 
-The existing `SQ_REQUEST` handler responds to any sender, including players outside the current group who send a crafted whisper. This creates a potential amplification attack: many malicious players simultaneously sending `SQ_REQUEST` could cause the victim's addon to attempt sending many `SQ_INIT` whispers, potentially triggering Blizzard's rate limiter or bot-detection system.
+The existing `SQ_REQUEST` handler in `Core/Communications.lua` responds to any sender, including players outside the current group who send a crafted whisper. This creates a potential amplification attack: many malicious players simultaneously sending `SQ_REQUEST` could cause the victim's addon to attempt sending many `SQ_INIT` whispers, potentially triggering Blizzard's rate limiter or bot-detection system.
 
-Two guards are added to the `SQ_REQUEST` handler in `Core/Comm.lua`:
+Two guards are added to the `SQ_REQUEST` handler in `Core/Communications.lua`:
 
 ### Guard 1 — Sender group membership check
 
-Before responding to any `SQ_REQUEST`, verify the sender is in the current group:
+Before responding to any `SQ_REQUEST`, verify the sender is a tracked group member using the same pattern already established by `OnInitReceived`, `OnUpdateReceived`, and `OnObjectiveReceived` in `Core/GroupData.lua`:
 
 ```lua
-if not (UnitInParty(sender) or UnitInRaid(sender)) then return end
+if not SocialQuestGroupData.PlayerQuests[sender] then return end
 ```
 
-WoW already implicitly validates PARTY/RAID/INSTANCE_CHAT broadcasts (only group members receive them). This guard covers the whisper distribution path where external players could otherwise trigger a response. Requests from non-group-members are silently dropped.
+WoW already implicitly validates PARTY/RAID/INSTANCE_CHAT broadcasts (only group members receive them). This guard covers the whisper distribution path where external players could otherwise trigger a response. Using `SocialQuestGroupData.PlayerQuests[sender]` rather than `UnitInParty`/`UnitInRaid` is important: the WoW unit APIs accept unit tokens and same-realm names only, and do not reliably handle cross-realm `"Name-Realm"` sender strings on TBC. The PlayerQuests table is already keyed by the exact name format that AceComm delivers. Requests from non-group-members are silently dropped.
 
 ### Guard 2 — Per-sender 15-second response cooldown
 
-A `lastInitSent` table (keyed by sender name) tracks when the last `SQ_INIT` was sent to each player. If `GetTime() - lastInitSent[sender] < 15`, the request is dropped.
+A `lastInitSent` table (keyed by sender name, local to `Core/Communications.lua`) tracks when the last `SQ_INIT` was sent to each player. If `GetTime() - lastInitSent[sender] < 15`, the request is dropped.
 
 ```lua
 if lastInitSent[sender] and (GetTime() - lastInitSent[sender] < 15) then return end
@@ -60,9 +60,9 @@ This caps the damage from rapid repeated requests from any single sender, even i
 
 ### Cooldown reset on group change
 
-The `lastInitSent` table is cleared entirely whenever `OnGroupChanged` fires. This prevents the cooldown from blocking legitimate init exchanges when a player leaves and rejoins the group within 15 seconds. During stable group membership, the cooldown still applies.
+The `lastInitSent` table is cleared entirely whenever `OnGroupChanged` fires. This covers both actual group membership changes (`GROUP_ROSTER_UPDATE`) and UI reloads (`PLAYER_LOGIN`), both of which call `OnGroupChanged`. Both cases represent a fresh comm session where stale cooldowns would block legitimate init exchanges — for example, a player who leaves and rejoins the group within 15 seconds, or a player who `/reload`s mid-session.
 
-**Important:** The 15-second cooldown applies only to `SQ_INIT` responses triggered by `SQ_REQUEST`. It does not affect `SQ_UPDATE` broadcasts (individual quest event changes), which go through a completely separate code path and are never throttled by this mechanism.
+**Important:** The 15-second cooldown applies only to `SQ_INIT` responses triggered by `SQ_REQUEST`. It does not affect `SQ_UPDATE` or `SQ_OBJECTIVE` broadcasts (individual quest and objective event changes), which go through completely separate code paths and are never throttled by this mechanism.
 
 ---
 
@@ -81,9 +81,11 @@ end
 
 Gold `[SQ][Tag]` prefix, white message body. Called from any file as `SocialQuest:Debug("Comm", "...")`. Gated on the existing `db.debug.enabled` flag — no new settings required.
 
+**Migration note:** The existing inline debug block in `Core/Communications.lua` (deserialization failure path, around the `pcall` error handling) should be converted to use `SocialQuest:Debug("Comm", ...)` for consistent formatting. Leaving it as-is would produce output in a different format from all other debug messages.
+
 ### Coverage by Subsystem
 
-#### `[SQ][Comm]` — `Core/Comm.lua`
+#### `[SQ][Comm]` — `Core/Communications.lua`
 
 | Event | Message |
 |---|---|
@@ -91,6 +93,8 @@ Gold `[SQ][Tag]` prefix, white message body. Called from any file as `SocialQues
 | `SQ_INIT` received | `"Received SQ_INIT from <sender> (<N> quests)"` |
 | `SQ_UPDATE` sent | `"Sent SQ_UPDATE: <eventType> questID=<N>"` |
 | `SQ_UPDATE` received | `"Received SQ_UPDATE from <sender>: <eventType> questID=<N>"` |
+| `SQ_OBJECTIVE` sent | `"Sent SQ_OBJECTIVE: questID=<N> obj=<N> <fulfilled>/<required>"` |
+| `SQ_OBJECTIVE` received | `"Received SQ_OBJECTIVE from <sender>: questID=<N> obj=<N>"` |
 | `SQ_BEACON` sent | `"Sent SQ_BEACON to <channel>"` |
 | `SQ_BEACON` received | `"Received SQ_BEACON from <sender>"` |
 | `SQ_REQUEST` sent | `"Sent SQ_REQUEST to <channel>"` |
@@ -107,7 +111,10 @@ Gold `[SQ][Tag]` prefix, white message body. Called from any file as `SocialQues
 | Event | Message |
 |---|---|
 | Quest event fired | `"Quest <eventType>: [<title>] (id=<N>)"` |
+| Quest tracked | `"Quest tracked: (id=<N>)"` |
+| Quest untracked | `"Quest untracked: (id=<N>)"` |
 | Objective progress | `"Objective <N>/<N>: <text> for [<title>]"` |
+| Objective completed | `"Objective complete <N>/<N>: <text> for [<title>]"` |
 | Objective regression | `"Objective regression <N>/<N>: <text> for [<title>]"` |
 
 #### `[SQ][Group]` — `Core/GroupData.lua`
@@ -124,10 +131,12 @@ Gold `[SQ][Tag]` prefix, white message body. Called from any file as `SocialQues
 |---|---|
 | Banner displayed | `"Banner: <eventType> from <sender> — <quest title>"` |
 | Banner suppressed | `"Banner suppressed: <reason>"` |
+| All-complete banner fired | `"All complete: questID=<N> — banner displayed"` |
+| All-complete suppressed | `"All complete suppressed: <reason>"` (e.g., "non-SQ member present", "not all engaged players completed") |
 | Outbound chat sent | `"Chat [<channel>]: <abbreviated message>"` |
 | Outbound chat suppressed | `"Chat suppressed: Questie will announce <eventType>"` |
 
-#### `[SQ][Resync]` — `Core/Comm.lua`
+#### `[SQ][Resync]` — `Core/Communications.lua`
 
 | Event | Message |
 |---|---|
@@ -141,7 +150,7 @@ Gold `[SQ][Tag]` prefix, white message body. Called from any file as `SocialQues
 | File | Changes |
 |---|---|
 | `SocialQuest.lua` | Add `SocialQuest:Debug(tag, msg)` helper; add `[SQ][Quest]` calls in quest event handlers |
-| `Core/Comm.lua` | Add `SendResyncRequest()`; add Guard 1 + Guard 2 to `SQ_REQUEST` handler; clear `lastInitSent` on `OnGroupChanged`; add `[SQ][Comm]` and `[SQ][Resync]` debug calls |
+| `Core/Communications.lua` | Add `SendResyncRequest()`; add Guard 1 + Guard 2 to `SQ_REQUEST` handler; clear `lastInitSent` on `OnGroupChanged`; add `[SQ][Comm]` and `[SQ][Resync]` debug calls; convert existing inline debug block to use new helper |
 | `Core/GroupData.lua` | Add `[SQ][Group]` debug calls |
 | `Core/Announcements.lua` | Add `[SQ][Banner]` debug calls |
 | `UI/Options.lua` | Add "Force Resync" execute button to debug section with 30-second cooldown |
