@@ -194,8 +194,10 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     x = x + 24
 
     -- Determine badge text. "Complete" trumps "Group".
+    -- (Complete) is shown on Mine tab only (callbacks.onTitleShiftClick is present
+    -- only there). On Party/Shared, completion is shown in the player row instead.
     local badgeText = ""
-    if questEntry.isComplete then
+    if questEntry.isComplete and callbacks and callbacks.onTitleShiftClick then
         badgeText = SocialQuestColors.GetUIColor("completed") .. L["(Complete)"] .. C.reset
     elseif questEntry.suggestedGroup and questEntry.suggestedGroup > 0 then
         badgeText = C.chain .. L["(Group)"] .. C.reset
@@ -298,6 +300,14 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent)
         fs:SetWidth(CONTENT_WIDTH - x - 4)
         fs:SetJustifyH("LEFT")
         fs:SetText(SocialQuestColors.GetUIColor("completed") .. string.format(L["%s FINISHED"], name) .. C.reset)
+        return y + ROW_H + 2
+
+    elseif playerEntry.isComplete then
+        local fs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
+        fs:SetWidth(CONTENT_WIDTH - x - 4)
+        fs:SetJustifyH("LEFT")
+        fs:SetText(SocialQuestColors.GetUIColor("completed") .. string.format(L["%s Completed"], name) .. C.reset)
         return y + ROW_H + 2
 
     elseif playerEntry.needsShare then
