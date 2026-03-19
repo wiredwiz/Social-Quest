@@ -10,6 +10,12 @@ local ROW_H         = 18     -- standard row height in pixels
 local INDENT_STEP   = 16     -- pixels per indent level
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 
+-- Called by GroupFrame:Refresh() to set content width before rendering.
+-- Writes to the CONTENT_WIDTH upvalue so all row functions use the current frame width.
+function RowFactory.SetContentWidth(w)
+    CONTENT_WIDTH = w
+end
+
 ------------------------------------------------------------------------
 -- Private helpers
 ------------------------------------------------------------------------
