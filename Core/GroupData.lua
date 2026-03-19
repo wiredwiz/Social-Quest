@@ -37,6 +37,7 @@ function SocialQuestGroupData:OnGroupChanged()
     -- Remove entries for players no longer in group.
     for fullName in pairs(self.PlayerQuests) do
         if not current[fullName] then
+            SocialQuest:Debug("Group", "Removed " .. fullName .. " from tracked roster")
             self.PlayerQuests[fullName] = nil
         end
     end
@@ -45,6 +46,7 @@ function SocialQuestGroupData:OnGroupChanged()
     for fullName in pairs(current) do
         if not self.PlayerQuests[fullName] then
             self.PlayerQuests[fullName] = { hasSocialQuest = false, completedQuests = {} }
+            SocialQuest:Debug("Group", "Added " .. fullName .. " to tracked roster")
         end
     end
 end
@@ -73,6 +75,10 @@ function SocialQuestGroupData:OnInitReceived(sender, payload)
         quests          = quests,
         completedQuests = (existing and existing.completedQuests) or {},
     }
+
+    local _sqN = 0
+    for _ in pairs(quests or {}) do _sqN = _sqN + 1 end
+    SocialQuest:Debug("Group", "Stored init data for " .. sender .. " (" .. _sqN .. " quests)")
 
     SocialQuestGroupFrame:RequestRefresh()
 end
