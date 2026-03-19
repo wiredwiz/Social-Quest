@@ -1,7 +1,8 @@
 -- UI/RowFactory.lua
 -- Stateless row-drawing utilities for the group frame tab providers.
 -- All functions take (contentFrame, y, ...) and return the new y offset.
--- contentFrame is the scroll child (width = 360 px, set by GroupFrame).
+-- contentFrame is the scroll child; width is set dynamically by GroupFrame:Refresh()
+-- via RowFactory.SetContentWidth(). CONTENT_WIDTH defaults to 360 on first load.
 
 RowFactory = {}
 
