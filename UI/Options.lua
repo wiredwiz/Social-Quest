@@ -282,12 +282,12 @@ function SocialQuestOptions:Initialize()
                 args  = {
                     enabled = toggle(L["Enable debug mode"],
                         L["Print internal debug messages to the chat frame. Useful for diagnosing comm issues or event flow problems."],
-                        { "debug", "enabled" }),
+                        { "debug", "enabled" }, 1),
                     forceResync = {
                         type     = "execute",
                         name     = L["Force Resync"],
                         desc     = L["Request a fresh quest snapshot from all current group members. Disabled for 30 seconds after each use."],
-                        order    = 1,
+                        order    = 2,
                         hidden   = function() return not db.debug.enabled end,
                         disabled = function() return GetTime() - lastResyncTime < 30 end,
                         func     = function()
@@ -299,7 +299,7 @@ function SocialQuestOptions:Initialize()
                         type   = "group",
                         name   = L["Test Banners and Chat"],
                         inline = true,
-                        order  = 2,
+                        order  = 3,
                         args   = {
                             testAccepted = {
                                 type = "execute",
