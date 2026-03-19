@@ -228,8 +228,7 @@
   |---|---|---|
   | Enable SocialQuest | On | Master on/off. Disabling stops all announcements, banners, sync, and tooltips. |
   | Show received events | On | Master toggle for all incoming banners. Turn off to silence all group notifications at once without changing per-channel settings. |
-    | Colorblind Mode | Off | Switches all banner colors and status indicators to the Okabe-Ito colorblind-friendly palette. Not needed if WoW's built-in Colorblind Mode (Interface Options → Accessibility) is
-  already enabled — SocialQuest detects that setting automatically. |
+  | Colorblind Mode | Off | Switches all banner colors and status indicators to the Okabe-Ito colorblind-friendly palette. Not needed if WoW's built-in Colorblind Mode (Interface Options → Accessibility) is already enabled — SocialQuest detects that setting automatically. |
   | Show banners for your own quest events | Off | Disabled by default. When enabled, your own quest events also appear as on-screen banners. |
 
   ## Accessibility — Color Vision
