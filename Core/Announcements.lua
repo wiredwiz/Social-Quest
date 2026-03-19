@@ -548,7 +548,7 @@ local TEST_DEMOS = {
     },
     all_complete = {
         outbound = nil,   -- no outbound chat for this synthesized event
-        banner   = "Everyone has completed: A Daunting Task",
+        banner   = "Everyone has completed: [A Daunting Task]",
         colorKey = "all_complete",
     },
 }
