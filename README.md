@@ -5,13 +5,13 @@
   every member's quest progress synchronized in real time and surfaces that information exactly
   when and where it is useful — without requiring any setup from your groupmates beyond having
   the addon installed.
-
-  > **Requirement:** SocialQuest depends on **AbsoluteQuestLog** (a companion library addon).
-  > If AbsoluteQuestLog is not installed, SocialQuest will print an error on login and remain
-  > disabled. Install both addons together.
-
   ---
+  ## Required Dependencies
+  * Absolute Quest Log (library Add-on)
+  * Ace3 (library Add-on)
 
+  If either of these libraries are not installed, SocialQuest will print an error on login and remain disabled.
+  
   ---
 
   ## Language Support
@@ -37,9 +37,38 @@
 
   ---
 
+  ## Slash Commands
+
+  | Command | Effect |
+  |---|---|
+  | `/sq` | Toggle the group quest window open/closed |
+  | `/sq config` | Open the settings panel |
+ 
+  ---
+
+  ## Keybindings
+  
+  The group quest window can also be bound to a keyboard shortcut in
+  **Options → Key Bindings → AddOns → Social Quest → Toggle Social Quest Window**.  
+
+  This allows you to easily map a custom key to toggle the SocialQuest Quest Window.
+  
+  ---
+
+  ## Quest Chain Support Requirements:
+  
+  SocialQuest surfaces information relating to quest chains, but only if you have either Questie or the Quest Weaver add-on installed.
+  SocialQuest gets its data from Absolute Quest Log (AQL), which attempts to gather as much information about quests as possible.  
+  AQL does not require Questie or Quest Weaver to be installed, but if either one is, AQL will detect it and utilize their data
+  to establish full quest chain info.  With full quest chain data available, you will be able to see each player's position in
+  their quest chains, making it easy at a glance to see that your friend is on the same chain as you but just 2 steps behind.
+  I personally feel that SocialQuest works best when paired with Questie.
+  
+  ---
+
   ## The Group Quest Window
 
-  Open the main window with `/sq` or by **left-clicking** the SocialQuest minimap icon.
+  Open the main window with `/sq`, a custom keybind or by **left-clicking** the SocialQuest minimap icon.
   The window is resizable and can be moved by dragging the title bar. Press **Escape** to close
   it. The window has three tabs: **Shared**, **Mine**, and **Party**.
 
@@ -97,13 +126,6 @@
 
   Each quest row has a **[?] button** that opens a small popup with the quest's Wowhead URL.
   Select all and copy (`Ctrl+A`, `Ctrl+C`) to grab the link.
-
-  ---
-
-  ## Key Bindings
-  Social Quest provides a custom key bind action for toggling the group quest window should you want to 
-  bind this to a key of your choosing.  I can be found under the "Social Quest" group in the key bindings
-  settings.
 
   ---
 
@@ -167,7 +189,7 @@
   {skull} SocialQuest: 3/8 Fragments Collected for [The Cipher of Damnation]!
   {skull} SocialQuest: 2/8 Fragments Collected (regression) for [The Cipher of Damnation]!
 
-  ### Questie Suppression
+  ### Announcement Suppression With Questie
 
   If **Questie** is installed and its announce feature is enabled for the same event type,
   SocialQuest suppresses its own message to avoid duplicates. Suppression applies to:
@@ -276,6 +298,8 @@
 
   ### Party
 
+  This is the most common usage for SocialQuest.  I realize 99% of socially questing folks are doing so in a party questing context.
+
   | Setting | Default | Description |
   |---|---|---|
   | Enable transmission | On | Broadcast your quest data to party members via addon comm. |
@@ -286,6 +310,8 @@
   ---
 
   ### Raid
+
+  A less likely used scenario, but still supported for those that would like the possibilty.
 
   | Setting | Default | Description |
   |---|---|---|
@@ -298,6 +324,11 @@
   ---
 
   ### Guild
+
+  Let me first say that I fully realize most people won't want this.  Most guilds won't tolerate this.  That said, if you are in a guild that for some reason doesn't mind
+  members spamming guild chat with automated quest messages, this is possible.  Use your common sense though, don't spam guildies against their wishes, don't be a jerk.
+  
+  There is a reason I turn this off by default.
 
   | Setting | Default | Description |
   |---|---|---|
@@ -312,6 +343,9 @@
   ---
 
   ### Battleground
+
+  Also, not a common use scenario, that said, there are those quests in Alterac Valley.  However, one alternative is to use friend whisper settings instead
+  with the "group members only" if you don't care about banner messages and whispered quest update messages suffice for your desires.
 
   | Setting | Default | Description |
   |---|---|---|
@@ -341,20 +375,12 @@
 
   ### Follow Notifications
 
+  This setting triggers banner notifications when one SocialQuest user "follows" another as well as when they stop following.  This way
+  you don't have to ask if you friend is following yet, or if they get stuck on a post and stop following mid-run, the banner message
+  is a nice extra headsup message.
+
   | Setting | Default | Description |
   |---|---|---|
   | Enable follow notifications | On | Master toggle for the follow whisper system. |
   | Announce when you follow someone | On | Whispers the player you begin auto-following so they know. |
   | Announce when followed | On | Shows a chat message when someone starts or stops following you. |
-
-  ---
-
-  ## Slash Commands
-
-  | Command | Effect |
-  |---|---|
-  | `/sq` | Toggle the group quest window open/closed |
-  | `/sq config` | Open the settings panel |
-
-  The group quest window can also be bound to a keyboard shortcut in
-  **Options → Key Bindings → AddOns → Social Quest → Toggle Social Quest Window**.
