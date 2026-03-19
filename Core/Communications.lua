@@ -300,7 +300,7 @@ function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
         -- top of OnCommReceived does `local ok, payload = AceSerializer:Deserialize(msg)`
         -- before the prefix dispatch, so no separate deserialization is needed here.
         local _sqN = 0
-        for _ in pairs(payload.completedQuests or payload) do _sqN = _sqN + 1 end
+        for _ in pairs(payload.completedQuests or {}) do _sqN = _sqN + 1 end
         SocialQuest:Debug("Comm", "Received SQ_RESP_COMPLETE from " .. sender .. " (" .. _sqN .. " completed quests)")
         local entry = SocialQuestGroupData.PlayerQuests[sender]
         if entry then
