@@ -20,6 +20,8 @@ local PREFIXES = {
     "SQ_REQ_COMPLETED", "SQ_RESP_COMPLETE",
 }
 
+local lastInitSent = {}   -- keyed by sender name; tracks when SQ_INIT was last sent per player
+
 -- Called from SocialQuest:OnEnable().
 function SocialQuestComm:Initialize()
     local AceComm = LibStub("AceComm-3.0")
@@ -36,6 +38,7 @@ end
 
 -- Called when GROUP_ROSTER_UPDATE fires.
 function SocialQuestComm:OnGroupChanged()
+    lastInitSent = {}
     local db = SocialQuest.db.profile
 
     if IsInGroup(LE_PARTY_CATEGORY_HOME) and not IsInRaid() then
@@ -127,16 +130,21 @@ end
 function SocialQuestComm:SendFullInit(channel, targetName)
     local payload = buildInitPayload()
     local msg = serialize(payload)
+    local _sqN = 0
+    for _ in pairs(payload.quests or {}) do _sqN = _sqN + 1 end
     if targetName then
         LibStub("AceComm-3.0"):SendCommMessage("SQ_INIT", msg, "WHISPER", targetName)
+        SocialQuest:Debug("Comm", "Sent SQ_INIT to " .. targetName .. " (" .. _sqN .. " quests)")
     else
         LibStub("AceComm-3.0"):SendCommMessage("SQ_INIT", msg, channel)
+        SocialQuest:Debug("Comm", "Sent SQ_INIT to " .. channel .. " (" .. _sqN .. " quests)")
     end
 end
 
 function SocialQuestComm:SendBeacon(channel)
     -- Empty beacon — payload is just a single byte so AceComm has something to send.
     LibStub("AceComm-3.0"):SendCommMessage("SQ_BEACON", serialize({}), channel)
+    SocialQuest:Debug("Comm", "Sent SQ_BEACON to " .. channel)
 end
 
 -- Broadcast a single quest state update.
@@ -146,6 +154,7 @@ function SocialQuestComm:BroadcastQuestUpdate(questInfo, eventType)
 
     local payload = buildQuestPayload(questInfo, eventType)
     LibStub("AceComm-3.0"):SendCommMessage("SQ_UPDATE", serialize(payload), channel)
+    SocialQuest:Debug("Comm", "Sent SQ_UPDATE: " .. eventType .. " questID=" .. questInfo.questID)
 end
 
 -- Broadcast a single objective update.
@@ -161,6 +170,7 @@ function SocialQuestComm:BroadcastObjectiveUpdate(questInfo, objective)
         isFinished   = objective.isFinished and 1 or 0,
     }
     LibStub("AceComm-3.0"):SendCommMessage("SQ_OBJECTIVE", serialize(payload), channel)
+    SocialQuest:Debug("Comm", "Sent SQ_OBJECTIVE: questID=" .. questInfo.questID .. " obj=" .. objective.index .. " " .. objective.numFulfilled .. "/" .. objective.numRequired)
 end
 
 function SocialQuestComm:SendFollowStart(targetName)
@@ -177,6 +187,7 @@ function SocialQuestComm:SendReqCompleted()
     local channel = self:GetActiveChannel()
     if not channel then return end
     LibStub("AceComm-3.0"):SendCommMessage("SQ_REQ_COMPLETED", serialize({}), channel)
+    SocialQuest:Debug("Comm", "Sent SQ_REQ_COMPLETED to " .. channel)
 end
 
 -- Returns the appropriate AceComm channel string for the player's current group context.
@@ -192,6 +203,25 @@ function SocialQuestComm:GetActiveChannel()
     return nil
 end
 
+function SocialQuestComm:SendResyncRequest()
+    local channel = self:GetActiveChannel()
+    if not channel then
+        SocialQuest:Debug("Resync", "Resync: not in group, no-op")
+        return
+    end
+    -- Transmit guard: use GetActiveChannel priority (raid > battleground > party).
+    local sectionMap = { RAID = "raid", INSTANCE_CHAT = "battleground", PARTY = "party" }
+    local section = sectionMap[channel]
+    local db = SocialQuest.db.profile
+    if section and db[section] and not db[section].transmit then
+        SocialQuest:Debug("Resync", "Resync: transmit disabled for " .. section .. ", no-op")
+        return
+    end
+    SocialQuest:Debug("Resync", "Resync: broadcasting SQ_REQUEST to " .. channel)
+    LibStub("AceComm-3.0"):SendCommMessage("SQ_REQUEST", serialize({}), channel)
+    SocialQuest:Debug("Comm", "Sent SQ_REQUEST to " .. channel)
+end
+
 ------------------------------------------------------------------------
 -- Receive
 ------------------------------------------------------------------------
@@ -204,19 +234,22 @@ function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
 
     local ok, payload = LibStub("AceSerializer-3.0"):Deserialize(msg)
     if not ok then
-        if SocialQuest.db.profile.debug.enabled then
-            SocialQuest:Print("[Comm] Failed to deserialize "..prefix.." from "..sender)
-        end
+        SocialQuest:Debug("Comm", "Failed to deserialize " .. prefix .. " from " .. sender)
         return
     end
 
     if prefix == "SQ_INIT" then
+        local _sqN = 0
+        for _ in pairs(payload.quests or payload) do _sqN = _sqN + 1 end
+        SocialQuest:Debug("Comm", "Received SQ_INIT from " .. sender .. " (" .. _sqN .. " quests)")
         SocialQuestGroupData:OnInitReceived(sender, payload)
 
     elseif prefix == "SQ_UPDATE" then
+        SocialQuest:Debug("Comm", "Received SQ_UPDATE from " .. sender .. ": " .. (payload.eventType or "?") .. " questID=" .. (payload.questID or "?"))
         SocialQuestGroupData:OnUpdateReceived(sender, payload)
 
     elseif prefix == "SQ_OBJECTIVE" then
+        SocialQuest:Debug("Comm", "Received SQ_OBJECTIVE from " .. sender .. ": questID=" .. (payload.questID or "?") .. " obj=" .. (payload.objIndex or "?"))
         SocialQuestGroupData:OnObjectiveReceived(sender, payload)
 
     elseif prefix == "SQ_BEACON" then
@@ -226,10 +259,20 @@ function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
         -- SQ_INIT unsolicited — that defeats the storm-prevention purpose of
         -- the beacon pattern. They will send us an SQ_REQUEST in return when
         -- they receive our beacon (or request directly if they already heard ours).
+        SocialQuest:Debug("Comm", "Received SQ_BEACON from " .. sender)
         LibStub("AceComm-3.0"):SendCommMessage("SQ_REQUEST", serialize({}), "WHISPER", sender)
 
     elseif prefix == "SQ_REQUEST" then
-        -- Someone is requesting our full snapshot.
+        if not SocialQuestGroupData.PlayerQuests[sender] then
+            SocialQuest:Debug("Comm", "Received SQ_REQUEST from " .. sender .. " — dropped (not in group)")
+            return
+        end
+        if lastInitSent[sender] and (GetTime() - lastInitSent[sender] < 15) then
+            SocialQuest:Debug("Comm", "Received SQ_REQUEST from " .. sender .. " — dropped (cooldown)")
+            return
+        end
+        SocialQuest:Debug("Comm", "Received SQ_REQUEST from " .. sender .. " — responding")
+        lastInitSent[sender] = GetTime()
         self:SendFullInit("WHISPER", sender)
 
     elseif prefix == "SQ_FOLLOW_START" then
@@ -239,12 +282,16 @@ function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
         SocialQuestAnnounce:OnFollowStop(sender)
 
     elseif prefix == "SQ_REQ_COMPLETED" then
+        SocialQuest:Debug("Comm", "Received SQ_REQ_COMPLETED from " .. sender)
         -- Whisper our completed quest history back to the requester.
         local AQL = SocialQuest.AQL
         if AQL then
-            local payload = { completedQuests = AQL:GetCompletedQuests() }
+            local completedPayload = { completedQuests = AQL:GetCompletedQuests() }
+            local _sqN = 0
+            for _ in pairs(completedPayload.completedQuests or {}) do _sqN = _sqN + 1 end
             LibStub("AceComm-3.0"):SendCommMessage(
-                "SQ_RESP_COMPLETE", serialize(payload), "WHISPER", sender)
+                "SQ_RESP_COMPLETE", serialize(completedPayload), "WHISPER", sender)
+            SocialQuest:Debug("Comm", "Sent SQ_RESP_COMPLETE to " .. sender .. " (" .. _sqN .. " completed quests)")
         end
 
     elseif prefix == "SQ_RESP_COMPLETE" then
@@ -252,6 +299,9 @@ function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
         -- NOTE: `payload` here is already deserialized — the existing code at the
         -- top of OnCommReceived does `local ok, payload = AceSerializer:Deserialize(msg)`
         -- before the prefix dispatch, so no separate deserialization is needed here.
+        local _sqN = 0
+        for _ in pairs(payload.completedQuests or {}) do _sqN = _sqN + 1 end
+        SocialQuest:Debug("Comm", "Received SQ_RESP_COMPLETE from " .. sender .. " (" .. _sqN .. " completed quests)")
         local entry = SocialQuestGroupData.PlayerQuests[sender]
         if entry then
             entry.completedQuests = payload.completedQuests or {}

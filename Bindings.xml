@@ -1,5 +1,5 @@
 <Bindings>
-    <Binding header="SOCIALQUEST_HEADER"/>
+    <Binding name="SOCIALQUEST_HEADER" header="SOCIALQUEST_HEADER"/>
     <Binding name="SOCIALQUEST_TOGGLE" description="Toggle Social Quest Window" category="Social Quest">
         SocialQuestGroupFrame:Toggle()
     </Binding>

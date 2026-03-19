@@ -122,6 +122,15 @@ function SocialQuest:OnDisable()
 end
 
 ------------------------------------------------------------------------
+-- Debug helper
+------------------------------------------------------------------------
+
+function SocialQuest:Debug(tag, msg)
+    if not self.db.profile.debug.enabled then return end
+    DEFAULT_CHAT_FRAME:AddMessage("|cFFFFD200[SQ][" .. tag .. "]|r " .. tostring(msg))
+end
+
+------------------------------------------------------------------------
 -- Default settings
 ------------------------------------------------------------------------
 
@@ -282,18 +291,21 @@ end
 ------------------------------------------------------------------------
 
 function SocialQuest:OnQuestAccepted(event, questInfo)
+    self:Debug("Quest", "Quest accepted: [" .. (questInfo.title or "?") .. "] (id=" .. questInfo.questID .. ")")
     SocialQuestAnnounce:OnQuestEvent("accepted", questInfo.questID, questInfo)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "accepted")
     SocialQuestGroupFrame:RequestRefresh()
 end
 
 function SocialQuest:OnQuestAbandoned(event, questInfo)
+    self:Debug("Quest", "Quest abandoned: [" .. (questInfo.title or "?") .. "] (id=" .. questInfo.questID .. ")")
     SocialQuestAnnounce:OnQuestEvent("abandoned", questInfo.questID, questInfo)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "abandoned")
     SocialQuestGroupFrame:RequestRefresh()
 end
 
 function SocialQuest:OnQuestFinished(event, questInfo)
+    self:Debug("Quest", "Quest finished: [" .. (questInfo.title or "?") .. "] (id=" .. questInfo.questID .. ")")
     -- questInfo intentionally NOT passed: "finished" is excluded from chain-step
     -- annotation. See CHAIN_STEP_EVENTS in Core/Announcements.lua.
     SocialQuestAnnounce:OnQuestEvent("finished", questInfo.questID)
@@ -302,23 +314,27 @@ function SocialQuest:OnQuestFinished(event, questInfo)
 end
 
 function SocialQuest:OnQuestCompleted(event, questInfo)
+    self:Debug("Quest", "Quest completed: [" .. (questInfo.title or "?") .. "] (id=" .. questInfo.questID .. ")")
     SocialQuestAnnounce:OnQuestEvent("completed", questInfo.questID, questInfo)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "completed")
     SocialQuestGroupFrame:RequestRefresh()
 end
 
 function SocialQuest:OnQuestFailed(event, questInfo)
+    self:Debug("Quest", "Quest failed: [" .. (questInfo.title or "?") .. "] (id=" .. questInfo.questID .. ")")
     SocialQuestAnnounce:OnQuestEvent("failed", questInfo.questID, questInfo)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "failed")
     SocialQuestGroupFrame:RequestRefresh()
 end
 
 function SocialQuest:OnQuestTracked(event, questInfo)
+    self:Debug("Quest", "Quest tracked: (id=" .. questInfo.questID .. ")")
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "tracked")
     SocialQuestGroupFrame:RequestRefresh()
 end
 
 function SocialQuest:OnQuestUntracked(event, questInfo)
+    self:Debug("Quest", "Quest untracked: (id=" .. questInfo.questID .. ")")
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "untracked")
     SocialQuestGroupFrame:RequestRefresh()
 end
@@ -330,11 +346,13 @@ function SocialQuest:OnObjectiveProgressed(event, questInfo, objective, delta)
     -- Suppress progress announce when threshold is crossed; COMPLETED fires next.
     if objective.numFulfilled >= objective.numRequired then return end
 
+    self:Debug("Quest", "Objective " .. objective.numFulfilled .. "/" .. objective.numRequired .. ": " .. (objective.name or "") .. " for [" .. (questInfo.title or "?") .. "]")
     SocialQuestAnnounce:OnObjectiveEvent("objective_progress", questInfo, objective, false)
     SocialQuestGroupFrame:RequestRefresh()
 end
 
 function SocialQuest:OnObjectiveCompleted(event, questInfo, objective)
+    self:Debug("Quest", "Objective complete " .. objective.numFulfilled .. "/" .. objective.numRequired .. ": " .. (objective.name or "") .. " for [" .. (questInfo.title or "?") .. "]")
     -- Comm already broadcast by OnObjectiveProgressed. Only announce here.
     SocialQuestAnnounce:OnObjectiveEvent("objective_complete", questInfo, objective, false)
     SocialQuestGroupFrame:RequestRefresh()
@@ -342,6 +360,7 @@ end
 
 function SocialQuest:OnObjectiveRegressed(event, questInfo, objective, delta)
     SocialQuestComm:BroadcastObjectiveUpdate(questInfo, objective)
+    self:Debug("Quest", "Objective regression " .. objective.numFulfilled .. "/" .. objective.numRequired .. ": " .. (objective.name or "") .. " for [" .. (questInfo.title or "?") .. "]")
     SocialQuestAnnounce:OnObjectiveEvent("objective_progress", questInfo, objective, true)
     SocialQuestGroupFrame:RequestRefresh()
 end
