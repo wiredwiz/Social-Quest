@@ -236,22 +236,20 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     titleFs:SetJustifyV("MIDDLE")
     titleFs:SetText(colorCode .. titleText .. "|r")
 
-    -- Invisible click overlay: left-click opens quest log, shift-click tracks/untracks.
-    -- Guard is callbacks.onTitleShiftClick: present on My Quests tab (MineTab), nil on
-    -- Party/Shared tabs (those tabs pass {} as callbacks). Party/Shared tab entries can
-    -- have a non-nil logIndex when the local player also has the quest, so logIndex > 0
-    -- is NOT a safe guard — callbacks.onTitleShiftClick is the authoritative indicator.
-    if callbacks and callbacks.onTitleShiftClick then
-        local titleBtn = CreateFrame("Button", nil, contentFrame)
-        titleBtn:SetAllPoints(titleFs)
-        titleBtn:SetScript("OnClick", function()
-            if IsShiftKeyDown() then
-                callbacks.onTitleShiftClick(questEntry.logIndex, questEntry.isTracked)
-            else
-                openQuestLogToQuest(questEntry.questID)
-            end
-        end)
-    end
+    -- Invisible click overlay: always created on all three tabs.
+    -- Left-click opens the Quest Log (only when player has the quest: logIndex non-nil).
+    -- Shift-click tracks/untracks (Mine tab only: callbacks.onTitleShiftClick present).
+    -- Unhandled combos (e.g. shift-click on Party/Shared) do nothing.
+    local titleBtn = CreateFrame("Button", nil, contentFrame)
+    titleBtn:SetAllPoints(titleFs)
+    titleBtn:SetScript("OnClick", function()
+        if IsShiftKeyDown() and callbacks and callbacks.onTitleShiftClick then
+            callbacks.onTitleShiftClick(questEntry.logIndex, questEntry.isTracked)
+        elseif not IsShiftKeyDown() and questEntry.logIndex then
+            openQuestLogToQuest(questEntry.questID)
+        end
+        -- else: no logIndex (player doesn't have quest) or unhandled combo → do nothing
+    end)
 
     -- Badge (right-aligned).
     if badgeText ~= "" then
