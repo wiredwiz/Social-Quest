@@ -75,7 +75,7 @@ L["(Group)"]                                = true
 L[" (Step %s of %s)"]                       = true
 -- %s = player character name
 L["%s FINISHED"]                            = true   -- permanent: quest turned in
-L["%s Completed"]                           = true   -- in-progress: objectives done, not yet turned in
+L["Completed"]                              = true   -- in-progress: objectives done, not yet turned in
 L["%s Needs it Shared"]                     = true
 L["%s (no data)"]                           = true
 
