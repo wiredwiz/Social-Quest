@@ -206,10 +206,13 @@ function SocialQuestAnnounce:OnQuestEvent(eventType, questID, questInfo)
     local chainInfo = questInfo and questInfo.chainInfo
     msg = appendChainStep(msg, eventType, chainInfo)
 
-    if not questieWouldAnnounce(eventType) then
+    if questieWouldAnnounce(eventType) then
+        SocialQuest:Debug("Banner", "Chat suppressed: Questie will announce " .. eventType)
+    else
         -- Party
         if IsInGroup(LE_PARTY_CATEGORY_HOME) and not IsInRaid() then
             if db.party.transmit and db.party.announce[eventType] then
+                SocialQuest:Debug("Banner", "Chat [PARTY]: " .. string.sub(msg, 1, 60))
                 enqueueChat(msg, "PARTY")
             end
         end
@@ -217,6 +220,7 @@ function SocialQuestAnnounce:OnQuestEvent(eventType, questID, questInfo)
         -- Raid
         if IsInRaid() then
             if db.raid.transmit and db.raid.announce[eventType] then
+                SocialQuest:Debug("Banner", "Chat [RAID]: " .. string.sub(msg, 1, 60))
                 enqueueChat(msg, "RAID")
             end
         end
@@ -224,6 +228,7 @@ function SocialQuestAnnounce:OnQuestEvent(eventType, questID, questInfo)
         -- Guild
         if IsInGuild() then
             if db.guild.transmit and db.guild.announce[eventType] then
+                SocialQuest:Debug("Banner", "Chat [GUILD]: " .. string.sub(msg, 1, 60))
                 enqueueChat(msg, "GUILD")
             end
         end
@@ -231,12 +236,14 @@ function SocialQuestAnnounce:OnQuestEvent(eventType, questID, questInfo)
         -- Battleground
         if IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
             if db.battleground.transmit and db.battleground.announce[eventType] then
+                SocialQuest:Debug("Banner", "Chat [BATTLEGROUND]: " .. string.sub(msg, 1, 60))
                 enqueueChat(msg, "BATTLEGROUND")
             end
         end
 
         -- Whisper friends
         if db.whisperFriends.enabled and db.whisperFriends.announce[eventType] then
+            SocialQuest:Debug("Banner", "Chat [WHISPER]: " .. string.sub(msg, 1, 60))
             self:WhisperFriends(msg, db.whisperFriends.groupOnly)
         end
     end
@@ -257,7 +264,9 @@ function SocialQuestAnnounce:OnObjectiveEvent(eventType, questInfo, objective, i
     local db = SocialQuest.db.profile
     if not db.enabled then return end
 
-    if not questieWouldAnnounce(eventType) then
+    if questieWouldAnnounce(eventType) then
+        SocialQuest:Debug("Banner", "Chat suppressed: Questie will announce " .. eventType)
+    else
         local msg = formatOutboundObjectiveMsg(
             questInfo.link or questInfo.title,
             objective.name or "",
@@ -268,6 +277,7 @@ function SocialQuestAnnounce:OnObjectiveEvent(eventType, questInfo, objective, i
         -- Party
         if IsInGroup(LE_PARTY_CATEGORY_HOME) and not IsInRaid() then
             if db.party.transmit and db.party.announce[eventType] then
+                SocialQuest:Debug("Banner", "Chat [PARTY]: " .. string.sub(msg, 1, 60))
                 enqueueChat(msg, "PARTY")
             end
         end
@@ -275,12 +285,14 @@ function SocialQuestAnnounce:OnObjectiveEvent(eventType, questInfo, objective, i
         -- Battleground
         if IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
             if db.battleground.transmit and db.battleground.announce[eventType] then
+                SocialQuest:Debug("Banner", "Chat [BATTLEGROUND]: " .. string.sub(msg, 1, 60))
                 enqueueChat(msg, "BATTLEGROUND")
             end
         end
 
         -- Whisper friends
         if db.whisperFriends.enabled and db.whisperFriends.announce[eventType] then
+            SocialQuest:Debug("Banner", "Chat [WHISPER]: " .. string.sub(msg, 1, 60))
             self:WhisperFriends(msg, db.whisperFriends.groupOnly)
         end
     end
@@ -309,11 +321,17 @@ local function checkAllCompleted(questID, localHasCompleted)
     -- Must be in a group (PlayerQuests only contains remote members).
     local anyRemote = false
     for _ in pairs(PlayerQuests) do anyRemote = true; break end
-    if not anyRemote then return end
+    if not anyRemote then
+        SocialQuest:Debug("Banner", "All complete suppressed: not in group")
+        return
+    end
 
     -- Every group member must have SocialQuest; suppress entirely if any lacks it.
     for _, entry in pairs(PlayerQuests) do
-        if not entry.hasSocialQuest then return end
+        if not entry.hasSocialQuest then
+            SocialQuest:Debug("Banner", "All complete suppressed: non-SQ member present")
+            return
+        end
     end
 
     -- Build engaged set: only players who have or had the quest this session.
@@ -330,7 +348,10 @@ local function checkAllCompleted(questID, localHasCompleted)
     local localEngaged  = localHasCompleted or localActive
     -- localFlagged is only consulted inside the localEngaged guard below.
     local localFlagged  = localHasCompleted or (AQL and AQL:HasCompletedQuest(questID))
-    if localEngaged and not localFlagged then return end  -- engaged but not done
+    if localEngaged and not localFlagged then
+        SocialQuest:Debug("Banner", "All complete suppressed: local player engaged but not done")
+        return
+    end
 
     -- Remote players: check engagement and completion.
     local anyEngaged = localEngaged
@@ -340,18 +361,27 @@ local function checkAllCompleted(questID, localHasCompleted)
         local engaged      = hasActive or hasCompleted
         if engaged then
             anyEngaged = true
-            if not hasCompleted then return end  -- engaged but not done
+            if not hasCompleted then
+                SocialQuest:Debug("Banner", "All complete suppressed: not all engaged players completed")
+                return
+            end
         end
     end
 
     -- No one in the group has or had the quest.
-    if not anyEngaged then return end
+    if not anyEngaged then
+        SocialQuest:Debug("Banner", "All complete suppressed: no engaged players")
+        return
+    end
 
     -- Display gating: same toggle as normal completion banners.
     local section   = getSenderSection()
     local sectionDb = db[section]
     if not sectionDb or not sectionDb.display then return end
-    if not sectionDb.display.completed then return end
+    if not sectionDb.display.completed then
+        SocialQuest:Debug("Banner", "All complete suppressed: display.completed off")
+        return
+    end
 
     -- Title resolution: plain text — RaidNotice does not parse hyperlinks.
     local info  = AQL and AQL:GetQuest(questID)
@@ -360,6 +390,7 @@ local function checkAllCompleted(questID, localHasCompleted)
                or ("Quest " .. questID)
 
     local msg = string.format(L["Everyone has completed: %s"], title)
+    SocialQuest:Debug("Banner", "All complete: questID=" .. questID .. " \xe2\x80\x94 banner displayed")
     displayBanner(msg, "all_complete")
 
     -- Chat message only when the local player triggered it (avoids duplicate
@@ -383,19 +414,34 @@ function SocialQuestAnnounce:OnRemoteQuestEvent(sender, eventType, questID, cach
         checkAllCompleted(questID, false)
     end
 
-    if not db.general.displayReceived then return end
+    if not db.general.displayReceived then
+        SocialQuest:Debug("Banner", "Banner suppressed: displayReceived off")
+        return
+    end
 
     local section   = getSenderSection()
     local sectionDb = db[section]
     if not sectionDb or not sectionDb.display then return end
-    if not sectionDb.displayReceived then return end
-    if not sectionDb.display[eventType] then return end
+    if not sectionDb.displayReceived then
+        SocialQuest:Debug("Banner", "Banner suppressed: section displayReceived off")
+        return
+    end
+    if not sectionDb.display[eventType] then
+        SocialQuest:Debug("Banner", "Banner suppressed: display." .. eventType .. " off")
+        return
+    end
 
     -- Friends-only filter.
     if section == "raid" and db.raid.friendsOnly
-        and not C_FriendList.IsFriend(sender) then return end
+        and not C_FriendList.IsFriend(sender) then
+        SocialQuest:Debug("Banner", "Banner suppressed: friends-only filter")
+        return
+    end
     if section == "battleground" and db.battleground.friendsOnly
-        and not C_FriendList.IsFriend(sender) then return end
+        and not C_FriendList.IsFriend(sender) then
+        SocialQuest:Debug("Banner", "Banner suppressed: friends-only filter")
+        return
+    end
 
     local AQL   = SocialQuest.AQL
     local info  = AQL and AQL:GetQuestInfo(questID)
@@ -411,27 +457,43 @@ function SocialQuestAnnounce:OnRemoteQuestEvent(sender, eventType, questID, cach
     local msg = formatQuestBannerMsg(sender, eventType, title)
     if msg then
         msg = appendChainStep(msg, eventType, chainInfo)
+        SocialQuest:Debug("Banner", "Banner: " .. eventType .. " from " .. sender .. " \xe2\x80\x94 " .. (title or "?"))
         displayBanner(msg, eventType)
     end
 end
 
 function SocialQuestAnnounce:OnRemoteObjectiveEvent(sender, questID, objIndex, numFulfilled, numRequired, isComplete, isRegression)
     local db = SocialQuest.db.profile
-    if not db.enabled or not db.general.displayReceived then return end
+    if not db.enabled or not db.general.displayReceived then
+        SocialQuest:Debug("Banner", "Banner suppressed: addon or displayReceived off")
+        return
+    end
 
     local section   = getSenderSection()
     local sectionDb = db[section]
     if not sectionDb or not sectionDb.display then return end
-    if not sectionDb.displayReceived then return end
+    if not sectionDb.displayReceived then
+        SocialQuest:Debug("Banner", "Banner suppressed: section displayReceived off")
+        return
+    end
 
     local eventType = isComplete and "objective_complete" or "objective_progress"
-    if not sectionDb.display[eventType] then return end
+    if not sectionDb.display[eventType] then
+        SocialQuest:Debug("Banner", "Banner suppressed: display." .. eventType .. " off")
+        return
+    end
 
     -- Friends-only filter.
     if section == "raid" and db.raid.friendsOnly
-        and not C_FriendList.IsFriend(sender) then return end
+        and not C_FriendList.IsFriend(sender) then
+        SocialQuest:Debug("Banner", "Banner suppressed: friends-only filter")
+        return
+    end
     if section == "battleground" and db.battleground.friendsOnly
-        and not C_FriendList.IsFriend(sender) then return end
+        and not C_FriendList.IsFriend(sender) then
+        SocialQuest:Debug("Banner", "Banner suppressed: friends-only filter")
+        return
+    end
 
     local AQL     = SocialQuest.AQL
     local objs    = AQL and AQL:GetQuestObjectives(questID)
@@ -441,6 +503,7 @@ function SocialQuestAnnounce:OnRemoteObjectiveEvent(sender, questID, objIndex, n
                  or ("Quest " .. questID)
 
     local msg = formatObjectiveBannerMsg(sender, title, objText, numFulfilled, numRequired, isComplete, isRegression)
+    SocialQuest:Debug("Banner", "Banner: " .. eventType .. " from " .. sender .. " \xe2\x80\x94 questID=" .. questID)
     displayBanner(msg, eventType)
 end
 
