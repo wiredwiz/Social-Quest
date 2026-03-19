@@ -77,15 +77,15 @@ end
 ------------------------------------------------------------------------
 
 local OUTBOUND_QUEST_TEMPLATES = {
-    accepted  = L["Quest accepted: %s"],
-    abandoned = L["Quest abandoned: %s"],
-    finished  = L["Quest complete (objectives done): %s"],
-    completed = L["Quest turned in: %s"],
-    failed    = L["Quest failed: %s"],
+    accepted  = L["{rt1} SocialQuest: Quest Accepted: %s"],
+    abandoned = L["{rt1} SocialQuest: Quest Abandoned: %s"],
+    finished  = L["{rt1} SocialQuest: Quest Complete: %s"],
+    completed = L["{rt1} SocialQuest: Quest Completed: %s"],
+    failed    = L["{rt1} SocialQuest: Quest Failed: %s"],
 }
 
 local function formatOutboundQuestMsg(eventType, questTitle)
-    local tmpl = OUTBOUND_QUEST_TEMPLATES[eventType] or L["Quest event: %s"]
+    local tmpl = OUTBOUND_QUEST_TEMPLATES[eventType] or L["{rt1} SocialQuest: Quest Event: %s"]
     return string.format(tmpl, questTitle)
 end
 
@@ -507,27 +507,27 @@ end
 -- the objective_progress color and toggle but has distinct demo text.
 local TEST_DEMOS = {
     accepted = {
-        outbound = "Quest accepted: A Daunting Task (Step 2)",
+        outbound = "{rt1} SocialQuest: Quest Accepted: A Daunting Task (Step 2)",
         banner   = "TestPlayer accepted: [A Daunting Task] (Step 2)",
         colorKey = "accepted",
     },
     abandoned = {
-        outbound = "Quest abandoned: A Daunting Task (Step 2)",
+        outbound = "{rt1} SocialQuest: Quest Abandoned: A Daunting Task (Step 2)",
         banner   = "TestPlayer abandoned: [A Daunting Task] (Step 2)",
         colorKey = "abandoned",
     },
     finished = {
-        outbound = "Quest complete (objectives done): A Daunting Task",
+        outbound = "{rt1} SocialQuest: Quest Complete: A Daunting Task",
         banner   = "TestPlayer finished objectives: [A Daunting Task]",
         colorKey = "finished",
     },
     completed = {
-        outbound = "Quest turned in: A Daunting Task (Step 2)",
+        outbound = "{rt1} SocialQuest: Quest Completed: A Daunting Task (Step 2)",
         banner   = "TestPlayer completed: [A Daunting Task] (Step 2)",
         colorKey = "completed",
     },
     failed = {
-        outbound = "Quest failed: A Daunting Task (Step 2)",
+        outbound = "{rt1} SocialQuest: Quest Failed: A Daunting Task (Step 2)",
         banner   = "TestPlayer failed: [A Daunting Task] (Step 2)",
         colorKey = "failed",
     },

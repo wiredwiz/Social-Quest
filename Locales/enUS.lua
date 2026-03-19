@@ -4,14 +4,15 @@ local L = LibStub("AceLocale-3.0"):NewLocale("SocialQuest", "enUS", true)
 if not L then return end
 
 -- Core/Announcements.lua — outbound chat templates
-L["Quest accepted: %s"]                   = true
-L["Quest abandoned: %s"]                  = true
-L["Quest complete (objectives done): %s"] = true
-L["Quest turned in: %s"]                  = true
-L["Quest failed: %s"]                     = true
+-- Format mirrors Questie: "{rt1} SocialQuest: Quest Verb: link"
+L["{rt1} SocialQuest: Quest Accepted: %s"]   = true
+L["{rt1} SocialQuest: Quest Abandoned: %s"]  = true
+L["{rt1} SocialQuest: Quest Complete: %s"]   = true  -- objectives done, not yet turned in
+L["{rt1} SocialQuest: Quest Completed: %s"]  = true  -- turned in
+L["{rt1} SocialQuest: Quest Failed: %s"]     = true
 -- Defensive fallback in formatOutboundQuestMsg; unreachable in current call graph.
 -- Include for safety; non-English locales need not prioritize it.
-L["Quest event: %s"]                      = true
+L["{rt1} SocialQuest: Quest Event: %s"]      = true
 
 -- Core/Announcements.lua — outbound objective chat
 -- Leading space is intentional: appended after objective text when concatenated.
