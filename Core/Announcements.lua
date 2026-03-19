@@ -507,42 +507,42 @@ end
 -- the objective_progress color and toggle but has distinct demo text.
 local TEST_DEMOS = {
     accepted = {
-        outbound = "{rt1} SocialQuest: Quest Accepted: A Daunting Task (Step 2)",
+        outbound = "{rt1} SocialQuest: Quest Accepted: |cFFFFD200[A Daunting Task]|r (Step 2)",
         banner   = "TestPlayer accepted: [A Daunting Task] (Step 2)",
         colorKey = "accepted",
     },
     abandoned = {
-        outbound = "{rt1} SocialQuest: Quest Abandoned: A Daunting Task (Step 2)",
+        outbound = "{rt1} SocialQuest: Quest Abandoned: |cFFFFD200[A Daunting Task]|r (Step 2)",
         banner   = "TestPlayer abandoned: [A Daunting Task] (Step 2)",
         colorKey = "abandoned",
     },
     finished = {
-        outbound = "{rt1} SocialQuest: Quest Complete: A Daunting Task",
+        outbound = "{rt1} SocialQuest: Quest Complete: |cFFFFD200[A Daunting Task]|r",
         banner   = "TestPlayer finished objectives: [A Daunting Task]",
         colorKey = "finished",
     },
     completed = {
-        outbound = "{rt1} SocialQuest: Quest Completed: A Daunting Task (Step 2)",
+        outbound = "{rt1} SocialQuest: Quest Completed: |cFFFFD200[A Daunting Task]|r (Step 2)",
         banner   = "TestPlayer completed: [A Daunting Task] (Step 2)",
         colorKey = "completed",
     },
     failed = {
-        outbound = "{rt1} SocialQuest: Quest Failed: A Daunting Task (Step 2)",
+        outbound = "{rt1} SocialQuest: Quest Failed: |cFFFFD200[A Daunting Task]|r (Step 2)",
         banner   = "TestPlayer failed: [A Daunting Task] (Step 2)",
         colorKey = "failed",
     },
     objective_progress = {
-        outbound = "{rt1} SocialQuest: 3/8 Kobolds Slain for [A Daunting Task]!",
+        outbound = "{rt1} SocialQuest: 3/8 Kobolds Slain for |cFFFFD200[A Daunting Task]|r!",
         banner   = "TestPlayer progressed: [A Daunting Task] — Kobolds Slain (3/8)",
         colorKey = "objective_progress",
     },
     objective_complete = {
-        outbound = "{rt1} SocialQuest: 8/8 Kobolds Slain for [A Daunting Task]!",
+        outbound = "{rt1} SocialQuest: 8/8 Kobolds Slain for |cFFFFD200[A Daunting Task]|r!",
         banner   = "TestPlayer completed objective: [A Daunting Task] — Kobolds Slain (8/8)",
         colorKey = "objective_complete",
     },
     objective_regression = {
-        outbound = "{rt1} SocialQuest: 2/8 Kobolds Slain (regression) for [A Daunting Task]!",
+        outbound = "{rt1} SocialQuest: 2/8 Kobolds Slain (regression) for |cFFFFD200[A Daunting Task]|r!",
         banner   = "TestPlayer regressed: [A Daunting Task] — Kobolds Slain (2/8)",
         colorKey = "objective_progress",   -- same color as progress
     },
@@ -557,7 +557,9 @@ function SocialQuestAnnounce:TestEvent(eventType)
     local demo = TEST_DEMOS[eventType]
     if not demo then return end
     displayBanner(demo.banner, demo.colorKey)
-    displayChatPreview(demo.outbound)
+    if demo.outbound then
+        displayChatPreview(demo.outbound)
+    end
 end
 
 function SocialQuestAnnounce:TestChatLink()
