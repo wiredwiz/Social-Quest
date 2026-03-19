@@ -259,7 +259,7 @@ function SocialQuestAnnounce:OnObjectiveEvent(eventType, questInfo, objective, i
 
     if not questieWouldAnnounce(eventType) then
         local msg = formatOutboundObjectiveMsg(
-            questInfo.title,
+            questInfo.link or questInfo.title,
             objective.name or "",
             objective.numFulfilled,
             objective.numRequired,

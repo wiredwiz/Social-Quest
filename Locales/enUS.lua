@@ -19,7 +19,7 @@ L["{rt1} SocialQuest: Quest Event: %s"]      = true
 L[" (regression)"]                        = true
 -- Five positional args: (1) numFulfilled %d, (2) numRequired %d,
 -- (3) objective text %s, (4) regression suffix %s (either " (regression)" or ""),
--- (5) quest title %s. All five must be preserved in translations.
+-- (5) quest link or title %s. All five must be preserved in translations.
 L["{rt1} SocialQuest: %d/%d %s%s for %s!"] = true
 
 -- Core/Announcements.lua — inbound banner templates
