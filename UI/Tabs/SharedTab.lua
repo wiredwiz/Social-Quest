@@ -137,6 +137,7 @@ function SharedTab:BuildTree()
                                     hasSocialQuest = true,
                                     hasCompleted   = false,
                                     needsShare     = false,
+                                    isComplete     = info and info.isComplete or false,
                                     objectives     = SocialQuestTabUtils.BuildLocalObjectives(info or {}),
                                     step           = pEng.step,
                                     chainLength    = pEng.chainLength,
@@ -149,6 +150,7 @@ function SharedTab:BuildTree()
                                     hasSocialQuest = playerData and playerData.hasSocialQuest or false,
                                     hasCompleted   = false,
                                     needsShare     = false,
+                                    isComplete     = pEng.qdata and pEng.qdata.isComplete or false,
                                     objectives     = SocialQuestTabUtils.BuildRemoteObjectives(pEng.qdata or {}, localInfo),
                                     step           = pEng.step,
                                     chainLength    = pEng.chainLength,
@@ -206,6 +208,7 @@ function SharedTab:BuildTree()
                         hasSocialQuest = true,
                         hasCompleted   = false,
                         needsShare     = false,
+                        isComplete     = localInfo and localInfo.isComplete or false,
                         objectives     = SocialQuestTabUtils.BuildLocalObjectives(localInfo or {}),
                     })
                 else
@@ -216,6 +219,7 @@ function SharedTab:BuildTree()
                         hasSocialQuest = playerData and playerData.hasSocialQuest or false,
                         hasCompleted   = false,
                         needsShare     = false,
+                        isComplete     = eng.qdata and eng.qdata.isComplete or false,
                         objectives     = SocialQuestTabUtils.BuildRemoteObjectives(eng.qdata or {}, localInfo),
                     })
                 end

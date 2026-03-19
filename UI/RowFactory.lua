@@ -1,7 +1,8 @@
 -- UI/RowFactory.lua
 -- Stateless row-drawing utilities for the group frame tab providers.
 -- All functions take (contentFrame, y, ...) and return the new y offset.
--- contentFrame is the scroll child (width = 360 px, set by GroupFrame).
+-- contentFrame is the scroll child; width is set dynamically by GroupFrame:Refresh()
+-- via RowFactory.SetContentWidth(). CONTENT_WIDTH defaults to 360 on first load.
 
 RowFactory = {}
 
@@ -9,6 +10,12 @@ local CONTENT_WIDTH = 360
 local ROW_H         = 18     -- standard row height in pixels
 local INDENT_STEP   = 16     -- pixels per indent level
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
+
+-- Called by GroupFrame:Refresh() to set content width before rendering.
+-- Writes to the CONTENT_WIDTH upvalue so all row functions use the current frame width.
+function RowFactory.SetContentWidth(w)
+    CONTENT_WIDTH = w
+end
 
 ------------------------------------------------------------------------
 -- Private helpers
@@ -35,6 +42,50 @@ local function formatTimeRemaining(timerSeconds, snapshotTime)
     local remaining = timerSeconds - (GetTime() - snapshotTime)
     if remaining <= 0 then return nil end
     return string.format("%d:%02d", math.floor(remaining / 60), math.floor(remaining % 60))
+end
+
+-- Opens the WoW Quest Log and selects the given questID.
+-- Expands collapsed zone headers one at a time to locate the quest,
+-- collapsing them back if the quest is not in them, so only the zone
+-- containing the target quest ends up expanded.
+-- If the quest is not found (stale data), the log is opened but nothing
+-- is selected.
+local function openQuestLogToQuest(questID)
+    ShowUIPanel(QuestLogFrame)
+    local numEntries = GetNumQuestLogEntries()
+    local i = 1
+    while i <= numEntries do
+        local _, _, _, isHeader, isCollapsed, _, _, id = GetQuestLogTitle(i)
+        if isHeader and isCollapsed then
+            local headerIdx = i
+            ExpandQuestHeader(headerIdx)
+            numEntries = GetNumQuestLogEntries()
+            local found = false
+            i = i + 1
+            while i <= numEntries do
+                local _, _, _, subIsHeader, _, _, _, subId = GetQuestLogTitle(i)
+                if subIsHeader then break end
+                if subId == questID then
+                    found = true
+                    QuestLog_SetSelection(i)
+                    QuestLog_Update()
+                    return
+                end
+                i = i + 1
+            end
+            if not found then
+                CollapseQuestHeader(headerIdx)
+                numEntries = GetNumQuestLogEntries()
+                i = headerIdx + 1
+            end
+        elseif not isHeader and id == questID then
+            QuestLog_SetSelection(i)
+            QuestLog_Update()
+            return
+        else
+            i = i + 1
+        end
+    end
 end
 
 ------------------------------------------------------------------------
@@ -150,8 +201,10 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     x = x + 24
 
     -- Determine badge text. "Complete" trumps "Group".
+    -- (Complete) is shown on Mine tab only (callbacks.onTitleShiftClick is present
+    -- only there). On Party/Shared, completion is shown in the player row instead.
     local badgeText = ""
-    if questEntry.isComplete then
+    if questEntry.isComplete and callbacks and callbacks.onTitleShiftClick then
         badgeText = SocialQuestColors.GetUIColor("completed") .. L["(Complete)"] .. C.reset
     elseif questEntry.suggestedGroup and questEntry.suggestedGroup > 0 then
         badgeText = C.chain .. L["(Group)"] .. C.reset
@@ -192,16 +245,20 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     titleFs:SetJustifyV("MIDDLE")
     titleFs:SetText(colorCode .. titleText .. "|r")
 
-    -- Invisible click overlay (shift-click to track/untrack).
-    if callbacks and callbacks.onTitleShiftClick then
-        local titleBtn = CreateFrame("Button", nil, contentFrame)
-        titleBtn:SetAllPoints(titleFs)
-        titleBtn:SetScript("OnClick", function()
-            if IsShiftKeyDown() then
-                callbacks.onTitleShiftClick(questEntry.logIndex, questEntry.isTracked)
-            end
-        end)
-    end
+    -- Invisible click overlay: always created on all three tabs.
+    -- Left-click opens the Quest Log (only when player has the quest: logIndex non-nil).
+    -- Shift-click tracks/untracks (Mine tab only: callbacks.onTitleShiftClick present).
+    -- Unhandled combos (e.g. shift-click on Party/Shared) do nothing.
+    local titleBtn = CreateFrame("Button", nil, contentFrame)
+    titleBtn:SetAllPoints(titleFs)
+    titleBtn:SetScript("OnClick", function()
+        if IsShiftKeyDown() and callbacks and callbacks.onTitleShiftClick then
+            callbacks.onTitleShiftClick(questEntry.logIndex, questEntry.isTracked)
+        elseif not IsShiftKeyDown() and questEntry.logIndex then
+            openQuestLogToQuest(questEntry.questID)
+        end
+        -- else: no logIndex (player doesn't have quest) or unhandled combo → do nothing
+    end)
 
     -- Badge (right-aligned).
     if badgeText ~= "" then
@@ -238,7 +295,7 @@ end
 --   4. otherwise → "[Name]" label (+ "Step X of Y" when step/chainLength set),
 --                  followed by objective rows.
 -- playerEntry fields: name, isMe, hasSocialQuest, hasCompleted, needsShare,
---                     objectives, step (optional), chainLength (optional).
+--                     isComplete (optional), objectives, step (optional), chainLength (optional).
 function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent)
     local C    = SocialQuestColors
     local x    = indent or 0
@@ -250,6 +307,14 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent)
         fs:SetWidth(CONTENT_WIDTH - x - 4)
         fs:SetJustifyH("LEFT")
         fs:SetText(SocialQuestColors.GetUIColor("completed") .. string.format(L["%s FINISHED"], name) .. C.reset)
+        return y + ROW_H + 2
+
+    elseif playerEntry.isComplete then
+        local fs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
+        fs:SetWidth(CONTENT_WIDTH - x - 4)
+        fs:SetJustifyH("LEFT")
+        fs:SetText(C.white .. name .. C.reset .. " " .. SocialQuestColors.GetUIColor("completed") .. L["Completed"] .. C.reset)
         return y + ROW_H + 2
 
     elseif playerEntry.needsShare then

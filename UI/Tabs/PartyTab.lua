@@ -27,6 +27,7 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
             hasSocialQuest = true,
             hasCompleted   = false,
             needsShare     = false,
+            isComplete     = myInfo.isComplete or false,
             objectives     = SocialQuestTabUtils.BuildLocalObjectives(myInfo),
             step           = ci and ci.knownStatus == "known" and ci.step       or nil,
             chainLength    = ci and ci.knownStatus == "known" and ci.length     or nil,
@@ -38,6 +39,7 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
             hasSocialQuest = true,
             hasCompleted   = true,
             needsShare     = false,
+            isComplete     = false,
             objectives     = {},
         })
     end
@@ -55,6 +57,7 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
                 hasSocialQuest = playerData.hasSocialQuest,
                 hasCompleted   = true,
                 needsShare     = false,
+                isComplete     = false,
                 objectives     = {},
             })
         elseif hasQuest then
@@ -66,6 +69,7 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
                 hasSocialQuest = playerData.hasSocialQuest,
                 hasCompleted   = false,
                 needsShare     = false,
+                isComplete     = pquest.isComplete or false,
                 objectives     = SocialQuestTabUtils.BuildRemoteObjectives(pquest, myInfo),
                 step           = pCI.knownStatus == "known" and pCI.step   or nil,
                 chainLength    = pCI.knownStatus == "known" and pCI.length or nil,
@@ -77,6 +81,7 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
                 isMe           = false,
                 hasSocialQuest = playerData.hasSocialQuest,
                 hasCompleted   = false,
+                isComplete     = false,
                 needsShare     = true,
                 objectives     = {},
             })

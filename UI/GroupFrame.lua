@@ -98,6 +98,24 @@ local function createFrame()
     f:SetScript("OnMouseDown", function(self) self:Raise() end)
     f:Hide()
 
+    f:SetResizable(true)
+    f:SetResizeBounds(280, 200)
+
+    local resizeHandle = CreateFrame("Frame", nil, f)
+    resizeHandle:SetSize(16, 16)
+    resizeHandle:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -4, 4)
+    resizeHandle:EnableMouse(true)
+    local resizeTex = resizeHandle:CreateTexture(nil, "BACKGROUND")
+    resizeTex:SetTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+    resizeTex:SetAllPoints(resizeHandle)
+    resizeHandle:SetScript("OnMouseDown", function(self, button)
+        if button == "LeftButton" then f:StartSizing("BOTTOMRIGHT") end
+    end)
+    resizeHandle:SetScript("OnMouseUp", function()
+        f:StopMovingOrSizing()
+        SocialQuestGroupFrame:RequestRefresh()
+    end)
+
     f.TitleText:SetText(L["SocialQuest — Group Quests"])
 
     -- Tab buttons.
@@ -141,8 +159,9 @@ local function createFrame()
     f.scrollFrame:SetPoint("TOPLEFT",     f, "TOPLEFT",     10, SCROLL_TOP)
     f.scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -28, 10)
 
+    local initContentW = math.floor(f:GetWidth() - 40)
     f.content = CreateFrame("Frame", nil, f.scrollFrame)
-    f.content:SetSize(360, 1)
+    f.content:SetSize(initContentW, 1)
     f.scrollFrame:SetScrollChild(f.content)
 
     -- Register with UISpecialFrames so pressing Escape closes this window,
@@ -192,9 +211,11 @@ function SocialQuestGroupFrame:Refresh()
 
     -- Recreate content child (GetChildren does not return FontStrings; hiding is
     -- the only clean way to discard old rows without leaking them).
+    local contentW = math.floor(frame:GetWidth() - 40)
+    RowFactory.SetContentWidth(contentW)
     if frame.content then frame.content:Hide() end
     frame.content = CreateFrame("Frame", nil, frame.scrollFrame)
-    frame.content:SetSize(360, 1)
+    frame.content:SetSize(contentW, 1)
     frame.scrollFrame:SetScrollChild(frame.content)
 
     -- Find active provider.

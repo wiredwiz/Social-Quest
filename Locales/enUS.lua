@@ -4,21 +4,22 @@ local L = LibStub("AceLocale-3.0"):NewLocale("SocialQuest", "enUS", true)
 if not L then return end
 
 -- Core/Announcements.lua — outbound chat templates
-L["Quest accepted: %s"]                   = true
-L["Quest abandoned: %s"]                  = true
-L["Quest complete (objectives done): %s"] = true
-L["Quest turned in: %s"]                  = true
-L["Quest failed: %s"]                     = true
+-- Format mirrors Questie: "{rt1} SocialQuest: Quest Verb: link"
+L["{rt1} SocialQuest: Quest Accepted: %s"]   = true
+L["{rt1} SocialQuest: Quest Abandoned: %s"]  = true
+L["{rt1} SocialQuest: Quest Complete: %s"]   = true  -- objectives done, not yet turned in
+L["{rt1} SocialQuest: Quest Completed: %s"]  = true  -- turned in
+L["{rt1} SocialQuest: Quest Failed: %s"]     = true
 -- Defensive fallback in formatOutboundQuestMsg; unreachable in current call graph.
 -- Include for safety; non-English locales need not prioritize it.
-L["Quest event: %s"]                      = true
+L["{rt1} SocialQuest: Quest Event: %s"]      = true
 
 -- Core/Announcements.lua — outbound objective chat
 -- Leading space is intentional: appended after objective text when concatenated.
 L[" (regression)"]                        = true
 -- Five positional args: (1) numFulfilled %d, (2) numRequired %d,
 -- (3) objective text %s, (4) regression suffix %s (either " (regression)" or ""),
--- (5) quest title %s. All five must be preserved in translations.
+-- (5) quest link or title %s. All five must be preserved in translations.
 L["{rt1} SocialQuest: %d/%d %s%s for %s!"] = true
 
 -- Core/Announcements.lua — inbound banner templates
@@ -74,7 +75,8 @@ L["(Group)"]                                = true
 -- %s args: (1) step number, (2) chain length. Both are already tostring'd before format.
 L[" (Step %s of %s)"]                       = true
 -- %s = player character name
-L["%s FINISHED"]                            = true
+L["%s FINISHED"]                            = true   -- permanent: quest turned in
+L["Completed"]                              = true   -- in-progress: objectives done, not yet turned in
 L["%s Needs it Shared"]                     = true
 L["%s (no data)"]                           = true
 
@@ -213,3 +215,5 @@ L["Test Obj. Regression"]                   = true
 L["Display a demo banner and local chat preview for an objective regression (count went backward)."] = true
 L["Test All Completed"]                     = true
 L["Display a demo banner for the 'Everyone has completed' purple notification. No chat preview (this event never generates outbound chat directly)."] = true
+L["Test Chat Link"]                         = true
+L["Print a local chat preview of a 'Quest turned in' message for quest 337 using a real WoW quest hyperlink. Verify the quest name appears as clickable gold text in the chat frame."] = true
