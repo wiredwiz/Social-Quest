@@ -560,6 +560,13 @@ function SocialQuestAnnounce:TestEvent(eventType)
     displayChatPreview(demo.outbound)
 end
 
+function SocialQuestAnnounce:TestChatLink()
+    local AQL  = SocialQuest.AQL
+    local link = AQL and AQL:GetQuestLink(337)
+    local msg  = formatOutboundQuestMsg("completed", link or "Quest 337 (no link)")
+    displayChatPreview(msg)
+end
+
 ------------------------------------------------------------------------
 -- Follow notifications
 ------------------------------------------------------------------------

@@ -341,6 +341,12 @@ function SocialQuestOptions:Initialize()
                                 desc = L["Display a demo banner for the 'Everyone has completed' purple notification. No chat preview (this event never generates outbound chat directly)."],
                                 func = function() SocialQuestAnnounce:TestEvent("all_complete") end,
                             },
+                            testChatLink = {
+                                type = "execute",
+                                name = L["Test Chat Link"],
+                                desc = L["Print a local chat preview of a 'Quest turned in' message for quest 337 using a real WoW quest hyperlink. Verify the quest name appears as clickable gold text in the chat frame."],
+                                func = function() SocialQuestAnnounce:TestChatLink() end,
+                            },
                         },
                     },
                 },
