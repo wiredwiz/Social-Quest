@@ -36,7 +36,7 @@ A new module, `SocialQuestGroupComposition`, becomes the sole handler for `GROUP
 ```lua
 memberSet       = {}   -- [fullName] = true, current members
 memberSubgroups = {}   -- [fullName] = subgroupNumber (raid/BG only)
-lastGroupType   = nil  -- group type from last snapshot: "party"|"raid"|"battleground"|nil
+lastGroupType   = nil  -- group type from last snapshot: GroupType.X or nil
 ```
 
 **Events dispatched (typed, not raw `GROUP_ROSTER_UPDATE`):**
@@ -51,16 +51,37 @@ lastGroupType   = nil  -- group type from last snapshot: "party"|"raid"|"battleg
 
 Note: `OnMemberJoined` passes `groupType` so `Communications` can decide whether to whisper (party) or no-op (raid/BG) without querying WoW APIs itself.
 
+**GroupType enum:**
+
+```lua
+-- Defined at file scope in GroupComposition.lua; exposed so Communications.lua can
+-- compare groupType arguments without owning the type definition.
+-- Values are plain English strings so debug output remains self-documenting.
+-- Never transmitted over the wire; never localized.
+local GroupType = {
+    Party        = "party",
+    Raid         = "raid",
+    Battleground = "battleground",
+}
+SocialQuestGroupComposition.GroupType = GroupType
+```
+
+In `Core/Communications.lua`, alias it at file scope (after `SocialQuestGroupComposition` is defined by the TOC load order):
+
+```lua
+local GroupType = SocialQuestGroupComposition.GroupType
+```
+
 **Helper: `currentGroupType()`**
 
 ```lua
 local function currentGroupType()
     if IsInRaid() then
-        return "raid"
+        return GroupType.Raid
     elseif IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
-        return "battleground"
+        return GroupType.Battleground
     elseif IsInGroup(LE_PARTY_CATEGORY_HOME) then
-        return "party"
+        return GroupType.Party
     end
     return nil
 end
@@ -105,7 +126,7 @@ function OnGroupRosterUpdate():
   newMembers   = {}   -- [fullName] = true
   newSubgroups = {}   -- [fullName] = subgroupNumber
 
-  if IsInRaid() or groupType == "battleground":
+  if IsInRaid() or groupType == GroupType.Battleground:
     for i = 1 to GetNumGroupMembers():
       name, _, subgroup = GetRaidRosterInfo(i)
       fullName = normalize(name)            -- one-argument form: name may already contain "-Realm" suffix; do NOT pass additional GetRaidRosterInfo return values as realm
@@ -216,9 +237,9 @@ local pendingResponses = {}  -- [sender] = timerHandle; tracks jitter-delayed SQ
 
 - `OnSelfJoinedGroup(groupType)`:
   - Clear `lastInitSent = {}` and cancel + clear all timers in `pendingResponses = {}`
-  - `"party"`: `self:SendFullInit("PARTY")` then `self:SendReqCompleted()`
-  - `"raid"`: `self:SendFullInit("RAID")` then `self:SendReqCompleted()`
-  - `"battleground"`: `self:SendFullInit("INSTANCE_CHAT")` then `self:SendReqCompleted()`
+  - `GroupType.Party`: `self:SendFullInit("PARTY")` then `self:SendReqCompleted()`
+  - `GroupType.Raid`: `self:SendFullInit("RAID")` then `self:SendReqCompleted()`
+  - `GroupType.Battleground`: `self:SendFullInit("INSTANCE_CHAT")` then `self:SendReqCompleted()`
   - Note: `SendReqCompleted()` calls `GetActiveChannel()` internally. By the time `OnSelfJoinedGroup` fires, `IsInRaid()` / `IsInGroup()` already reflect the new group type, so `GetActiveChannel()` returns the correct channel.
 
 - `OnSelfLeftGroup()`:
@@ -231,8 +252,8 @@ local pendingResponses = {}  -- [sender] = timerHandle; tracks jitter-delayed SQ
   - Rationale: if the player leaves and rejoins within 15 seconds, their SQ_INIT broadcast on rejoin would be dropped by the cooldown without this clearing step, leaving us without their latest data. Clearing on leave guarantees a fresh response on any subsequent SQ_INIT from them.
 
 - `OnMemberJoined(fullName, groupType)`:
-  - `"party"` only: `self:SendFullInit("WHISPER", fullName)` — whisper the new member directly, since they won't have received our broadcast (they weren't in the group when we sent it)
-  - `"raid"` or `"battleground"`: no-op — the new member broadcasts SQ_INIT to the channel themselves; existing members respond via the receive handler
+  - `GroupType.Party` only: `self:SendFullInit("WHISPER", fullName)` — whisper the new member directly, since they won't have received our broadcast (they weren't in the group when we sent it)
+  - `GroupType.Raid` or `GroupType.Battleground`: no-op — the new member broadcasts SQ_INIT to the channel themselves; existing members respond via the receive handler
 
 #### Modified: SQ_INIT receive handler
 
