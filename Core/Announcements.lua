@@ -43,7 +43,7 @@ local CHAIN_STEP_EVENTS = {
 -- knownStatus != "known", or step is nil. Never errors on nil inputs.
 local function appendChainStep(msg, eventType, chainInfo)
     if not CHAIN_STEP_EVENTS[eventType] then return msg end
-    if not chainInfo or chainInfo.knownStatus ~= "known" or not chainInfo.step then
+    if not chainInfo or chainInfo.knownStatus ~= SocialQuest.AQL.ChainStatus.Known or not chainInfo.step then
         return msg
     end
     return msg .. " " .. string.format(L["(Step %s)"], chainInfo.step)

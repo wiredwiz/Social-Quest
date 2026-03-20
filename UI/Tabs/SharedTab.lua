@@ -28,7 +28,7 @@ function SharedTab:BuildTree()
 
     local function addEngagement(questID, playerName, isLocal, qdata)
         local ci = SocialQuestTabUtils.GetChainInfoForQuestID(questID)
-        if ci.knownStatus == "known" and ci.chainID then
+        if ci.knownStatus == AQL.ChainStatus.Known and ci.chainID then
             local cid = ci.chainID
             if not chainEngaged[cid] then chainEngaged[cid] = {} end
             chainEngaged[cid][playerName] = {
@@ -195,7 +195,7 @@ function SharedTab:BuildTree()
                 suggestedGroup = localInfo and localInfo.suggestedGroup or 0,
                 timerSeconds   = localInfo and localInfo.timerSeconds,
                 snapshotTime   = localInfo and localInfo.snapshotTime,
-                chainInfo      = { knownStatus = "unknown" },
+                chainInfo      = { knownStatus = AQL.ChainStatus.Unknown },
                 objectives     = localInfo and localInfo.objectives or {},
                 players        = {},
             }

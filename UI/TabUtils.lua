@@ -34,11 +34,11 @@ end
 function SocialQuestTabUtils.GetChainInfoForQuestID(questID)
     local AQL = SocialQuest.AQL
     local ci  = AQL:GetChainInfo(questID)
-    if ci.knownStatus == "known" then return ci end
+    if ci.knownStatus == AQL.ChainStatus.Known then return ci end
     local provider = AQL.provider
     if provider then
         local ok, result = pcall(provider.GetChainInfo, provider, questID)
-        if ok and result and result.knownStatus == "known" then return result end
+        if ok and result and result.knownStatus == AQL.ChainStatus.Known then return result end
     end
     return ci
 end

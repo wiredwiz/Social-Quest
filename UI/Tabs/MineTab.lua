@@ -57,7 +57,7 @@ function MineTab:BuildTree()
         }
 
         local ci = questInfo.chainInfo
-        if ci and ci.knownStatus == "known" and ci.chainID then
+        if ci and ci.knownStatus == AQL.ChainStatus.Known and ci.chainID then
             -- Place in chain group.
             local chainID = ci.chainID
             if not zone.chains[chainID] then
@@ -74,7 +74,7 @@ function MineTab:BuildTree()
                 if playerData.quests then
                     for pQuestID in pairs(playerData.quests) do
                         local pCI = SocialQuestTabUtils.GetChainInfoForQuestID(pQuestID)
-                        if pCI.knownStatus == "known"
+                        if pCI.knownStatus == AQL.ChainStatus.Known
                             and pCI.chainID == chainID
                             and pCI.step    ~= ci.step then
                             table.insert(entry.players, {

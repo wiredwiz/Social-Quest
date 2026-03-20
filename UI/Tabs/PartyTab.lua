@@ -29,8 +29,8 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
             needsShare     = false,
             isComplete     = myInfo.isComplete or false,
             objectives     = SocialQuestTabUtils.BuildLocalObjectives(myInfo),
-            step           = ci and ci.knownStatus == "known" and ci.step       or nil,
-            chainLength    = ci and ci.knownStatus == "known" and ci.length     or nil,
+            step           = ci and ci.knownStatus == AQL.ChainStatus.Known and ci.step       or nil,
+            chainLength    = ci and ci.knownStatus == AQL.ChainStatus.Known and ci.length     or nil,
         })
     elseif AQL:HasCompletedQuest(questID) then
         table.insert(players, {
@@ -71,8 +71,8 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
                 needsShare     = false,
                 isComplete     = pquest.isComplete or false,
                 objectives     = SocialQuestTabUtils.BuildRemoteObjectives(pquest, myInfo),
-                step           = pCI.knownStatus == "known" and pCI.step   or nil,
-                chainLength    = pCI.knownStatus == "known" and pCI.length or nil,
+                step           = pCI.knownStatus == AQL.ChainStatus.Known and pCI.step   or nil,
+                chainLength    = pCI.knownStatus == AQL.ChainStatus.Known and pCI.length or nil,
             })
         elseif localHasIt then
             -- Party member lacks the quest; local player has it → "Needs it Shared".
@@ -157,7 +157,7 @@ function PartyTab:BuildTree()
             players        = buildPlayerRowsForQuest(questID, localHasIt),
         }
 
-        if ci.knownStatus == "known" and ci.chainID then
+        if ci.knownStatus == AQL.ChainStatus.Known and ci.chainID then
             local chainID = ci.chainID
             if not zone.chains[chainID] then
                 zone.chains[chainID] = { title = entry.title, steps = {} }

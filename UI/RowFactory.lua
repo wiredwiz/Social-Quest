@@ -219,7 +219,7 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     -- Build title string: title [Step X of Y] [timer].
     local titleText = questEntry.title or "Quest"
     local ci = questEntry.chainInfo
-    if ci and ci.knownStatus == "known" then
+    if ci and ci.knownStatus == SocialQuest.AQL.ChainStatus.Known then
         titleText = titleText
             .. string.format(L[" (Step %s of %s)"], tostring(ci.step or "?"), tostring(ci.length or "?"))
     end
