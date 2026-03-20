@@ -6,7 +6,6 @@
 --   SQ_INIT      Full quest log snapshot (questID + objective counts).
 --   SQ_UPDATE    Single quest state change.
 --   SQ_OBJECTIVE Single objective progress update.
---   SQ_BEACON    Empty broadcast to announce presence (raid/BG init).
 --   SQ_REQUEST   Whisper requesting a full SQ_INIT from a specific player.
 --   SQ_FOLLOW_START / SQ_FOLLOW_STOP  Follow notifications (whisper).
 
@@ -15,12 +14,23 @@ SocialQuestComm.followTarget = nil  -- last player we started following
 
 local PREFIXES = {
     "SQ_INIT", "SQ_UPDATE", "SQ_OBJECTIVE",
-    "SQ_BEACON", "SQ_REQUEST",
+    "SQ_REQUEST",
     "SQ_FOLLOW_START", "SQ_FOLLOW_STOP",
     "SQ_REQ_COMPLETED", "SQ_RESP_COMPLETE",
 }
 
+-- GroupType enum alias — GroupComposition owns the definition; we reference it here
+-- so comparisons read GroupType.Party rather than raw "party" strings.
+-- GroupComposition.lua loads before Communications.lua (see TOC), so this is safe.
+local GroupType = SocialQuestGroupComposition.GroupType
+
 local lastInitSent = {}   -- keyed by sender name; tracks when SQ_INIT was last sent per player
+
+-- Jitter-delayed SQ_INIT whisper handles, keyed by sender name.
+-- Prevents response bursts: when a new raid member broadcasts SQ_INIT, all
+-- existing members schedule responses with 1–8 s random delay rather than
+-- responding simultaneously. Also used for SQ_REQUEST (Force Resync) responses.
+local pendingResponses = {}
 
 -- Called from SocialQuest:OnEnable().
 function SocialQuestComm:Initialize()
@@ -48,22 +58,12 @@ function SocialQuestComm:OnGroupChanged()
         end
 
     elseif IsInRaid() then
-        -- Raid (6–40): send SQ_BEACON with 0–8s jitter, then respond to requests.
-        if db.raid.transmit then
-            local jitter = math.random(0, 8)
-            SocialQuest:ScheduleTimer(function()
-                self:SendBeacon("RAID")
-            end, jitter)
-        end
+        -- Raid init now handled by GroupComposition:OnSelfJoinedGroup → Comm:OnSelfJoinedGroup.
+        -- SendBeacon removed in Task 3; OnGroupChanged removed in Task 5.
 
     elseif IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
-        -- Battleground: same beacon+pull as raid.
-        if db.battleground.transmit then
-            local jitter = math.random(0, 8)
-            SocialQuest:ScheduleTimer(function()
-                self:SendBeacon("INSTANCE_CHAT")
-            end, jitter)
-        end
+        -- Battleground init now handled by GroupComposition:OnSelfJoinedGroup → Comm:OnSelfJoinedGroup.
+        -- SendBeacon removed in Task 3; OnGroupChanged removed in Task 5.
     end
     -- Guild: no AceComm sync.
 
@@ -141,12 +141,6 @@ function SocialQuestComm:SendFullInit(channel, targetName)
     end
 end
 
-function SocialQuestComm:SendBeacon(channel)
-    -- Empty beacon — payload is just a single byte so AceComm has something to send.
-    LibStub("AceComm-3.0"):SendCommMessage("SQ_BEACON", serialize({}), channel)
-    SocialQuest:Debug("Comm", "Sent SQ_BEACON to " .. channel)
-end
-
 -- Broadcast a single quest state update.
 function SocialQuestComm:BroadcastQuestUpdate(questInfo, eventType)
     local channel = self:GetActiveChannel()
@@ -188,6 +182,78 @@ function SocialQuestComm:SendReqCompleted()
     if not channel then return end
     LibStub("AceComm-3.0"):SendCommMessage("SQ_REQ_COMPLETED", serialize({}), channel)
     SocialQuest:Debug("Comm", "Sent SQ_REQ_COMPLETED to " .. channel)
+end
+
+-- Called by GroupComposition when the local player joins a group or when the
+-- group type changes (e.g. party promoted to raid).
+-- Broadcasts our full quest snapshot to the new channel and requests completed
+-- quest history from all members.
+function SocialQuestComm:OnSelfJoinedGroup(groupType)
+    -- Cancel any pending jitter responses: they were scheduled for the previous
+    -- group context and are no longer valid.
+    for _, handle in pairs(pendingResponses) do
+        SocialQuest:CancelTimer(handle)
+    end
+    pendingResponses = {}
+    lastInitSent     = {}
+
+    local db = SocialQuest.db.profile
+    if groupType == GroupType.Party then
+        if db.party.transmit then
+            self:SendFullInit("PARTY")
+            self:SendReqCompleted()
+        end
+    elseif groupType == GroupType.Raid then
+        if db.raid.transmit then
+            self:SendFullInit("RAID")
+            self:SendReqCompleted()
+        end
+    elseif groupType == GroupType.Battleground then
+        if db.battleground.transmit then
+            self:SendFullInit("INSTANCE_CHAT")
+            self:SendReqCompleted()
+        end
+    end
+    SocialQuest:Debug("Comm", "OnSelfJoinedGroup: " .. (groupType or "nil"))
+end
+
+-- Called by GroupComposition when a new member appears in the group.
+-- Party only: whisper the new member directly because they missed our channel
+-- broadcast (they weren't in the group when we sent it).
+-- Raid/BG: no-op — the new member broadcasts SQ_INIT to the channel themselves;
+-- we respond via the SQ_INIT receive handler with a jittered whisper.
+function SocialQuestComm:OnMemberJoined(fullName, groupType)
+    if groupType == GroupType.Party then
+        local db = SocialQuest.db.profile
+        if db.party.transmit then
+            self:SendFullInit("WHISPER", fullName)
+            SocialQuest:Debug("Comm", "OnMemberJoined (party): sent SQ_INIT whisper to " .. fullName)
+        end
+    end
+    -- raid/battleground: receive handler schedules jittered response to their SQ_INIT broadcast
+end
+
+-- Called by GroupComposition immediately after PurgePlayer when a member leaves.
+-- Clears the 15-second cooldown for that sender so that if they rejoin quickly
+-- (within 15 s), their SQ_INIT broadcast on rejoin is not silently dropped.
+function SocialQuestComm:OnMemberLeft(fullName)
+    lastInitSent[fullName] = nil
+    if pendingResponses[fullName] then
+        SocialQuest:CancelTimer(pendingResponses[fullName])
+        pendingResponses[fullName] = nil
+    end
+    SocialQuest:Debug("Comm", "OnMemberLeft: cleared cooldowns for " .. fullName)
+end
+
+-- Called by GroupComposition when the local player leaves all groups.
+-- Cancels all pending jitter timers and clears cooldown state.
+function SocialQuestComm:OnSelfLeftGroup()
+    for _, handle in pairs(pendingResponses) do
+        SocialQuest:CancelTimer(handle)
+    end
+    pendingResponses = {}
+    lastInitSent     = {}
+    SocialQuest:Debug("Comm", "OnSelfLeftGroup: cleared all pending responses and cooldowns")
 end
 
 -- Returns the appropriate AceComm channel string for the player's current group context.
@@ -240,9 +306,30 @@ function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
 
     if prefix == "SQ_INIT" then
         local _sqN = 0
-        for _ in pairs(payload.quests or payload) do _sqN = _sqN + 1 end
-        SocialQuest:Debug("Comm", "Received SQ_INIT from " .. sender .. " (" .. _sqN .. " quests)")
+        for _ in pairs(payload.quests or {}) do _sqN = _sqN + 1 end
+        SocialQuest:Debug("Comm", "Received SQ_INIT from " .. sender .. " (" .. _sqN .. " quests, dist=" .. distribution .. ")")
         SocialQuestGroupData:OnInitReceived(sender, payload)
+
+        -- Raid/BG broadcasts: schedule a jittered whisper response so that up to
+        -- 39 existing members don't all respond simultaneously (storm prevention).
+        -- Party and whisper distributions need no response here:
+        --   Party:   OnMemberJoined already sent a direct whisper to new members.
+        --   Whisper: This is their response to us; no further response needed.
+        if distribution == "RAID" or distribution == "INSTANCE_CHAT" then
+            if lastInitSent[sender] and (GetTime() - lastInitSent[sender] < 15) then
+                SocialQuest:Debug("Comm", "SQ_INIT from " .. sender .. " — response suppressed (cooldown)")
+            else
+                lastInitSent[sender] = GetTime()
+                if pendingResponses[sender] then
+                    SocialQuest:CancelTimer(pendingResponses[sender])
+                end
+                pendingResponses[sender] = SocialQuest:ScheduleTimer(function()
+                    pendingResponses[sender] = nil
+                    self:SendFullInit("WHISPER", sender)
+                    SocialQuest:Debug("Comm", "Sent jittered SQ_INIT whisper to " .. sender)
+                end, math.random(1, 8))
+            end
+        end
 
     elseif prefix == "SQ_UPDATE" then
         SocialQuest:Debug("Comm", "Received SQ_UPDATE from " .. sender .. ": " .. (payload.eventType or "?") .. " questID=" .. (payload.questID or "?"))
@@ -251,16 +338,6 @@ function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
     elseif prefix == "SQ_OBJECTIVE" then
         SocialQuest:Debug("Comm", "Received SQ_OBJECTIVE from " .. sender .. ": questID=" .. (payload.questID or "?") .. " obj=" .. (payload.objIndex or "?"))
         SocialQuestGroupData:OnObjectiveReceived(sender, payload)
-
-    elseif prefix == "SQ_BEACON" then
-        -- Someone announced their presence. Per the beacon+pull protocol, the
-        -- correct response is to send SQ_REQUEST (a whisper asking for their
-        -- full snapshot). They will reply with SQ_INIT. Do NOT send our own
-        -- SQ_INIT unsolicited — that defeats the storm-prevention purpose of
-        -- the beacon pattern. They will send us an SQ_REQUEST in return when
-        -- they receive our beacon (or request directly if they already heard ours).
-        SocialQuest:Debug("Comm", "Received SQ_BEACON from " .. sender)
-        LibStub("AceComm-3.0"):SendCommMessage("SQ_REQUEST", serialize({}), "WHISPER", sender)
 
     elseif prefix == "SQ_REQUEST" then
         if not SocialQuestGroupData.PlayerQuests[sender] then
@@ -271,9 +348,18 @@ function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
             SocialQuest:Debug("Comm", "Received SQ_REQUEST from " .. sender .. " — dropped (cooldown)")
             return
         end
-        SocialQuest:Debug("Comm", "Received SQ_REQUEST from " .. sender .. " — responding")
+        -- Stamp at schedule time (not fire time) so a second SQ_REQUEST arriving
+        -- during the jitter window doesn't schedule a duplicate response.
         lastInitSent[sender] = GetTime()
-        self:SendFullInit("WHISPER", sender)
+        if pendingResponses[sender] then
+            SocialQuest:CancelTimer(pendingResponses[sender])
+        end
+        SocialQuest:Debug("Comm", "Received SQ_REQUEST from " .. sender .. " — scheduling jittered response (1-4 s)")
+        pendingResponses[sender] = SocialQuest:ScheduleTimer(function()
+            pendingResponses[sender] = nil
+            self:SendFullInit("WHISPER", sender)
+            SocialQuest:Debug("Comm", "Sent jittered SQ_INIT to " .. sender .. " (SQ_REQUEST response)")
+        end, math.random(1, 4))
 
     elseif prefix == "SQ_FOLLOW_START" then
         SocialQuestAnnounce:OnFollowStart(sender)
