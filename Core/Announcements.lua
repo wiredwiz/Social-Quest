@@ -195,12 +195,15 @@ function SocialQuestAnnounce:OnQuestEvent(eventType, questID, questInfo)
                or (AQL and AQL:GetQuestTitle(questID))
                or ("Quest " .. questID)
     -- Prefer the WoW quest hyperlink string from the AQL snapshot so that recipients
-    -- can ctrl-click the quest link in chat. Falls back to info.link (from the live
-    -- QuestCache) then plain title. The finished event passes no questInfo (questInfo
-    -- is nil) so the info.link fallback is the primary path for that event type.
+    -- can ctrl-click the quest link in chat. Falls back progressively:
+    --   1. questInfo.link  — AQL snapshot link (nil for "finished"; questInfo not passed)
+    --   2. info.link       — live AQL log entry (nil after "abandoned"; quest removed first)
+    --   3. AQL:GetQuestLink — builds link from provider DB even when quest left the log
+    --   4. title           — plain text last resort
     -- RaidNotice_AddMessage (banners) cannot render hyperlinks — title is used there.
     local display = (questInfo and questInfo.link)
                  or (info and info.link)
+                 or (AQL and AQL:GetQuestLink(questID))
                  or title
     local msg   = formatOutboundQuestMsg(eventType, display)
     local chainInfo = questInfo and questInfo.chainInfo

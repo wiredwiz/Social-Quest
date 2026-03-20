@@ -14,10 +14,18 @@ function SocialQuestTabUtils.WowheadUrl(questID)
     return WOWHEAD_QUEST_BASE .. tostring(questID)
 end
 
--- Returns zone name for a questID using the local AQL cache; falls back to "Other Quests".
+-- Returns zone name for a questID.
+-- Falls back from active-quest cache → AQL:GetQuestInfo (which includes provider lookup)
+-- → "Other Quests". The provider fallback resolves zone for remote-only quests (quests
+-- a party member has that the local player does not).
 function SocialQuestTabUtils.GetZoneForQuestID(questID)
-    local info = SocialQuest.AQL:GetQuest(questID)
+    local AQL = SocialQuest.AQL
+    -- Fast path: active quest cache.
+    local info = AQL:GetQuest(questID)
     if info and info.zone then return info.zone end
+    -- Slow path: three-tier resolution (cache → WoW log → provider).
+    local fullInfo = AQL:GetQuestInfo(questID)
+    if fullInfo and fullInfo.zone then return fullInfo.zone end
     return L["Other Quests"]
 end
 
@@ -52,8 +60,15 @@ end
 -- Builds objective rows for a remote player from a GroupData quest entry.
 -- localInfo: optional AQL quest info for the same quest; used to supply
 --            objective text, which is never transmitted over the wire.
+-- When localInfo is nil (local player doesn't have the quest), falls back to
+-- AQL:GetQuestObjectives — same backing data but an explicit API call that may
+-- succeed in cases where the caller's GetQuest snapshot was not yet populated.
+-- If objective text is unavailable from either source, displays count-only (e.g. "3/8").
 function SocialQuestTabUtils.BuildRemoteObjectives(pquest, localInfo)
-    local localObjs = localInfo and localInfo.objectives or {}
+    local AQL = SocialQuest.AQL
+    local localObjs = (localInfo and localInfo.objectives)
+                   or (AQL and AQL:GetQuestObjectives(pquest.questID))
+                   or {}
     local objs = {}
     for i, obj in ipairs(pquest.objectives or {}) do
         local localObj = localObjs[i]
