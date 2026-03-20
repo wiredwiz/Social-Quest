@@ -51,6 +51,34 @@ function SocialQuestGroupData:OnGroupChanged()
     end
 end
 
+-- Called by GroupComposition when a new player appears in the group.
+-- Creates a hasSocialQuest=false stub so receive handlers can accept their
+-- messages before an SQ_INIT arrives.
+-- groupType is accepted but unused; passed for signature consistency.
+function SocialQuestGroupData:OnMemberJoined(fullName, groupType)
+    if not self.PlayerQuests[fullName] then
+        self.PlayerQuests[fullName] = { hasSocialQuest = false, completedQuests = {} }
+        SocialQuest:Debug("Group", "Stub created for " .. fullName)
+    end
+end
+
+-- Called by GroupComposition immediately when a player leaves the group.
+-- Removes their entry from PlayerQuests so the GroupFrame stops showing them.
+-- If they rejoin, their SQ_INIT broadcast on rejoin replaces this data anyway.
+function SocialQuestGroupData:PurgePlayer(fullName)
+    if self.PlayerQuests[fullName] then
+        self.PlayerQuests[fullName] = nil
+        SocialQuest:Debug("Group", "Purged data for " .. fullName)
+    end
+end
+
+-- Called by GroupComposition when the local player leaves all groups.
+-- Clears the entire PlayerQuests table.
+function SocialQuestGroupData:OnSelfLeftGroup()
+    self.PlayerQuests = {}
+    SocialQuest:Debug("Group", "PlayerQuests cleared (self left group)")
+end
+
 -- Called when a full SQ_INIT message arrives from a player.
 -- payload: { quests = { [questID] = { isComplete, isFailed,
 --            snapshotTime, timerSeconds, objectives={...} } } }
