@@ -43,34 +43,6 @@ function SocialQuestComm:Initialize()
 end
 
 ------------------------------------------------------------------------
--- Group change / initialization
-------------------------------------------------------------------------
-
--- Called when GROUP_ROSTER_UPDATE fires.
-function SocialQuestComm:OnGroupChanged()
-    lastInitSent = {}
-    local db = SocialQuest.db.profile
-
-    if IsInGroup(LE_PARTY_CATEGORY_HOME) and not IsInRaid() then
-        -- Party (≤5): send full init immediately to PARTY channel.
-        if db.party.transmit then
-            self:SendFullInit("PARTY")
-        end
-
-    elseif IsInRaid() then
-        -- Raid init now handled by GroupComposition:OnSelfJoinedGroup → Comm:OnSelfJoinedGroup.
-        -- SendBeacon removed in Task 3; OnGroupChanged removed in Task 5.
-
-    elseif IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
-        -- Battleground init now handled by GroupComposition:OnSelfJoinedGroup → Comm:OnSelfJoinedGroup.
-        -- SendBeacon removed in Task 3; OnGroupChanged removed in Task 5.
-    end
-    -- Guild: no AceComm sync.
-
-    self:SendReqCompleted()
-end
-
-------------------------------------------------------------------------
 -- Send helpers
 ------------------------------------------------------------------------
 
