@@ -47,6 +47,17 @@ end
 function SocialQuest:OnEnable()
     if not self.AQL then return end  -- AQL missing; stay dormant.
 
+    -- Suppress AQL quest callbacks for this many seconds after a zone transition.
+    -- AQL rebuilds its snapshot on PLAYER_ENTERING_WORLD and re-fires accepted/finished/etc.
+    -- for every quest in the log; we must not re-announce or re-broadcast those.
+    self.zoneTransitionSuppressUntil = 0
+
+    -- Pending regression timer handles, keyed by "questID_objIndex".
+    -- AQL_OBJECTIVE_REGRESSED is debounced: if AQL_OBJECTIVE_PROGRESSED arrives for
+    -- the same objective within 0.5 s, the regression is a BAG_UPDATE stack-split
+    -- artefact and is silently cancelled.
+    self.pendingRegressions = {}
+
     -- Register AceComm prefixes.
     SocialQuestComm:Initialize()
 
@@ -54,10 +65,11 @@ function SocialQuest:OnEnable()
     SocialQuestTooltips:Initialize()
 
     -- Register WoW events (non-quest; quest events come via AQL callbacks).
-    self:RegisterEvent("GROUP_ROSTER_UPDATE", "OnGroupRosterUpdate")
-    self:RegisterEvent("PLAYER_LOGIN",        "OnPlayerLogin")
-    self:RegisterEvent("AUTOFOLLOW_BEGIN",    "OnAutoFollowBegin")
-    self:RegisterEvent("AUTOFOLLOW_END",      "OnAutoFollowEnd")
+    self:RegisterEvent("GROUP_ROSTER_UPDATE",   "OnGroupRosterUpdate")
+    self:RegisterEvent("PLAYER_LOGIN",          "OnPlayerLogin")
+    self:RegisterEvent("PLAYER_ENTERING_WORLD", "OnPlayerEnteringWorld")
+    self:RegisterEvent("AUTOFOLLOW_BEGIN",      "OnAutoFollowBegin")
+    self:RegisterEvent("AUTOFOLLOW_END",        "OnAutoFollowEnd")
 
     -- Register AQL callbacks.
     -- Dot-notation is required: AQL is the target in CallbackHandler, so
@@ -262,7 +274,19 @@ end
 
 -- Re-sync quest data with group after a UI reload (PLAYER_LOGIN fires on /reload).
 function SocialQuest:OnPlayerLogin()
+    SocialQuestGroupData:OnGroupChanged()
     SocialQuestComm:OnGroupChanged()
+end
+
+-- PLAYER_ENTERING_WORLD fires on every zone transition (including hearthing and /reload).
+-- AQL rebuilds its quest snapshot immediately afterward and fires AQL_QUEST_ACCEPTED /
+-- AQL_QUEST_FINISHED / etc. for every quest already in the log.  Suppress announces and
+-- broadcasts for 3 seconds so those replay events are not treated as new activity.
+-- The /reload case is harmless (PLAYER_LOGIN fires first and re-syncs the group; the
+-- suppression window just silences the redundant AQL replay that follows).
+function SocialQuest:OnPlayerEnteringWorld()
+    self.zoneTransitionSuppressUntil = GetTime() + 3
+    self:Debug("Zone", "Zone transition detected — suppressing AQL callbacks for 3 s")
 end
 
 function SocialQuest:OnAutoFollowBegin(event, unit)
@@ -291,6 +315,7 @@ end
 ------------------------------------------------------------------------
 
 function SocialQuest:OnQuestAccepted(event, questInfo)
+    if GetTime() < self.zoneTransitionSuppressUntil then return end
     self:Debug("Quest", "Quest accepted: [" .. (questInfo.title or "?") .. "] (id=" .. questInfo.questID .. ")")
     SocialQuestAnnounce:OnQuestEvent("accepted", questInfo.questID, questInfo)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "accepted")
@@ -298,6 +323,7 @@ function SocialQuest:OnQuestAccepted(event, questInfo)
 end
 
 function SocialQuest:OnQuestAbandoned(event, questInfo)
+    if GetTime() < self.zoneTransitionSuppressUntil then return end
     self:Debug("Quest", "Quest abandoned: [" .. (questInfo.title or "?") .. "] (id=" .. questInfo.questID .. ")")
     SocialQuestAnnounce:OnQuestEvent("abandoned", questInfo.questID, questInfo)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "abandoned")
@@ -305,6 +331,7 @@ function SocialQuest:OnQuestAbandoned(event, questInfo)
 end
 
 function SocialQuest:OnQuestFinished(event, questInfo)
+    if GetTime() < self.zoneTransitionSuppressUntil then return end
     self:Debug("Quest", "Quest finished: [" .. (questInfo.title or "?") .. "] (id=" .. questInfo.questID .. ")")
     -- questInfo intentionally NOT passed: "finished" is excluded from chain-step
     -- annotation. See CHAIN_STEP_EVENTS in Core/Announcements.lua.
@@ -314,6 +341,7 @@ function SocialQuest:OnQuestFinished(event, questInfo)
 end
 
 function SocialQuest:OnQuestCompleted(event, questInfo)
+    if GetTime() < self.zoneTransitionSuppressUntil then return end
     self:Debug("Quest", "Quest completed: [" .. (questInfo.title or "?") .. "] (id=" .. questInfo.questID .. ")")
     SocialQuestAnnounce:OnQuestEvent("completed", questInfo.questID, questInfo)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "completed")
@@ -321,6 +349,7 @@ function SocialQuest:OnQuestCompleted(event, questInfo)
 end
 
 function SocialQuest:OnQuestFailed(event, questInfo)
+    if GetTime() < self.zoneTransitionSuppressUntil then return end
     self:Debug("Quest", "Quest failed: [" .. (questInfo.title or "?") .. "] (id=" .. questInfo.questID .. ")")
     SocialQuestAnnounce:OnQuestEvent("failed", questInfo.questID, questInfo)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "failed")
@@ -328,18 +357,31 @@ function SocialQuest:OnQuestFailed(event, questInfo)
 end
 
 function SocialQuest:OnQuestTracked(event, questInfo)
+    -- Tracking changes have no meaning for remote group members' data; refresh locally only.
     self:Debug("Quest", "Quest tracked: (id=" .. questInfo.questID .. ")")
-    SocialQuestComm:BroadcastQuestUpdate(questInfo, "tracked")
     SocialQuestGroupFrame:RequestRefresh()
 end
 
 function SocialQuest:OnQuestUntracked(event, questInfo)
+    -- Tracking changes have no meaning for remote group members' data; refresh locally only.
     self:Debug("Quest", "Quest untracked: (id=" .. questInfo.questID .. ")")
-    SocialQuestComm:BroadcastQuestUpdate(questInfo, "untracked")
     SocialQuestGroupFrame:RequestRefresh()
 end
 
 function SocialQuest:OnObjectiveProgressed(event, questInfo, objective, delta)
+    if GetTime() < self.zoneTransitionSuppressUntil then return end
+
+    -- Cancel any pending regression debounce for this objective.
+    -- When a BAG_UPDATE stack split causes a temporary count dip, AQL fires
+    -- REGRESSED then PROGRESSED in rapid succession. Cancelling here prevents
+    -- the false regression from being broadcast or announced.
+    local key = questInfo.questID .. "_" .. (objective.index or 0)
+    if self.pendingRegressions[key] then
+        self:Debug("Quest", "Regression debounce cancelled for questID=" .. questInfo.questID .. " obj=" .. (objective.index or 0))
+        self:CancelTimer(self.pendingRegressions[key])
+        self.pendingRegressions[key] = nil
+    end
+
     -- Always broadcast so remote PlayerQuests tables stay accurate.
     SocialQuestComm:BroadcastObjectiveUpdate(questInfo, objective)
 
@@ -352,6 +394,15 @@ function SocialQuest:OnObjectiveProgressed(event, questInfo, objective, delta)
 end
 
 function SocialQuest:OnObjectiveCompleted(event, questInfo, objective)
+    if GetTime() < self.zoneTransitionSuppressUntil then return end
+
+    -- Also cancel any pending regression debounce (objective completed = not regressed).
+    local key = questInfo.questID .. "_" .. (objective.index or 0)
+    if self.pendingRegressions[key] then
+        self:CancelTimer(self.pendingRegressions[key])
+        self.pendingRegressions[key] = nil
+    end
+
     self:Debug("Quest", "Objective complete " .. objective.numFulfilled .. "/" .. objective.numRequired .. ": " .. (objective.name or "") .. " for [" .. (questInfo.title or "?") .. "]")
     -- Comm already broadcast by OnObjectiveProgressed. Only announce here.
     SocialQuestAnnounce:OnObjectiveEvent("objective_complete", questInfo, objective, false)
@@ -359,10 +410,22 @@ function SocialQuest:OnObjectiveCompleted(event, questInfo, objective)
 end
 
 function SocialQuest:OnObjectiveRegressed(event, questInfo, objective, delta)
-    SocialQuestComm:BroadcastObjectiveUpdate(questInfo, objective)
-    self:Debug("Quest", "Objective regression " .. objective.numFulfilled .. "/" .. objective.numRequired .. ": " .. (objective.name or "") .. " for [" .. (questInfo.title or "?") .. "]")
-    SocialQuestAnnounce:OnObjectiveEvent("objective_progress", questInfo, objective, true)
-    SocialQuestGroupFrame:RequestRefresh()
+    if GetTime() < self.zoneTransitionSuppressUntil then return end
+
+    -- Debounce: delay by 0.5 s. If PROGRESSED or COMPLETED fires for the same
+    -- objective within that window, the timer is cancelled — indicating a transient
+    -- BAG_UPDATE stack-split artefact rather than a genuine regression.
+    local key = questInfo.questID .. "_" .. (objective.index or 0)
+    if self.pendingRegressions[key] then
+        self:CancelTimer(self.pendingRegressions[key])
+    end
+    self.pendingRegressions[key] = self:ScheduleTimer(function()
+        self.pendingRegressions[key] = nil
+        self:Debug("Quest", "Objective regression " .. objective.numFulfilled .. "/" .. objective.numRequired .. ": " .. (objective.name or "") .. " for [" .. (questInfo.title or "?") .. "]")
+        SocialQuestComm:BroadcastObjectiveUpdate(questInfo, objective)
+        SocialQuestAnnounce:OnObjectiveEvent("objective_progress", questInfo, objective, true)
+        SocialQuestGroupFrame:RequestRefresh()
+    end, 0.5)
 end
 
 function SocialQuest:OnUnitQuestLogChanged(event, unit)
