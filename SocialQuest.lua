@@ -58,6 +58,9 @@ function SocialQuest:OnEnable()
     -- artefact and is silently cancelled.
     self.pendingRegressions = {}
 
+    -- Initialize group composition tracker.
+    SocialQuestGroupComposition:Initialize()
+
     -- Register AceComm prefixes.
     SocialQuestComm:Initialize()
 
