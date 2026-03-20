@@ -29,16 +29,14 @@ A new module, `SocialQuestGroupComposition`, becomes the sole handler for `GROUP
 - Maintain a snapshot of current group membership and subgroup assignments
 - Diff each `GROUP_ROSTER_UPDATE` against the snapshot to classify changes
 - Dispatch typed events to `Communications` and `GroupData`
-- Manage timed eviction of departed player data (30-second delay, cancellable on rejoin)
+- Immediately evict departed player data from `GroupData` on leave
 
 **Internal state:**
 
 ```lua
 memberSet       = {}   -- [fullName] = true, current members
 memberSubgroups = {}   -- [fullName] = subgroupNumber (raid/BG only)
-evictionTimers  = {}   -- [fullName] = timerHandle
 lastGroupType   = nil  -- group type from last snapshot: "party"|"raid"|"battleground"|nil
-EVICTION_DELAY  = 30   -- seconds before purging data for a departed player
 ```
 
 **Events dispatched (typed, not raw `GROUP_ROSTER_UPDATE`):**
@@ -48,7 +46,7 @@ EVICTION_DELAY  = 30   -- seconds before purging data for a departed player
 | `OnSelfJoinedGroup(groupType)` | Local player enters a group, OR group type changes (party→raid) | `Communications` |
 | `OnSelfLeftGroup()` | Local player leaves all groups | `Communications`, `GroupData` |
 | `OnMemberJoined(fullName, groupType)` | A new player appears in the group | `Communications`, `GroupData` |
-| `OnMemberLeft(fullName)` | A player leaves the group | `Communications` — clears stale cooldown state. `GroupComposition` schedules the eviction timer inline (not via a subscriber callback). |
+| `OnMemberLeft(fullName)` | A player leaves the group | `Communications` — clears stale cooldown state. `GroupComposition` calls `GroupData:PurgePlayer(fullName)` inline before dispatching (not via a subscriber callback). |
 | `OnSubgroupsChanged()` | Players moved between subgroups with no membership change | No current subscriber — defined as a future extension point |
 
 Note: `OnMemberJoined` passes `groupType` so `Communications` can decide whether to whisper (party) or no-op (raid/BG) without querying WoW APIs itself.
@@ -68,15 +66,14 @@ local function currentGroupType()
 end
 ```
 
-**Timed eviction:**
-When a member leaves, `GroupComposition` schedules a 30-second `AceTimer` for that player. On expiry it calls `GroupData:PurgePlayer(fullName)` and sets `evictionTimers[fullName] = nil`. If the player rejoins before the timer fires, the timer is cancelled via `SocialQuest:CancelTimer(handle)` and `evictionTimers[fullName]` is cleared — their existing data in `PlayerQuests` is preserved, avoiding a redundant full sync for quick rejoins.
+**Immediate eviction:**
+When a member leaves, `GroupComposition` immediately calls `GroupData:PurgePlayer(fullName)` before dispatching `OnMemberLeft`. There is no delay. Rationale: in the new protocol a rejoining player unconditionally broadcasts SQ_INIT via their own `OnSelfJoinedGroup` handler, which is a definitive fresh snapshot that overwrites any stale data. Keeping stale data across a leave/rejoin cycle saves no work and causes the departed player's quests to remain visible in the GroupFrame until eviction fires — a UX defect. Immediate eviction avoids both problems.
 
-Messages received from a player during their 30-second eviction window (after leaving but before purge) are accepted normally — `PlayerQuests[fullName]` still exists.
+`Communications` still handles `OnMemberLeft` to clear `lastInitSent[fullName]`: without this, a player who leaves and rejoins within 15 seconds would have their SQ_INIT broadcast on rejoin dropped by the cooldown, leaving us without their latest data.
 
 **`OnSelfLeftGroup` cleanup sequence:**
-1. Cancel all timers in `evictionTimers` via `SocialQuest:CancelTimer`. `AceTimer:CancelTimer` is synchronous — no callbacks fire after cancellation.
-2. Clear `memberSet = {}`, `memberSubgroups = {}`, `evictionTimers = {}`, `lastGroupType = nil`.
-3. Dispatch `OnSelfLeftGroup()` to subscribers.
+1. Clear `memberSet = {}`, `memberSubgroups = {}`, `lastGroupType = nil`.
+2. Dispatch `OnSelfLeftGroup()` to subscribers.
 
 **`OnPlayerLogin` behavior:**
 On login, `GroupComposition:OnPlayerLogin()` runs the same diff logic as `OnGroupRosterUpdate` against an empty `memberSet`. If the player is already in a group, it fires:
@@ -98,11 +95,8 @@ function OnGroupRosterUpdate():
   if groupType == nil:
     if non-empty(memberSet):
       -- Run full cleanup before notifying subscribers (mirrors OnSelfLeftGroup cleanup sequence):
-      for fullName, handle in evictionTimers:
-        SocialQuest:CancelTimer(handle)   -- synchronous; no callbacks fire after this
       memberSet       = {}
       memberSubgroups = {}
-      evictionTimers  = {}
       lastGroupType   = nil
       dispatch OnSelfLeftGroup()
     return
@@ -138,9 +132,6 @@ function OnGroupRosterUpdate():
   -- Detect member joins (self excluded — handled above)
   for fullName in newMembers:
     if fullName ~= selfName and not memberSet[fullName]:
-      if evictionTimers[fullName]:
-        SocialQuest:CancelTimer(evictionTimers[fullName])
-        evictionTimers[fullName] = nil
       dispatch OnMemberJoined(fullName, groupType)
 
   -- Detect member leaves (self excluded).
@@ -150,11 +141,7 @@ function OnGroupRosterUpdate():
   -- is unreachable in the WoW client.
   for fullName in memberSet:
     if fullName ~= selfName and not newMembers[fullName]:
-      handle = SocialQuest:ScheduleTimer(function()
-        evictionTimers[fullName] = nil
-        GroupData:PurgePlayer(fullName)
-      end, EVICTION_DELAY)
-      evictionTimers[fullName] = handle
+      GroupData:PurgePlayer(fullName)   -- immediate; rejoining always brings a fresh SQ_INIT
       dispatch OnMemberLeft(fullName)
 
   -- Detect subgroup moves (raid/BG only).
@@ -192,9 +179,7 @@ end
 
 **Leave-then-immediately-rejoin:** If a player leaves one group (nil groupType fires `OnSelfLeftGroup`, all state cleared) then joins another group, `OnSelfJoinedGroup` fires normally on the subsequent `GROUP_ROSTER_UPDATE`. The two events always occupy separate event firings and are handled sequentially.
 
-**UI reload / PLAYER_LOGOUT:** When the UI reloads, all `AceTimer` handles are invalidated by the engine before `PLAYER_LOGOUT` fires. The `evictionTimers` table is discarded with the rest of Lua state. No explicit cancel is needed; `OnPlayerLogin` rebuilds all state cleanly from scratch.
-
-**Mid-eviction message acceptance:** The `GroupData` receive handlers (`OnInitReceived`, `OnUpdateReceived`, `OnObjectiveReceived`) all check `self:IsInGroup(sender)`, which returns true as long as `PlayerQuests[sender]` exists. During the 30-second eviction window the entry still exists, so messages from a recently-departed player are accepted normally. This is the desired behavior — it keeps data intact for quick rejoins.
+**UI reload / PLAYER_LOGOUT:** When the UI reloads, all Lua state is discarded. `OnPlayerLogin` rebuilds membership state cleanly from scratch.
 
 **`LE_PARTY_CATEGORY_INSTANCE` scope:** In TBC Anniversary, `IsInGroup(LE_PARTY_CATEGORY_INSTANCE)` is true for battlegrounds and arenas. The dungeon finder does not exist in TBC. The `"battleground"` label in `currentGroupType()` covers both BG and arena contexts.
 
@@ -204,7 +189,7 @@ end
 
 - **Remove** `OnGroupChanged()` — no longer handles `GROUP_ROSTER_UPDATE`
 - **Add** `OnMemberJoined(fullName, groupType)` — creates `{ hasSocialQuest=false, completedQuests={} }` stub. `groupType` is accepted but unused; it is passed for signature consistency with the dispatched event.
-- **Add** `PurgePlayer(fullName)` — sets `self.PlayerQuests[fullName] = nil`; called by `GroupComposition` after the 30-second eviction timer fires
+- **Add** `PurgePlayer(fullName)` — sets `self.PlayerQuests[fullName] = nil`; called by `GroupComposition` immediately when a member leaves
 - **Add** `OnSelfLeftGroup()` — sets `self.PlayerQuests = {}`; called after `GroupComposition` has already cancelled timers and cleared its own state
 - `OnMemberLeft` has no `GroupData` handler; eviction is managed entirely by `GroupComposition`
 - All existing receive handlers (`OnInitReceived`, `OnUpdateReceived`, `OnObjectiveReceived`, `OnUnitQuestLogChanged`) are unchanged
@@ -243,7 +228,7 @@ local pendingResponses = {}  -- [sender] = timerHandle; tracks jitter-delayed SQ
 - `OnMemberLeft(fullName)`:
   - `lastInitSent[fullName] = nil` — clears the 15-second cooldown for that sender
   - If `pendingResponses[fullName]`, cancel and clear it
-  - Rationale: if the player rejoins within the 30-second eviction window, the stale cooldown would otherwise suppress the jittered SQ_INIT whisper response to their re-broadcast, leaving them without our data. Clearing on leave guarantees a fresh response on any subsequent SQ_INIT from them.
+  - Rationale: if the player leaves and rejoins within 15 seconds, their SQ_INIT broadcast on rejoin would be dropped by the cooldown without this clearing step, leaving us without their latest data. Clearing on leave guarantees a fresh response on any subsequent SQ_INIT from them.
 
 - `OnMemberJoined(fullName, groupType)`:
   - `"party"` only: `self:SendFullInit("WHISPER", fullName)` — whisper the new member directly, since they won't have received our broadcast (they weren't in the group when we sent it)
@@ -308,7 +293,7 @@ Minimum jitter of 1 second (rather than 0) ensures at least one frame of spread 
 | New SQ member joins our party | 1: SQ_INIT whisper to new member (`OnMemberJoined` fires for us) | 1 SQ_INIT broadcast from new member via PARTY channel (no receive-side response needed) |
 | New SQ member joins our raid | 1: jittered SQ_INIT whisper to new member (1–8s, via receive handler) | 1 SQ_INIT broadcast from new member via RAID channel |
 | Player moves between subgroups | 0 | 0 |
-| Player leaves then rejoins within 30s | 0 (eviction cancelled, data preserved) | 1 SQ_INIT broadcast from returning member → triggers our jittered whisper response |
+| Player leaves then rejoins | 1: jittered SQ_INIT whisper to returning member (their data was purged on leave; their SQ_INIT on rejoin is the definitive fresh snapshot) | 1 SQ_INIT broadcast from returning member → triggers our jittered whisper response |
 | Party promoted to raid | 2: SQ_INIT to RAID + SQ_REQ_COMPLETED (via `OnSelfJoinedGroup("raid")`) | Up to N jittered SQ_INIT whispers from existing members (they receive the RAID broadcast) |
 | Force Resync (debug) | 1 SQ_REQUEST to channel | 1 jittered SQ_INIT whisper per SQ member, 1–4s, with 15s per-sender cooldown |
 
