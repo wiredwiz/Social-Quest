@@ -8,7 +8,9 @@
 **Author**: Thad Ryker
 **Status**: Active development (Improvements branch)
 
-> **IMPORTANT FOR CLAUDE:** This file must be updated whenever significant changes are made to the project — architecture changes, new modules, protocol changes, dependency changes, or notable bug fixes. Update the version number in `SocialQuest.toc` after every set of meaningful changes. Do not leave this file stale.
+> **IMPORTANT FOR CLAUDE:** This file must be updated whenever significant changes are made to the project — architecture changes, new modules, protocol changes, dependency changes, or notable bug fixes. Update the version number in `SocialQuest.toc` after every set of meaningful changes using the versioning rule below. Do not leave this file stale.
+
+>**Versioning Rule:** The major version number should never be changed by claude unless explicitly instructed to do so.  The first time add-on functionality is modified on any given day, the minor version number should be incremented and the revision number should be reset to 0. Any extra changes ocurring within the same days should increment the revision number only, unless explicitly instructed otherwise.
 
 ---
 
