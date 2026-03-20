@@ -109,6 +109,10 @@ function SocialQuestGroupData:OnUpdateReceived(sender, payload)
         -- Grab the title we stored when this quest was first received, before removing it.
         cachedTitle = entry.quests[questID] and entry.quests[questID].title
         entry.quests[questID] = nil
+    elseif eventType == "tracked" or eventType == "untracked" then
+        -- Tracking state has no meaning in remote data; skip without modifying the entry.
+        -- Guard also prevents recreating an entry that was already removed by a terminal event.
+        return
     else
         local AQL  = SocialQuest.AQL
         local info = AQL and AQL:GetQuest(questID)
