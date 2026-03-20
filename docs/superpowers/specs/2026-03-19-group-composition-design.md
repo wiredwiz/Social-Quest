@@ -48,7 +48,7 @@ EVICTION_DELAY  = 30   -- seconds before purging data for a departed player
 | `OnSelfJoinedGroup(groupType)` | Local player enters a group, OR group type changes (party→raid) | `Communications` |
 | `OnSelfLeftGroup()` | Local player leaves all groups | `Communications`, `GroupData` |
 | `OnMemberJoined(fullName, groupType)` | A new player appears in the group | `Communications`, `GroupData` |
-| `OnMemberLeft(fullName)` | A player leaves the group | No external subscriber — dispatched for future extensibility. `GroupComposition` schedules the eviction timer inline (not via a subscriber callback). |
+| `OnMemberLeft(fullName)` | A player leaves the group | `Communications` — clears stale cooldown state. `GroupComposition` schedules the eviction timer inline (not via a subscriber callback). |
 | `OnSubgroupsChanged()` | Players moved between subgroups with no membership change | No current subscriber — defined as a future extension point |
 
 Note: `OnMemberJoined` passes `groupType` so `Communications` can decide whether to whisper (party) or no-op (raid/BG) without querying WoW APIs itself.
@@ -240,6 +240,11 @@ local pendingResponses = {}  -- [sender] = timerHandle; tracks jitter-delayed SQ
   - Cancel all timers in `pendingResponses` via `SocialQuest:CancelTimer`
   - Clear `pendingResponses = {}` and `lastInitSent = {}`
 
+- `OnMemberLeft(fullName)`:
+  - `lastInitSent[fullName] = nil` — clears the 15-second cooldown for that sender
+  - If `pendingResponses[fullName]`, cancel and clear it
+  - Rationale: if the player rejoins within the 30-second eviction window, the stale cooldown would otherwise suppress the jittered SQ_INIT whisper response to their re-broadcast, leaving them without our data. Clearing on leave guarantees a fresh response on any subsequent SQ_INIT from them.
+
 - `OnMemberJoined(fullName, groupType)`:
   - `"party"` only: `self:SendFullInit("WHISPER", fullName)` — whisper the new member directly, since they won't have received our broadcast (they weren't in the group when we sent it)
   - `"raid"` or `"battleground"`: no-op — the new member broadcasts SQ_INIT to the channel themselves; existing members respond via the receive handler
@@ -331,7 +336,7 @@ Add `Core/GroupComposition.lua` before `Core/Communications.lua` and `Core/Group
 |---|---|
 | `Core/GroupComposition.lua` | **New** |
 | `Core/GroupData.lua` | Modified — remove `OnGroupChanged`; add `OnMemberJoined`, `PurgePlayer`, `OnSelfLeftGroup` |
-| `Core/Communications.lua` | Modified — remove `OnGroupChanged`, `SendBeacon`, SQ_BEACON; add `OnSelfJoinedGroup`, `OnMemberJoined`, `OnSelfLeftGroup`; modify SQ_INIT and SQ_REQUEST handlers; add `pendingResponses` table |
+| `Core/Communications.lua` | Modified — remove `OnGroupChanged`, `SendBeacon`, SQ_BEACON; add `OnSelfJoinedGroup`, `OnMemberJoined`, `OnMemberLeft`, `OnSelfLeftGroup`; modify SQ_INIT and SQ_REQUEST handlers; add `pendingResponses` table |
 | `SocialQuest.lua` | Modified — rewire event registrations, add `GroupComposition:Initialize()` call |
 | `SocialQuest.toc` | Modified — add `Core/GroupComposition.lua` entry |
 
