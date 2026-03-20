@@ -177,7 +177,7 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
-### Version 2.1 (March 2026 — Improvements branch)
+### Version 2.1.0 (March 2026 — Improvements branch)
 - Added `Core\GroupComposition.lua` module — sole owner of `GROUP_ROSTER_UPDATE` / `PLAYER_LOGIN` events
 - Eliminated SQ_BEACON storm pattern; replaced with direct SQ_INIT broadcast + jittered responses
 - Subgroup moves in raids no longer trigger sync activity
