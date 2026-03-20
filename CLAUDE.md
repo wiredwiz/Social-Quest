@@ -177,6 +177,9 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.1.2 (March 2026 — Improvements branch)
+- Updated all `knownStatus` comparisons to use `AQL.ChainStatus.Known` / `AQL.ChainStatus.Unknown` constants
+
 ### Version 2.1.1 (March 2026 — Improvements branch)
 - GroupFrame now preserves per-tab scroll position across rebuilds; no longer resets to top on quest updates
 
