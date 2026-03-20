@@ -8,6 +8,8 @@ SocialQuestGroupFrame = {}
 local frame          = nil
 local refreshPending = false
 local urlPopup       = nil
+local tabScrollPositions = {}  -- [tabID] = last known vertical scroll offset
+local lastRenderedTab    = nil -- set to activeID after each render; nil on first run / reload
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 
 -- Ordered tab providers. The id must match the collapsedZones subtable key.
@@ -124,6 +126,11 @@ local function createFrame()
         tab:SetPoint("TOPLEFT", f, "TOPLEFT", offsetX, -24)
         tab:SetText(label)
         tab:SetScript("OnClick", function()
+            -- Save the outgoing tab's scroll position before activeTab is overwritten.
+            -- frame is the module-level upvalue (not the local f); it is non-nil by the
+            -- time any click fires.
+            local outgoingID = SocialQuest.db.profile.frameState.activeTab or "shared"
+            tabScrollPositions[outgoingID] = frame.scrollFrame:GetVerticalScroll()
             SocialQuest.db.profile.frameState.activeTab = id
             SocialQuestGroupFrame:Refresh()
         end)
@@ -207,7 +214,16 @@ end
 
 function SocialQuestGroupFrame:Refresh()
     if not frame then return end
-    frame.scrollFrame:SetVerticalScroll(0)
+
+    -- Resolve activeID early so the scroll save below can reference it before
+    -- SetScrollChild() is called (SetScrollChild may clamp GetVerticalScroll to 0).
+    local activeID = SocialQuest.db.profile.frameState.activeTab or "shared"
+
+    -- Save scroll position for same-tab refreshes BEFORE SetScrollChild can clamp it.
+    -- Tab-switch paths save the outgoing tab's position in the click handler instead.
+    if activeID == lastRenderedTab then
+        tabScrollPositions[activeID] = frame.scrollFrame:GetVerticalScroll()
+    end
 
     -- Recreate content child (GetChildren does not return FontStrings; hiding is
     -- the only clean way to discard old rows without leaking them).
@@ -219,7 +235,6 @@ function SocialQuestGroupFrame:Refresh()
     frame.scrollFrame:SetScrollChild(frame.content)
 
     -- Find active provider.
-    local activeID = SocialQuest.db.profile.frameState.activeTab or "shared"
     local activeProvider
     for _, p in ipairs(providers) do
         if p.id == activeID then
@@ -228,6 +243,18 @@ function SocialQuestGroupFrame:Refresh()
         end
     end
     if not activeProvider or not activeProvider.module then return end
+
+    -- Determine which scroll offset to restore after the rebuild.
+    -- Same-tab path: the offset was saved before SetScrollChild above.
+    -- Tab-switch / first-render path (lastRenderedTab is nil on first call):
+    --   restore the remembered offset for the incoming tab (0 on first visit).
+    local scrollToRestore
+    if activeID == lastRenderedTab then
+        scrollToRestore = tabScrollPositions[activeID] or 0
+    else
+        lastRenderedTab = activeID
+        scrollToRestore = tabScrollPositions[activeID] or 0
+    end
 
     -- Highlight active tab; deselect others.
     -- PanelTemplates_SelectTab disables the button (standard WoW: can't re-click active tab).
@@ -249,6 +276,7 @@ function SocialQuestGroupFrame:Refresh()
     -- Delegate rendering to the tab provider.
     local totalHeight = activeProvider.module:Render(frame.content, RowFactory, tabCollapsed)
     frame.content:SetHeight(math.max(totalHeight, 10))
+    frame.scrollFrame:SetVerticalScroll(scrollToRestore)
 end
 
 -- Expand all zones in the given tab and redraw.
