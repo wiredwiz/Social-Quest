@@ -2,7 +2,7 @@
 ## Title: SocialQuest
 ## Notes: Social quest coordination for WoW Burning Crusade Anniversary.
 ## Author: Thad Ryker
-## Version: 2.0
+## Version: 2.1.0
 ## Dependencies: Ace3, AbsoluteQuestLog
 ## SavedVariables: SocialQuestDB
 
@@ -23,6 +23,7 @@ Locales\koKR.lua
 Locales\ruRU.lua
 Locales\jaJP.lua
 SocialQuest.lua
+Core\GroupComposition.lua
 Core\GroupData.lua
 Core\Communications.lua
 Core\Announcements.lua

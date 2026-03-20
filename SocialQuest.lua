@@ -58,6 +58,9 @@ function SocialQuest:OnEnable()
     -- artefact and is silently cancelled.
     self.pendingRegressions = {}
 
+    -- Initialize group composition tracker.
+    SocialQuestGroupComposition:Initialize()
+
     -- Register AceComm prefixes.
     SocialQuestComm:Initialize()
 
@@ -268,14 +271,12 @@ end
 ------------------------------------------------------------------------
 
 function SocialQuest:OnGroupRosterUpdate()
-    SocialQuestComm:OnGroupChanged()
-    SocialQuestGroupData:OnGroupChanged()
+    SocialQuestGroupComposition:OnGroupRosterUpdate()
 end
 
 -- Re-sync quest data with group after a UI reload (PLAYER_LOGIN fires on /reload).
 function SocialQuest:OnPlayerLogin()
-    SocialQuestGroupData:OnGroupChanged()
-    SocialQuestComm:OnGroupChanged()
+    SocialQuestGroupComposition:OnPlayerLogin()
 end
 
 -- PLAYER_ENTERING_WORLD fires on every zone transition (including hearthing and /reload).

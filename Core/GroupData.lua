@@ -19,36 +19,32 @@ SocialQuestGroupData = {}
 
 SocialQuestGroupData.PlayerQuests = {}
 
--- Called when GROUP_ROSTER_UPDATE fires. Removes stale entries and adds stubs
--- for newly visible members who haven't sent data yet.
-function SocialQuestGroupData:OnGroupChanged()
-    -- Build a set of current group member names.
-    local current = {}
-    local numMembers = GetNumGroupMembers()
-    for i = 1, numMembers do
-        local unit = IsInRaid() and ("raid"..i) or ("party"..i)
-        local name, realm = UnitName(unit)
-        if name then
-            local fullName = realm and realm ~= "" and (name.."-"..realm) or name
-            current[fullName] = true
-        end
+-- Called by GroupComposition when a new player appears in the group.
+-- Creates a hasSocialQuest=false stub so receive handlers can accept their
+-- messages before an SQ_INIT arrives.
+-- groupType is accepted but unused; passed for signature consistency.
+function SocialQuestGroupData:OnMemberJoined(fullName, groupType)
+    if not self.PlayerQuests[fullName] then
+        self.PlayerQuests[fullName] = { hasSocialQuest = false, completedQuests = {} }
+        SocialQuest:Debug("Group", "Stub created for " .. fullName)
     end
+end
 
-    -- Remove entries for players no longer in group.
-    for fullName in pairs(self.PlayerQuests) do
-        if not current[fullName] then
-            SocialQuest:Debug("Group", "Removed " .. fullName .. " from tracked roster")
-            self.PlayerQuests[fullName] = nil
-        end
+-- Called by GroupComposition immediately when a player leaves the group.
+-- Removes their entry from PlayerQuests so the GroupFrame stops showing them.
+-- If they rejoin, their SQ_INIT broadcast on rejoin replaces this data anyway.
+function SocialQuestGroupData:PurgePlayer(fullName)
+    if self.PlayerQuests[fullName] then
+        self.PlayerQuests[fullName] = nil
+        SocialQuest:Debug("Group", "Purged data for " .. fullName)
     end
+end
 
-    -- Add stub entries for new members we haven't heard from yet.
-    for fullName in pairs(current) do
-        if not self.PlayerQuests[fullName] then
-            self.PlayerQuests[fullName] = { hasSocialQuest = false, completedQuests = {} }
-            SocialQuest:Debug("Group", "Added " .. fullName .. " to tracked roster")
-        end
-    end
+-- Called by GroupComposition when the local player leaves all groups.
+-- Clears the entire PlayerQuests table.
+function SocialQuestGroupData:OnSelfLeftGroup()
+    self.PlayerQuests = {}
+    SocialQuest:Debug("Group", "PlayerQuests cleared (self left group)")
 end
 
 -- Called when a full SQ_INIT message arrives from a player.
