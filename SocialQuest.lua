@@ -125,6 +125,7 @@ function SocialQuest:OnEnable()
     self:RegisterEvent("PLAYER_ENTERING_WORLD", "OnPlayerEnteringWorld")
     self:RegisterEvent("AUTOFOLLOW_BEGIN",      "OnAutoFollowBegin")
     self:RegisterEvent("AUTOFOLLOW_END",        "OnAutoFollowEnd")
+    self:RegisterEvent("TAXIMAP_OPENED",        "OnTaxiMapOpened")
 
     -- Register AQL callbacks.
     -- Dot-notation is required: AQL is the target in CallbackHandler, so
@@ -367,6 +368,72 @@ function SocialQuest:OnAutoFollowEnd()
     if target then
         SocialQuestComm:SendFollowStop(target)
         SocialQuestComm.followTarget = nil
+    end
+end
+
+function SocialQuest:OnTaxiMapOpened()
+    if not self.db.profile.flightPath.enabled then return end
+
+    -- Collect all node names currently visible on the taxi map.
+    -- GetTaxiNodeInfo(i) returns name, texture, x, y at Interface 20505.
+    -- Iterate until nil is returned. Only named nodes are collected.
+    -- NOTE: exact API behavior (active vs inactive nodes, max index) requires
+    -- in-game verification during implementation.
+    local currentNodes = {}
+    local i = 1
+    while true do
+        local name = GetTaxiNodeInfo(i)
+        if not name then break end
+        currentNodes[name] = true
+        i = i + 1
+    end
+
+    local saved = self.db.char.knownFlightNodes
+    local diff  = {}
+    for name in pairs(currentNodes) do
+        if not saved[name] then
+            table.insert(diff, name)
+        end
+    end
+
+    local diffCount    = #diff
+    local currentCount = 0
+    for _ in pairs(currentNodes) do currentCount = currentCount + 1 end
+
+    if diffCount == 0 then
+        return  -- nothing new
+    end
+
+    local startNode = getStartingNode()
+
+    if diffCount == 1 then
+        -- Normal case: one new node. Announce unless it is the starting city.
+        if diff[1] ~= startNode then
+            SocialQuestComm:SendFlightDiscovery(diff[1])
+        end
+        -- else: first-ever open at starting city — silently absorb.
+
+    elseif diffCount > 1 and currentCount == 2 then
+        -- Special case: savedNodes was empty and player has exactly starting city
+        -- + one new discovery. Announce the non-starting-city node only.
+        -- If startNode is nil (unknown race), skip — cannot identify which is new.
+        if startNode then
+            for _, name in ipairs(diff) do
+                if name ~= startNode then
+                    SocialQuestComm:SendFlightDiscovery(name)
+                    break
+                end
+            end
+        end
+
+    else
+        -- diffCount > 1 and currentCount > 2: mid-game install or ambiguous.
+        -- Silently absorb — cannot determine which node is genuinely new.
+    end
+
+    -- Always update saved state regardless of whether anything was announced.
+    for name in pairs(currentNodes) do
+        saved[name] = true
     end
 end
 
