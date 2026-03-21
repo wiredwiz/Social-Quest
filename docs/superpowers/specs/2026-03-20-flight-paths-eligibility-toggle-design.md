@@ -31,7 +31,7 @@ char = {
 },
 ```
 
-`SocialQuestDB` already stores the profile namespace. Adding `char = { knownFlightNodes = {} }` to the defaults table activates AceDB's per-character storage automatically.
+`SocialQuestDB` already stores the profile namespace. Add `char = { knownFlightNodes = {} }` as a **sibling of `profile`** at the top level of the table returned by `GetDefaults()` — not nested inside `profile`. AceDB activates per-character storage automatically when it sees the `char` key at the root of the defaults table.
 
 ### Race Starting Node Table
 
@@ -137,10 +137,14 @@ function SocialQuest:OnTaxiMapOpened()
     elseif diffCount > 1 and currentCount == 2 then
         -- Special case: savedNodes was empty and player has exactly starting city
         -- + one new discovery. Announce the non-starting-city node only.
-        for _, name in ipairs(diff) do
-            if name ~= startNode then
-                SocialQuestComm:SendFlightDiscovery(name)
-                break
+        -- If startNode is nil (unknown race), skip this branch entirely —
+        -- we cannot identify which node is the starting city, so silently absorb.
+        if startNode then
+            for _, name in ipairs(diff) do
+                if name ~= startNode then
+                    SocialQuestComm:SendFlightDiscovery(name)
+                    break
+                end
             end
         end
 
@@ -165,18 +169,17 @@ Add `"SQ_FLIGHT"` to the `PREFIXES` table in `Communications.lua`.
 -- Only sent when in a party (not raid, not battleground).
 function SocialQuestComm:SendFlightDiscovery(nodeName)
     if not IsInGroup() or IsInRaid() then return end
-    local payload = LibStub("AceSerializer-3.0"):Serialize({ node = nodeName })
-    LibStub("AceComm-3.0"):SendCommMessage("SQ_FLIGHT", payload, "PARTY")
+    -- Use the file-local serialize() wrapper, consistent with all other send helpers.
+    LibStub("AceComm-3.0"):SendCommMessage("SQ_FLIGHT", serialize({ node = nodeName }), "PARTY")
 end
 ```
 
-In `OnCommReceived`, add:
+In `OnCommReceived`, add after the existing prefix branches. **Do not call `Deserialize` here** — the function already deserializes `msg` into `payload` at lines 273–276 before any prefix dispatch. All branches use the pre-deserialized `payload`:
 
 ```lua
 elseif prefix == "SQ_FLIGHT" then
-    local ok, data = LibStub("AceSerializer-3.0"):Deserialize(message)
-    if ok and data and data.node then
-        SocialQuestAnnounce:OnFlightDiscovery(sender, data.node)
+    if payload and payload.node then
+        SocialQuestAnnounce:OnFlightDiscovery(sender, payload.node)
     end
 ```
 
@@ -201,7 +204,7 @@ Add the locale string `"%s unlocked flight path: %s"` to all locale files.
 
 ### Options
 
-Add a new group to `Options.lua` after the follow group (order = 8, bump debug to order 9):
+Add a new group to `Options.lua` after the follow group. The `debug` group is currently at `order = 8` — change it to `order = 9` to make room, then insert `flightPath` at `order = 8`:
 
 ```lua
 flightPath = {
@@ -211,13 +214,15 @@ flightPath = {
     args  = {
         enabled = toggle(L["Announce flight path discoveries"],
             L["Broadcast to your party when you discover a new flight path."],
-            { "flightPath", "enabled" }),
+            { "flightPath", "enabled" }, 1),
         announceBanners = toggle(L["Show banner for party discoveries"],
             L["Display a banner notification when a party member discovers a new flight path."],
-            { "flightPath", "announceBanners" }),
+            { "flightPath", "announceBanners" }, 2),
     },
 },
 ```
+
+The `profiles` entry (managed by AceDBOptions at `order = 99`) is unaffected.
 
 ### Files Touched
 
@@ -246,6 +251,13 @@ Replace the bare `needsShare = true` with a call to a local helper `isEligibleFo
 --   3. If the quest is a known chain step with a previous step, that step
 --      has been completed by the player.
 -- Falls back gracefully when chain info is unavailable (no Questie).
+-- NOTE: AQL is a hard dependency — SocialQuest:OnInitialize disables the addon
+-- if AQL is missing. The `if not AQL then return false end` guard is a safety
+-- net only; it is unreachable in normal operation.
+-- NOTE: GetQuestLogSelection() requires in-game verification at Interface 20505.
+-- It is expected to exist (it is a standard Classic API), but must be confirmed.
+-- If nil is returned, prevSel is nil and the restoration guard silently no-ops
+-- (the quest log is left on the last-selected entry — acceptable trade-off).
 local function isEligibleForShare(questID, playerData)
     local AQL = SocialQuest.AQL
     if not AQL then return false end
@@ -316,6 +328,10 @@ Add a guard at the top of `openQuestLogToQuest` in `RowFactory.lua`:
 local function openQuestLogToQuest(questID)
     -- Toggle: if the quest log is already open and this quest is currently
     -- selected, close the log instead of re-opening it.
+    -- NOTE: GetQuestLogSelection() requires in-game verification at Interface 20505.
+    -- If it is absent or returns nil, sel is nil, the guard silently skips the
+    -- toggle, and the function falls through to the existing open-and-select
+    -- logic — safe graceful degradation to the pre-toggle behaviour.
     if QuestLogFrame:IsShown() then
         local sel = GetQuestLogSelection()
         if sel and sel > 0 then
