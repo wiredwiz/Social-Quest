@@ -275,10 +275,24 @@ function SocialQuestOptions:Initialize()
                 },
             },
 
+            flightPath = {
+                type  = "group",
+                name  = L["Flight Path Discovery"],
+                order = 8,
+                args  = {
+                    enabled = toggle(L["Announce flight path discoveries"],
+                        L["Broadcast to your party when you discover a new flight path."],
+                        { "flightPath", "enabled" }, 1),
+                    announceBanners = toggle(L["Show banner for party discoveries"],
+                        L["Display a banner notification when a party member discovers a new flight path."],
+                        { "flightPath", "announceBanners" }, 2),
+                },
+            },
+
             debug = {
                 type  = "group",
                 name  = L["Debug"],
-                order = 8,
+                order = 9,
                 args  = {
                     enabled = toggle(L["Enable debug mode"],
                         L["Print internal debug messages to the chat frame. Useful for diagnosing comm issues or event flow problems."],
