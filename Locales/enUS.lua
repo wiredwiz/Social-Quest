@@ -219,3 +219,14 @@ L["Test All Completed"]                     = true
 L["Display a demo banner for the 'Everyone has completed' purple notification. No chat preview (this event never generates outbound chat directly)."] = true
 L["Test Chat Link"]                         = true
 L["Print a local chat preview of a 'Quest turned in' message for quest 337 using a real WoW quest hyperlink. Verify the quest name appears as clickable gold text in the chat frame."] = true
+
+-- Core/Announcements.lua — flight path discovery banner
+-- %s args: (1) sender character name, (2) flight node name. Raw AceComm sender (Name-Realm format).
+L["%s unlocked flight path: %s"]                = true
+
+-- UI/Options.lua — Flight Path Discovery group
+L["Flight Path Discovery"]                      = true
+L["Announce flight path discoveries"]           = true
+L["Broadcast to your party when you discover a new flight path."] = true
+L["Show banner for party discoveries"]          = true
+L["Display a banner notification when a party member discovers a new flight path."] = true
