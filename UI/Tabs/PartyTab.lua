@@ -10,6 +10,59 @@ local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 -- Private helpers
 ------------------------------------------------------------------------
 
+-- Returns true only when the quest can actually be shared with this player:
+--   1. The quest is marked shareable by the WoW API.
+--   2. The player has not already completed the quest.
+--   3. If the quest is a known chain step with a previous step, that step
+--      has been completed by the player.
+-- Falls back gracefully when chain info is unavailable (no Questie).
+-- NOTE: AQL is a hard dependency — the addon disables itself if AQL is missing,
+-- so the `if not AQL then return false end` guard is a safety net only.
+-- NOTE: GetQuestLogSelection() requires in-game verification at Interface 20505.
+-- If absent or returning nil, prevSel is nil; the restoration guard silently
+-- skips it, leaving the log on the last-selected entry — acceptable trade-off.
+local function isEligibleForShare(questID, playerData)
+    local AQL = SocialQuest.AQL
+    if not AQL then return false end
+
+    -- Check 1: quest is shareable via WoW API.
+    -- Guard against stale logIndex: confirm the entry actually maps to questID
+    -- before calling GetQuestLogPushable (the log may have shifted since last AQL update).
+    local qi = AQL:GetQuest(questID)
+    if not qi or not qi.logIndex then return false end
+    local prevSel = GetQuestLogSelection()
+    SelectQuestLogEntry(qi.logIndex)
+    local _, _, _, _, _, _, _, confirmID = GetQuestLogTitle(qi.logIndex)
+    if confirmID ~= questID then
+        if prevSel and prevSel > 0 then SelectQuestLogEntry(prevSel) end
+        return false
+    end
+    local shareable = GetQuestLogPushable() and true or false
+    if prevSel and prevSel > 0 then
+        SelectQuestLogEntry(prevSel)
+    end
+    if not shareable then return false end
+
+    -- Check 2: player has not already completed this quest.
+    if playerData.completedQuests and playerData.completedQuests[questID] then
+        return false
+    end
+
+    -- Check 3: chain prerequisite met (requires Questie/chain info).
+    local ci = AQL:GetChainInfo(questID)
+    if ci and ci.knownStatus == AQL.ChainStatus.Known and ci.step and ci.step > 1 then
+        local prevStep = ci.steps and ci.steps[ci.step - 1]
+        if prevStep and prevStep.questID then
+            if not (playerData.completedQuests and
+                    playerData.completedQuests[prevStep.questID]) then
+                return false
+            end
+        end
+    end
+
+    return true
+end
+
 -- Builds the ordered list of playerEntry rows for one questID.
 -- localHasIt: true when AQL:GetQuest(questID) is non-nil.
 local function buildPlayerRowsForQuest(questID, localHasIt)
@@ -82,7 +135,7 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
                 hasSocialQuest = playerData.hasSocialQuest,
                 hasCompleted   = false,
                 isComplete     = false,
-                needsShare     = true,
+                needsShare     = isEligibleForShare(questID, playerData),
                 objectives     = {},
             })
         end
