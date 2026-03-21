@@ -178,6 +178,9 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.3.5 (March 2026 — Improvements branch)
+- Fixed chat announcements: WoW TBC does not render `|H...|h` hyperlinks in addon-sent party/raid/guild chat. Changed outbound quest and objective messages to use `[Quest Title]` bracket format instead of the full hyperlink string. Added `questInfo.title` to the title resolution chain in `OnQuestEvent` so completed/abandoned quests (already removed from cache) still resolve the correct name.
+
 ### Version 2.3.4 (March 2026 — Improvements branch)
 - "Everyone has finished" feature: changed trigger from `eventType == "completed"` (turned in) to `eventType == "finished"` (objectives done). Updated internal completion check to use `isComplete` flag on quest data instead of `completedQuests`/`HasCompletedQuest`, with fallback to `completedQuests` for players who already turned in. Display gate now uses `display.finished` toggle; chat gate uses `announce.finished`. Renamed function from `checkAllCompleted` to `checkAllFinished`.
 - Renamed locale key `"Everyone has completed: %s"` → `"Everyone has finished: %s"` and test button `"Test All Completed"` → `"Test All Finished"` across all 11 locale files.

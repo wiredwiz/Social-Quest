@@ -194,20 +194,12 @@ function SocialQuestAnnounce:OnQuestEvent(eventType, questID, questInfo)
     local AQL   = SocialQuest.AQL
     local info  = AQL and AQL:GetQuest(questID)
     local title = (info and info.title)
+               or (questInfo and questInfo.title)
                or (AQL and AQL:GetQuestTitle(questID))
                or ("Quest " .. questID)
-    -- Prefer the WoW quest hyperlink string from the AQL snapshot so that recipients
-    -- can ctrl-click the quest link in chat. Falls back progressively:
-    --   1. questInfo.link  — AQL snapshot link (nil for "finished"; questInfo not passed)
-    --   2. info.link       — live AQL log entry (nil after "abandoned"; quest removed first)
-    --   3. AQL:GetQuestLink — builds link from provider DB even when quest left the log
-    --   4. title           — plain text last resort
-    -- RaidNotice_AddMessage (banners) cannot render hyperlinks — title is used there.
-    local display = (questInfo and questInfo.link)
-                 or (info and info.link)
-                 or (AQL and AQL:GetQuestLink(questID))
-                 or title
-    local msg   = formatOutboundQuestMsg(eventType, display)
+    -- WoW TBC does not render |H...|h hyperlinks in addon-sent party chat messages;
+    -- use [Title] bracket format instead. Banners also use plain title.
+    local msg   = formatOutboundQuestMsg(eventType, "[" .. title .. "]")
     local chainInfo = questInfo and questInfo.chainInfo
     msg = appendChainStep(msg, eventType, chainInfo)
 
@@ -273,7 +265,7 @@ function SocialQuestAnnounce:OnObjectiveEvent(eventType, questInfo, objective, i
         SocialQuest:Debug("Banner", "Chat suppressed: Questie will announce " .. eventType)
     else
         local msg = formatOutboundObjectiveMsg(
-            questInfo.link or questInfo.title,
+            "[" .. (questInfo.title or ("Quest " .. questInfo.questID)) .. "]",
             objective.name or "",
             objective.numFulfilled,
             objective.numRequired,
