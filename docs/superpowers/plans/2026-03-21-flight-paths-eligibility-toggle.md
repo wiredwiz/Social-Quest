@@ -288,7 +288,7 @@ local PREFIXES = {
 
 - [ ] **Step 2: Add SendFlightDiscovery function**
 
-Add after the `SocialQuestComm:BroadcastObjectiveUpdate` function (before the "Request Completed" section or wherever party-specific helpers are grouped). Use `self:SendCommMessage` (AceComm mixin) and the file-local `serialize()` wrapper:
+Add after the `SocialQuestComm:BroadcastObjectiveUpdate` function (before the "Request Completed" section or wherever party-specific helpers are grouped). Use `LibStub("AceComm-3.0"):SendCommMessage` and the file-local `serialize()` wrapper — `SocialQuestComm` is a plain table, not an Ace3 mixin; this is the pattern every other send helper in this file uses:
 
 ```lua
 -- Sends the local player's newly discovered flight path name to the party.
