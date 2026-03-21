@@ -79,6 +79,7 @@ All payloads are **numeric-only** — no quest titles or objective text are ever
 | `SQ_FOLLOW_STOP` | whisper | Follow notification |
 | `SQ_REQ_COMPLETED` | broadcast | Requests completed quest history from all group members |
 | `SQ_RESP_COMPLETE` | whisper | Response with completed quest history |
+| `SQ_FLIGHT` | broadcast (PARTY) | Flight path discovery notification |
 
 ### Sync Protocol (current)
 
