@@ -28,7 +28,7 @@ L["%s progressed: %s — %s (%d/%d)"]          = "%s ha progresado: %s — %s (%
 L["|cFF00CCFFSocialQuest (preview):|r "]  = "|cFF00CCFFSocialQuest (vista previa):|r "
 
 -- Core/Announcements.lua — all-completed banner
-L["Everyone has completed: %s"]           = "Todos han completado: %s"
+L["Everyone has finished: %s"]            = "Todos han terminado: %s"
 
 -- Core/Announcements.lua — own-quest banner sender label
 L["You"]                                  = "Tú"
@@ -185,8 +185,8 @@ L["Test Obj. Complete"]                    = "Probar objetivo completado"
 L["Display a demo banner and local chat preview for an objective completion (e.g. 8/8)."] = "Muestra un banner de demostración y una vista previa del chat local para la finalización de un objetivo (p. ej. 8/8)."
 L["Test Obj. Regression"]                  = "Probar regresión de objetivo"
 L["Display a demo banner and local chat preview for an objective regression (count went backward)."] = "Muestra un banner de demostración y una vista previa del chat local para una regresión de objetivo (el contador retrocedió)."
-L["Test All Completed"]                    = "Probar todos completados"
-L["Display a demo banner for the 'Everyone has completed' purple notification. No chat preview (this event never generates outbound chat directly)."] = "Muestra un banner de demostración para la notificación morada 'Todos han completado'. Sin vista previa de chat (este evento nunca genera chat saliente directamente)."
+L["Test All Finished"]                     = "Probar todos terminados"
+L["Display a demo banner for the 'Everyone has finished' purple notification. No chat preview (this event never generates outbound chat directly)."] = "Muestra un banner de demostración para la notificación púrpura 'Todos han terminado'. Sin vista previa de chat (este evento nunca genera chat saliente directamente)."
 L["Test Chat Link"]                        = "Probar enlace de chat"
 L["Print a local chat preview of a 'Quest turned in' message for quest 337 using a real WoW quest hyperlink. Verify the quest name appears as clickable gold text in the chat frame."] = "Muestra una vista previa de chat local del mensaje 'Misión entregada' para la misión 337 usando un hipervínculo real de WoW. Verifica que el nombre de la misión aparece como texto dorado cliqueable en el marco de chat."
 L["Test Flight Discovery"]                 = "Probar descubrimiento de vuelo"

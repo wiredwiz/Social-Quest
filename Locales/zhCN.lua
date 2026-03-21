@@ -28,7 +28,7 @@ L["%s progressed: %s — %s (%d/%d)"]          = "%s 进度更新：%s — %s (%
 L["|cFF00CCFFSocialQuest (preview):|r "]  = "|cFF00CCFFSocialQuest（预览）：|r "
 
 -- Core/Announcements.lua — all-completed banner
-L["Everyone has completed: %s"]           = "所有人已完成：%s"
+L["Everyone has finished: %s"]            = "所有人已完成目标：%s"
 
 -- Core/Announcements.lua — own-quest banner sender label
 L["You"]                                  = "你"
@@ -185,8 +185,8 @@ L["Test Obj. Complete"]                    = "测试目标完成"
 L["Display a demo banner and local chat preview for an objective completion (e.g. 8/8)."] = "为目标达成（如 8/8）显示演示横幅和本地聊天预览。"
 L["Test Obj. Regression"]                  = "测试目标退步"
 L["Display a demo banner and local chat preview for an objective regression (count went backward)."] = "为目标退步（计数后退）显示演示横幅和本地聊天预览。"
-L["Test All Completed"]                    = "测试全部完成"
-L["Display a demo banner for the 'Everyone has completed' purple notification. No chat preview (this event never generates outbound chat directly)."] = "为"所有人已完成"紫色通知显示演示横幅。无聊天预览（此事件从不直接产生外发聊天）。"
+L["Test All Finished"]                     = "测试全部完成目标"
+L["Display a demo banner for the 'Everyone has finished' purple notification. No chat preview (this event never generates outbound chat directly)."] = "为「所有人已完成目标」紫色通知显示演示横幅。无聊天预览（此事件从不直接产生外发聊天）。"
 L["Test Chat Link"]                        = "测试聊天链接"
 L["Print a local chat preview of a 'Quest turned in' message for quest 337 using a real WoW quest hyperlink. Verify the quest name appears as clickable gold text in the chat frame."] = "使用真实的WoW任务超链接为任务337的「任务已提交」消息打印本地聊天预览。确认任务名称在聊天框中显示为可点击的金色文本。"
 L["Test Flight Discovery"]                 = "测试飞行路径发现"

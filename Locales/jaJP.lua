@@ -28,7 +28,7 @@ L["%s progressed: %s — %s (%d/%d)"]          = "%s が進捗: %s — %s (%d/%d
 L["|cFF00CCFFSocialQuest (preview):|r "]  = "|cFF00CCFFSocialQuest (プレビュー):|r "
 
 -- Core/Announcements.lua — all-completed banner
-L["Everyone has completed: %s"]           = "全員達成: %s"
+L["Everyone has finished: %s"]            = "全員が目標を達成しました: %s"
 
 -- Core/Announcements.lua — own-quest banner sender label
 L["You"]                                  = "あなた"
@@ -185,8 +185,8 @@ L["Test Obj. Complete"]                    = "目標クリアテスト"
 L["Display a demo banner and local chat preview for an objective completion (e.g. 8/8)."] = "目標達成（例: 8/8）のデモバナーとローカルチャットプレビューを表示します。"
 L["Test Obj. Regression"]                  = "目標後退テスト"
 L["Display a demo banner and local chat preview for an objective regression (count went backward)."] = "目標後退（カウントが減少）のデモバナーとローカルチャットプレビューを表示します。"
-L["Test All Completed"]                    = "全員達成テスト"
-L["Display a demo banner for the 'Everyone has completed' purple notification. No chat preview (this event never generates outbound chat directly)."] = "「全員達成」紫通知のデモバナーを表示します。チャットプレビューはありません（このイベントは直接チャットを生成しません）。"
+L["Test All Finished"]                     = "全員達成テスト"
+L["Display a demo banner for the 'Everyone has finished' purple notification. No chat preview (this event never generates outbound chat directly)."] = "「全員が目標を達成しました」紫色通知のデモバナーを表示します。チャットプレビューなし（このイベントは直接外向きチャットを生成しません）。"
 L["Test Chat Link"]                        = "チャットリンクテスト"
 L["Print a local chat preview of a 'Quest turned in' message for quest 337 using a real WoW quest hyperlink. Verify the quest name appears as clickable gold text in the chat frame."] = "実際のWoWクエストハイパーリンクを使用してクエスト337の「クエスト提出」メッセージのローカルチャットプレビューを表示します。クエスト名がチャットフレームにクリック可能な金色のテキストとして表示されることを確認してください。"
 L["Test Flight Discovery"]                 = "フライト発見テスト"

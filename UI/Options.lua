@@ -365,8 +365,8 @@ function SocialQuestOptions:Initialize()
                             },
                             testAllComplete = {
                                 type = "execute",
-                                name = L["Test All Completed"],
-                                desc = L["Display a demo banner for the 'Everyone has completed' purple notification. No chat preview (this event never generates outbound chat directly)."],
+                                name = L["Test All Finished"],
+                                desc = L["Display a demo banner for the 'Everyone has finished' purple notification. No chat preview (this event never generates outbound chat directly)."],
                                 func = function() SocialQuestAnnounce:TestEvent("all_complete") end,
                             },
                             testChatLink = {

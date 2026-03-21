@@ -39,7 +39,7 @@ L["|cFF00CCFFSocialQuest (preview):|r "]  = true
 
 -- Core/Announcements.lua — all-completed banner
 -- %s = quest title
-L["Everyone has completed: %s"]           = true
+L["Everyone has finished: %s"]            = true
 
 -- Core/Announcements.lua — own-quest banner sender label
 -- Used as the sender name in "You accepted: [Quest]" banners. No parentheses.
@@ -215,8 +215,8 @@ L["Test Obj. Complete"]                     = true
 L["Display a demo banner and local chat preview for an objective completion (e.g. 8/8)."] = true
 L["Test Obj. Regression"]                   = true
 L["Display a demo banner and local chat preview for an objective regression (count went backward)."] = true
-L["Test All Completed"]                     = true
-L["Display a demo banner for the 'Everyone has completed' purple notification. No chat preview (this event never generates outbound chat directly)."] = true
+L["Test All Finished"]                       = true
+L["Display a demo banner for the 'Everyone has finished' purple notification. No chat preview (this event never generates outbound chat directly)."] = true
 L["Test Chat Link"]                         = true
 L["Print a local chat preview of a 'Quest turned in' message for quest 337 using a real WoW quest hyperlink. Verify the quest name appears as clickable gold text in the chat frame."] = true
 L["Test Flight Discovery"]                  = true
