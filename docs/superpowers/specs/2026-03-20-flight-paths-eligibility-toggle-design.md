@@ -33,6 +33,23 @@ char = {
 
 `SocialQuestDB` already stores the profile namespace. Add `char = { knownFlightNodes = {} }` as a **sibling of `profile`** at the top level of the table returned by `GetDefaults()` — not nested inside `profile`. AceDB activates per-character storage automatically when it sees the `char` key at the root of the defaults table.
 
+The combined defaults structure must look like this:
+
+```lua
+return {
+    profile = {
+        -- ... existing profile keys ...
+        flightPath = {
+            enabled         = true,
+            announceBanners = true,
+        },
+    },
+    char = {
+        knownFlightNodes = {},
+    },
+}
+```
+
 ### Race Starting Node Table
 
 Defined as a file-scope local in `SocialQuest.lua`. Keys are the second return value of `UnitRace("player")` (the English internal name). **All node name strings require in-game verification against `GetTaxiNodeInfo()` output** — the values below are best-effort and must be confirmed during implementation.
@@ -169,8 +186,9 @@ Add `"SQ_FLIGHT"` to the `PREFIXES` table in `Communications.lua`.
 -- Only sent when in a party (not raid, not battleground).
 function SocialQuestComm:SendFlightDiscovery(nodeName)
     if not IsInGroup() or IsInRaid() then return end
-    -- Use the file-local serialize() wrapper, consistent with all other send helpers.
-    LibStub("AceComm-3.0"):SendCommMessage("SQ_FLIGHT", serialize({ node = nodeName }), "PARTY")
+    -- Use the file-local serialize() wrapper and self:SendCommMessage(), consistent
+    -- with all other send helpers (SocialQuestComm is an AceComm mixin).
+    self:SendCommMessage("SQ_FLIGHT", serialize({ node = nodeName }), "PARTY")
 end
 ```
 
@@ -264,10 +282,18 @@ local function isEligibleForShare(questID, playerData)
 
     -- Check 1: quest is shareable via WoW API.
     -- Requires selecting the quest log entry first; selection is restored after.
+    -- Guard against stale logIndex: confirm the selected entry is actually this
+    -- quest before calling GetQuestLogPushable (the log may have shifted since
+    -- the last AQL update).
     local qi = AQL:GetQuest(questID)
     if not qi or not qi.logIndex then return false end
     local prevSel = GetQuestLogSelection()
     SelectQuestLogEntry(qi.logIndex)
+    local _, _, _, _, _, _, _, confirmID = GetQuestLogTitle(qi.logIndex)
+    if confirmID ~= questID then
+        if prevSel and prevSel > 0 then SelectQuestLogEntry(prevSel) end
+        return false
+    end
     local shareable = GetQuestLogPushable() and true or false
     if prevSel and prevSel > 0 then
         SelectQuestLogEntry(prevSel)
@@ -365,6 +391,8 @@ No new state, no new functions. The existing open-and-select logic below the gua
 - **Eligibility check is best-effort.** Chain prerequisite detection requires Questie (for `chainInfo`). Without it, only checks 1 and 2 apply. `playerData.completedQuests` is available only for players with SocialQuest installed (`hasSocialQuest = true`); for non-SQ players the check falls back to `false` for check 2 (completed unknown → assume not completed → still potentially eligible).
 - **Quest log toggle only applies to the local player's own quests.** `openQuestLogToQuest` is only called when `questEntry.logIndex` is non-nil (the local player has the quest). Party/Shared tab rows for remote players without a `logIndex` do not call this function.
 - **`SelectQuestLogEntry` side effect.** The eligibility check temporarily selects a quest log entry to call `GetQuestLogPushable()`, then restores the prior selection. This is safe when called during a PartyTab rebuild (frame refresh), which does not happen while the user is actively interacting with the quest log UI.
+- **Sender display name.** `sender` from AceComm is the raw `"Name-Realm"` string. This is the established pattern in `Announcements.lua` — all existing banner and follow handlers use the raw sender string without realm-stripping. The flight path banner follows the same convention.
+- **Version bump required.** Per CLAUDE.md versioning rules, `SocialQuest.toc` and `CLAUDE.md` must be updated after implementation: increment the minor version and reset the revision to 0 (new functionality on a new day). Update the Version History section in `CLAUDE.md` with a summary of all three features.
 
 ---
 
