@@ -19,6 +19,58 @@ local AQL  -- set in OnInitialize
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 
 ------------------------------------------------------------------------
+-- Flight path starting node lookup
+------------------------------------------------------------------------
+
+-- Keys are the second return value of UnitRace("player") (English internal name).
+-- All node name strings require in-game verification against GetTaxiNodeInfo() output
+-- at Interface 20505 — values below are best-effort.
+-- Pandaren, Dracthyr, and Earthen are faction-dependent; handled in getStartingNode().
+local RACE_STARTING_NODES = {
+    -- TBC (currently supported)
+    ["Human"]              = "Stormwind",
+    ["Dwarf"]              = "Ironforge",
+    ["Gnome"]              = "Ironforge",
+    ["NightElf"]           = "Rut'theran Village",
+    ["Scourge"]            = "Undercity",           -- Undead
+    ["Tauren"]             = "Thunder Bluff",
+    ["Orc"]                = "Orgrimmar",
+    ["Troll"]              = "Orgrimmar",
+    ["Draenei"]            = "The Exodar",
+    ["BloodElf"]           = "Silvermoon City",
+    -- Cataclysm
+    ["Worgen"]             = "Stormwind",
+    ["Goblin"]             = "Orgrimmar",
+    -- BfA allied races
+    ["VoidElf"]            = "Stormwind",
+    ["LightforgedDraenei"] = "Stormwind",
+    ["DarkIronDwarf"]      = "Ironforge",
+    ["KulTiran"]           = "Boralus",
+    ["Mechagnome"]         = "Mechagon",
+    ["Nightborne"]         = "Orgrimmar",
+    ["HighmountainTauren"] = "Thunder Bluff",
+    ["MagharOrc"]          = "Orgrimmar",
+    ["ZandalarTroll"]      = "Dazar'alor",
+    ["Vulpera"]            = "Orgrimmar",
+    -- Dragonflight / The War Within
+    -- (Dracthyr and Earthen handled in getStartingNode — faction-dependent)
+}
+
+-- Returns the starting flight node name for the local player.
+-- Handles faction-dependent races (Pandaren, Dracthyr, Earthen) inline.
+-- Returns nil for unknown races; callers treat nil as "no seed available."
+local function getStartingNode()
+    local _, race = UnitRace("player")
+    local node = RACE_STARTING_NODES[race]
+    if node then return node end
+    local faction = UnitFactionGroup("player")
+    if race == "Pandaren" or race == "Dracthyr" or race == "Earthen" then
+        return faction == "Alliance" and "Stormwind" or "Orgrimmar"
+    end
+    return nil
+end
+
+------------------------------------------------------------------------
 -- Lifecycle
 ------------------------------------------------------------------------
 
