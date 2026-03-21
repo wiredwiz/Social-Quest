@@ -187,3 +187,7 @@ L["Test Obj. Regression"]                  = "Тест регресса цели
 L["Display a demo banner and local chat preview for an objective regression (count went backward)."] = "Показывает демонстрационный баннер и локальный предпросмотр чата для регресса цели (счётчик пошёл назад)."
 L["Test All Completed"]                    = "Тест все выполнили"
 L["Display a demo banner for the 'Everyone has completed' purple notification. No chat preview (this event never generates outbound chat directly)."] = "Показывает демонстрационный баннер для фиолетового уведомления 'Все выполнили'. Без предпросмотра чата (это событие никогда не генерирует исходящий чат напрямую)."
+L["Test Chat Link"]                        = "Тест ссылки чата"
+L["Print a local chat preview of a 'Quest turned in' message for quest 337 using a real WoW quest hyperlink. Verify the quest name appears as clickable gold text in the chat frame."] = "Выводит локальный предварительный просмотр чата сообщения 'Задание сдано' для задания 337 с использованием реальной гиперссылки WoW. Убедитесь, что имя задания отображается как кликабельный золотой текст в окне чата."
+L["Test Flight Discovery"]                 = "Тест открытия маршрута полёта"
+L["Display a demo flight path unlock banner using your character's starting city as the demo location."] = "Отображает демонстрационный баннер разблокировки маршрута полёта, используя стартовый город вашего персонажа в качестве демо-места."

@@ -87,7 +87,7 @@ L["Send a chat message when all your quest objectives are complete (before turni
 L["Send a chat message when you turn in a quest."]                       = "提交任务时发送聊天消息。"
 L["Send a chat message when a quest fails."]                             = "任务失败时发送聊天消息。"
 L["Send a chat message when a quest objective progresses or regresses. Format matches Questie's style. Never suppressed by Questie — Questie does not announce partial progress."] = "任务目标进度更新或退步时发送聊天消息。格式与 Questie 风格一致。不会被 Questie 屏蔽——Questie 不播报部分进度。"
-L["Send a chat message when a quest objective reaches its goal (e.g. 8/8 Kobolds). Suppressed automatically if Questie is installed and its 'Announce Objectives' setting is enabled."] = "任务目标达成时发送聊天消息（如 8/8 科博尔德）。若 Questie 已安装且启用了"播报目标"设置，则自动屏蔽。"
+L["Send a chat message when a quest objective reaches its goal (e.g. 8/8 Kobolds). Suppressed automatically if Questie is installed and its 'Announce Objectives' setting is enabled."] = "任务目标达成时发送聊天消息（如 8/8 科博尔德）。若 Questie 已安装且启用了「播报目标」设置，则自动屏蔽。"
 
 -- UI/Options.lua — group headers
 L["Announce in Chat"]                      = "在聊天中播报"
@@ -187,3 +187,7 @@ L["Test Obj. Regression"]                  = "测试目标退步"
 L["Display a demo banner and local chat preview for an objective regression (count went backward)."] = "为目标退步（计数后退）显示演示横幅和本地聊天预览。"
 L["Test All Completed"]                    = "测试全部完成"
 L["Display a demo banner for the 'Everyone has completed' purple notification. No chat preview (this event never generates outbound chat directly)."] = "为"所有人已完成"紫色通知显示演示横幅。无聊天预览（此事件从不直接产生外发聊天）。"
+L["Test Chat Link"]                        = "测试聊天链接"
+L["Print a local chat preview of a 'Quest turned in' message for quest 337 using a real WoW quest hyperlink. Verify the quest name appears as clickable gold text in the chat frame."] = "使用真实的WoW任务超链接为任务337的「任务已提交」消息打印本地聊天预览。确认任务名称在聊天框中显示为可点击的金色文本。"
+L["Test Flight Discovery"]                 = "测试飞行路径发现"
+L["Display a demo flight path unlock banner using your character's starting city as the demo location."] = "以你角色的起始城市作为演示地点，显示飞行路径解锁演示横幅。"

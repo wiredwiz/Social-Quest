@@ -375,6 +375,13 @@ function SocialQuestOptions:Initialize()
                                 desc = L["Print a local chat preview of a 'Quest turned in' message for quest 337 using a real WoW quest hyperlink. Verify the quest name appears as clickable gold text in the chat frame."],
                                 func = function() SocialQuestAnnounce:TestChatLink() end,
                             },
+                            testFlightDiscovery = {
+                                type   = "execute",
+                                name   = L["Test Flight Discovery"],
+                                desc   = L["Display a demo flight path unlock banner using your character's starting city as the demo location."],
+                                hidden = function() return not db.debug.enabled end,
+                                func   = function() SocialQuestAnnounce:TestFlightDiscovery() end,
+                            },
                         },
                     },
                 },

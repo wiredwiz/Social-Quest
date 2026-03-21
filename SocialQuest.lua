@@ -85,6 +85,21 @@ function SocialQuest:OnInitialize()
     -- AceDB sets up saved variables. Profile key "Default" shared across chars.
     self.db = LibStub("AceDB-3.0"):New("SocialQuestDB", self:GetDefaults(), true)
 
+    -- When the player resets their profile, also reset char-scoped frame state
+    -- so the quest window reverts to defaults (tab = Shared, all zones expanded,
+    -- scroll positions = 0).
+    -- Dot-call (not colon): self.db is the CallbackHandler target, not the
+    -- method receiver. Colon would pass self.db as target instead of self.
+    self.db.RegisterCallback(self, "OnProfileReset", function()
+        self.db.char.frameState = {
+            activeTab          = "shared",
+            collapsedZones     = { mine = {}, party = {}, shared = {} },
+            tabScrollPositions = { mine = 0,  party = 0,  shared = 0  },
+            tabContentHeights  = { mine = 0,  party = 0,  shared = 0  },
+        }
+        SocialQuestGroupFrame:ResetFrameState()
+    end)
+
     -- Expose AQL to sub-modules that need it.
     self.AQL = AQL
 
@@ -311,6 +326,8 @@ function SocialQuest:GetDefaults()
             },
             minimap = { hide = false },
             -- LibDBIcon writes minimapPos into this table automatically when dragged.
+        },
+        char = {
             frameState = {
                 activeTab = "shared",
                 collapsedZones = {
@@ -318,9 +335,17 @@ function SocialQuest:GetDefaults()
                     party  = {},
                     shared = {},
                 },
+                tabScrollPositions = {
+                    mine   = 0,
+                    party  = 0,
+                    shared = 0,
+                },
+                tabContentHeights = {
+                    mine   = 0,
+                    party  = 0,
+                    shared = 0,
+                },
             },
-        },
-        char = {
             knownFlightNodes = {},  -- [nodeName] = true; persists across sessions
         },
     }
@@ -371,6 +396,10 @@ function SocialQuest:OnAutoFollowEnd()
     end
 end
 
+function SocialQuest:GetStartingNode()
+    return getStartingNode()
+end
+
 function SocialQuest:OnTaxiMapOpened()
     if not self.db.profile.flightPath.enabled then return end
 
@@ -400,41 +429,53 @@ function SocialQuest:OnTaxiMapOpened()
     local currentCount = 0
     for _ in pairs(currentNodes) do currentCount = currentCount + 1 end
 
+    self:Debug("Quest", "OnTaxiMapOpened: currentNodes=" .. currentCount .. " saved=" .. (function() local n=0; for _ in pairs(saved) do n=n+1 end; return n end)() .. " diff=" .. diffCount)
+
     if diffCount == 0 then
+        self:Debug("Quest", "OnTaxiMapOpened: no new nodes — silent return")
         return  -- nothing new
     end
 
     local startNode = getStartingNode()
+    self:Debug("Quest", "OnTaxiMapOpened: startNode=" .. tostring(startNode))
 
     if diffCount == 1 then
         -- Normal case: one new node. Announce unless it is the starting city.
         if diff[1] ~= startNode then
+            self:Debug("Quest", "OnTaxiMapOpened: announcing new node=" .. diff[1])
             SocialQuestComm:SendFlightDiscovery(diff[1])
+        else
+            self:Debug("Quest", "OnTaxiMapOpened: first-open at starting city (" .. diff[1] .. ") — silent absorb")
         end
-        -- else: first-ever open at starting city — silently absorb.
 
     elseif diffCount > 1 and currentCount == 2 then
         -- Special case: savedNodes was empty and player has exactly starting city
         -- + one new discovery. Announce the non-starting-city node only.
         -- If startNode is nil (unknown race), skip — cannot identify which is new.
+        self:Debug("Quest", "OnTaxiMapOpened: two-node special case — diff=" .. diffCount .. " current=" .. currentCount)
         if startNode then
             for _, name in ipairs(diff) do
                 if name ~= startNode then
+                    self:Debug("Quest", "OnTaxiMapOpened: announcing discovery (two-node case) node=" .. name)
                     SocialQuestComm:SendFlightDiscovery(name)
                     break
                 end
             end
+        else
+            self:Debug("Quest", "OnTaxiMapOpened: unknown race — cannot identify new node in two-node case, skipping")
         end
 
     else
         -- diffCount > 1 and currentCount > 2: mid-game install or ambiguous.
         -- Silently absorb — cannot determine which node is genuinely new.
+        self:Debug("Quest", "OnTaxiMapOpened: mid-game install / ambiguous (" .. diffCount .. " new of " .. currentCount .. " total) — silent absorb")
     end
 
     -- Always update saved state regardless of whether anything was announced.
     for name in pairs(currentNodes) do
         saved[name] = true
     end
+    self:Debug("Quest", "OnTaxiMapOpened: knownFlightNodes updated")
 end
 
 ------------------------------------------------------------------------

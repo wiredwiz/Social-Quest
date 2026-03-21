@@ -113,7 +113,7 @@ function MineTab:BuildTree()
 end
 
 -- Renders the Mine tree into contentFrame using RowFactory.
--- tabCollapsedZones: the mine-tab subtable from SocialQuestDB.profile.frameState.collapsedZones.
+-- tabCollapsedZones: the mine-tab subtable from SocialQuestDB.char.frameState.collapsedZones.
 -- Returns: total content height (number).
 function MineTab:Render(contentFrame, rowFactory, tabCollapsedZones)
     local tree  = self:BuildTree()

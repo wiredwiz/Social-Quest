@@ -178,6 +178,22 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.3.3 (March 2026 — Improvements branch)
+- Flight path debug logging: added `Debug("Quest", ...)` calls throughout `OnTaxiMapOpened` covering node counts, new discovery announcements, silent-absorb paths (starting city, mid-game install, unknown race), and saved-state update.
+- Exposed `SocialQuest:GetStartingNode()` as a public wrapper around the file-scope `getStartingNode()` local, for use by `Announcements.lua` and other modules.
+- Test Flight Discovery button: added to Debug options page alongside other test buttons; calls `SocialQuestAnnounce:TestFlightDiscovery()` which shows a flight path unlock banner using the player's starting city as the demo node.
+
+### Version 2.3.2 (March 2026 — Improvements branch)
+- Per-character frame state: moved `frameState` (active tab, collapsed zones) and scroll position tables from shared `profile` scope to per-character `char` scope in AceDB. Scroll positions now persist across reloads. Added `OnProfileReset` callback to reset `char.frameState` when the profile is reset.
+- Bug fix: added `local checkAllCompleted` forward declaration in `Core/Announcements.lua` to fix "attempt to call global 'checkAllCompleted'" crash when completing a quest.
+- Bug fix: removed `Bindings.xml` from `SocialQuest.toc`; WoW's bindings parser discovers it automatically. Eliminates all "Unrecognized XML: Binding" warnings.
+
+### Version 2.3.1 (March 2026 — Improvements branch)
+- Scroll position fix: added deferred `C_Timer.After(0)` scroll restoration with sequence guard, so the correct position survives `UIPanelScrollFrameTemplate` callbacks (`OnScrollRangeChanged`/scrollbar `OnValueChanged`) that override `SetVerticalScroll` when `SetScrollChild`/`SetHeight` are called on the new content frame.
+
+### Version 2.3.0 (March 2026 — Improvements branch)
+- Scroll position fix: tracks content height when saving scroll offset; when returning to a tab where the user was at the bottom, restores to the new bottom even if content grew (cross-chain peers from GroupData sync).
+
 ### Version 2.2.0 (March 2026 — Improvements branch)
 - Flight Path Discovery: detects new flight path unlocks via `TAXIMAP_OPENED`; broadcasts to party via `SQ_FLIGHT` prefix; displays banner using quest-accepted green color. Per-character `knownFlightNodes` persists across sessions. Handles first-run, mid-game install, and unknown-race edge cases.
 - Needs-Shared Eligibility: "Needs it Shared" rows now suppressed unless the quest is shareable (`GetQuestLogPushable`), the player has not completed it, and any chain prerequisite has been completed.

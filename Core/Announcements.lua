@@ -185,6 +185,8 @@ end
 -- Local quest event announcements (from AQL callbacks)
 ------------------------------------------------------------------------
 
+local checkAllCompleted  -- forward declaration; defined below after OnQuestEvent/OnRemoteQuestEvent
+
 function SocialQuestAnnounce:OnQuestEvent(eventType, questID, questInfo)
     local db = SocialQuest.db.profile
     if not db.enabled then return end
@@ -660,6 +662,12 @@ function SocialQuestAnnounce:OnFlightDiscovery(sender, nodeName)
     if not db.flightPath.announceBanners then return end
     local msg = string.format(L["%s unlocked flight path: %s"], sender, nodeName)
     displayBanner(msg, "accepted")  -- reuses the quest-accepted green color
+end
+
+function SocialQuestAnnounce:TestFlightDiscovery()
+    local nodeName = SocialQuest:GetStartingNode() or "Stormwind"
+    local msg = string.format(L["%s unlocked flight path: %s"], UnitName("player") or "You", nodeName)
+    displayBanner(msg, "accepted")
 end
 
 ------------------------------------------------------------------------
