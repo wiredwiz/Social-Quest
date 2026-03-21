@@ -51,6 +51,22 @@ end
 -- If the quest is not found (stale data), the log is opened but nothing
 -- is selected.
 local function openQuestLogToQuest(questID)
+    -- Toggle: if the quest log is already open and this quest is currently
+    -- selected, close the log instead of re-opening it.
+    -- NOTE: GetQuestLogSelection() requires in-game verification at Interface 20505.
+    -- If absent or returning nil, sel is nil, the guard skips, and the function
+    -- falls through to the existing open-and-select logic — safe degradation.
+    if QuestLogFrame:IsShown() then
+        local sel = GetQuestLogSelection()
+        if sel and sel > 0 then
+            local _, _, _, _, _, _, _, selID = GetQuestLogTitle(sel)
+            if selID == questID then
+                HideUIPanel(QuestLogFrame)
+                return
+            end
+        end
+    end
+
     ShowUIPanel(QuestLogFrame)
     local numEntries = GetNumQuestLogEntries()
     local i = 1
