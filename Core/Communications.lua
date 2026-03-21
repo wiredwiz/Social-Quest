@@ -8,6 +8,7 @@
 --   SQ_OBJECTIVE Single objective progress update.
 --   SQ_REQUEST   Whisper requesting a full SQ_INIT from a specific player.
 --   SQ_FOLLOW_START / SQ_FOLLOW_STOP  Follow notifications (whisper).
+--   SQ_FLIGHT    Flight path discovery notification (party broadcast).
 
 SocialQuestComm = {}
 SocialQuestComm.followTarget = nil  -- last player we started following
