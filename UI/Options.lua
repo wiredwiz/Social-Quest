@@ -379,7 +379,6 @@ function SocialQuestOptions:Initialize()
                                 type   = "execute",
                                 name   = L["Test Flight Discovery"],
                                 desc   = L["Display a demo flight path unlock banner using your character's starting city as the demo location."],
-                                hidden = function() return not db.debug.enabled end,
                                 func   = function() SocialQuestAnnounce:TestFlightDiscovery() end,
                             },
                         },
