@@ -186,9 +186,10 @@ Add `"SQ_FLIGHT"` to the `PREFIXES` table in `Communications.lua`.
 -- Only sent when in a party (not raid, not battleground).
 function SocialQuestComm:SendFlightDiscovery(nodeName)
     if not IsInGroup() or IsInRaid() then return end
-    -- Use the file-local serialize() wrapper and self:SendCommMessage(), consistent
-    -- with all other send helpers (SocialQuestComm is an AceComm mixin).
-    self:SendCommMessage("SQ_FLIGHT", serialize({ node = nodeName }), "PARTY")
+    -- Use LibStub("AceComm-3.0"):SendCommMessage — consistent with all other send
+    -- helpers in Communications.lua (SocialQuestComm is a plain table, not an Ace3 mixin;
+    -- Initialize() registers via LibStub("AceComm-3.0"):RegisterComm, not self:RegisterComm).
+    LibStub("AceComm-3.0"):SendCommMessage("SQ_FLIGHT", serialize({ node = nodeName }), "PARTY")
 end
 ```
 
