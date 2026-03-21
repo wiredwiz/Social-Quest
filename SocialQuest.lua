@@ -252,6 +252,10 @@ function SocialQuest:GetDefaults()
             debug = {
                 enabled = false,
             },
+            flightPath = {
+                enabled         = true,   -- broadcast my discoveries to party
+                announceBanners = true,   -- display banners when party members discover paths
+            },
             minimap = { hide = false },
             -- LibDBIcon writes minimapPos into this table automatically when dragged.
             frameState = {
@@ -262,6 +266,9 @@ function SocialQuest:GetDefaults()
                     shared = {},
                 },
             },
+        },
+        char = {
+            knownFlightNodes = {},  -- [nodeName] = true; persists across sessions
         },
     }
 end
