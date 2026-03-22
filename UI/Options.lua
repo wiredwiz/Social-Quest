@@ -381,6 +381,12 @@ function SocialQuestOptions:Initialize()
                                 desc   = L["Display a demo flight path unlock banner using your character's starting city as the demo location."],
                                 func   = function() SocialQuestAnnounce:TestFlightDiscovery() end,
                             },
+                            testFollowNotification = {
+                                type   = "execute",
+                                name   = L["Test Follow Notification"],
+                                desc   = L["Display a demo follow notification banner showing the 'started following you' message."],
+                                func   = function() SocialQuestAnnounce:TestFollowNotification() end,
+                            },
                         },
                     },
                 },
