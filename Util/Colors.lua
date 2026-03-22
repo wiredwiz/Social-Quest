@@ -24,6 +24,7 @@ SocialQuestColors.event = {
     objective_progress = { r = 1,     g = 0.6,   b = 0     },  -- orange (#FF9900)
     objective_complete = { r = 0.4,   g = 1,     b = 0.4   },  -- lime   (#66FF66)
     all_complete       = { r = 0.6,   g = 0.0,   b = 0.9   },  -- purple (#9900E6)
+    follow             = { r = 1,     g = 0.85,  b = 0.6   },  -- warm tan (#FFD999)
 }
 
 SocialQuestColors.eventCB = {
@@ -35,6 +36,7 @@ SocialQuestColors.eventCB = {
     objective_progress = { r = 0.902, g = 0.624, b = 0     },  -- amber          (#E69F00)
     objective_complete = { r = 0.800, g = 0.475, b = 0.655 },  -- reddish purple (#CC79A7)
     all_complete       = { r = 0.0,   g = 0.447, b = 0.698 },  -- blue   (#0072B2, Okabe-Ito)
+    follow             = { r = 0.941, g = 0.894, b = 0.259 },  -- Okabe-Ito yellow (#F0E442)
 }
 
 SocialQuestColors.cbUI = {

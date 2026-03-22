@@ -178,6 +178,9 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.4.0 (March 2026 — Improvements branch)
+- Follow banner notifications: `OnFollowStart` and `OnFollowStop` now display a banner in addition to the existing chat message. Uses new `follow` color key (warm tan normal / Okabe-Ito yellow colorblind). Added `TestFollowNotification` debug function and corresponding debug panel button.
+
 ### Version 2.3.7 (March 2026 — Improvements branch)
 - Bug fix: six unescaped ASCII double-quote characters inside Chinese string values in `Locales/zhCN.lua` caused Lua syntax errors at load time. Escaped with `\"` in the translation values for the master-switch description and all five test-button descriptions (lines 126, 173, 175, 177, 179, 181). zhTW was unaffected.
 

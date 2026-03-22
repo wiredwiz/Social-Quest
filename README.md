@@ -39,6 +39,12 @@
 
   ---
 
+  ## Colorblind Support
+
+  SocialQuest includes a dedicated colorblind palette based on the Okabe-Ito scheme.  See more about this below.
+
+  ---
+
   ## Slash Commands
 
   | Command | Effect |
@@ -277,6 +283,7 @@
   | Objective progress | Orange | Amber |
   | Objective complete | Lime | Reddish Purple |
   | Everyone completed | Purple | Blue |
+  | Follow notification | Warm Tan | Yellow |
 
   Colorblind mode activates in either of two ways:
 
@@ -377,12 +384,38 @@
 
   ### Follow Notifications
 
-  This setting triggers banner notifications when one SocialQuest user "follows" another as well as when they stop following.  This way
-  you don't have to ask if you friend is following yet, or if they get stuck on a post and stop following mid-run, the banner message
-  is a nice extra headsup message.
+  When one SocialQuest user auto-follows another, both players are notified via the addon comm
+  channel (not a visible WoW whisper). This is handy so you don't have to ask if your friend is
+  following yet — and if they get stuck on a post and stop following mid-run, you'll know
+  immediately.
+
+  When someone starts or stops following you, you receive both a **chat message** and an
+  **on-screen banner notification** in warm tan (yellow in colorblind mode).
 
   | Setting | Default | Description |
   |---|---|---|
   | Enable follow notifications | On | Master toggle for the follow whisper system. |
-  | Announce when you follow someone | On | Whispers the player you begin auto-following so they know. |
-  | Announce when followed | On | Shows a chat message when someone starts or stops following you. |
+  | Announce when you follow someone | On | Sends an addon comm whisper to the player you begin auto-following so they know. |
+  | Announce when followed | On | Shows a chat message and banner when someone starts or stops following you. |
+
+  ---
+
+  ### Flight Path Discovery
+
+  SocialQuest detects when you unlock a new flight path and broadcasts it to your party so
+  everyone can see your progress in real time.
+
+  When a party member discovers a new flight path, a **green banner** fires on your screen:
+  `Thralldar unlocked flight path: Shattrath City`
+
+  The detection works by comparing the flight paths available on the taxi map each time you open
+  it against a saved list of your previously known nodes. Only genuinely new discoveries trigger
+  a broadcast — opening the taxi map at a familiar location does not spam the party.
+
+  Per-character flight path data persists across sessions, so the addon remembers what you have
+  already discovered even after logging out.
+
+  | Setting | Default | Description |
+  |---|---|---|
+  | Announce flight path discoveries | On | Broadcast to your party when you unlock a new flight path. |
+  | Show banner for party discoveries | On | Display a banner when a party member discovers a new flight path. |

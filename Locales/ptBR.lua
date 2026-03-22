@@ -191,3 +191,7 @@ L["Test Chat Link"]                        = "Testar link de chat"
 L["Print a local chat preview of a 'Quest turned in' message for quest 337 using a real WoW quest hyperlink. Verify the quest name appears as clickable gold text in the chat frame."] = "Imprime uma pré-visualização de chat local de uma mensagem 'Missão entregue' para a missão 337 usando um hyperlink real de WoW. Verifique se o nome da missão aparece como texto dourado clicável no frame de chat."
 L["Test Flight Discovery"]                 = "Testar descoberta de rota de voo"
 L["Display a demo flight path unlock banner using your character's starting city as the demo location."] = "Exibe um banner de demonstração de desbloqueio de rota de voo usando a cidade inicial do seu personagem como localização de demonstração."
+
+-- UI/Options.lua — follow notification test button
+L["Test Follow Notification"]   = "Test Follow Notification"
+L["Display a demo follow notification banner showing the 'started following you' message."] = "Display a demo follow notification banner showing the 'started following you' message."

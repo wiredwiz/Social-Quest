@@ -191,3 +191,7 @@ L["Test Chat Link"]                        = "測試聊天連結"
 L["Print a local chat preview of a 'Quest turned in' message for quest 337 using a real WoW quest hyperlink. Verify the quest name appears as clickable gold text in the chat frame."] = "使用真實的WoW任務超連結為任務337的「任務已繳交」訊息列印本地聊天預覽。確認任務名稱在聊天框中顯示為可點擊的金色文字。"
 L["Test Flight Discovery"]                 = "測試飛行路線發現"
 L["Display a demo flight path unlock banner using your character's starting city as the demo location."] = "以你角色的起始城市作為示範地點，顯示飛行路線解鎖示範橫幅。"
+
+-- UI/Options.lua — follow notification test button
+L["Test Follow Notification"]   = "Test Follow Notification"
+L["Display a demo follow notification banner showing the 'started following you' message."] = "Display a demo follow notification banner showing the 'started following you' message."

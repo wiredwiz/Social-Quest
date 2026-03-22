@@ -232,3 +232,7 @@ L["Announce flight path discoveries"]           = true
 L["Broadcast to your party when you discover a new flight path."] = true
 L["Show banner for party discoveries"]          = true
 L["Display a banner notification when a party member discovers a new flight path."] = true
+
+-- UI/Options.lua — follow notification test button
+L["Test Follow Notification"]   = true
+L["Display a demo follow notification banner showing the 'started following you' message."] = true
