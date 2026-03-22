@@ -639,13 +639,17 @@ end
 function SocialQuestAnnounce:OnFollowStart(sender)
     local db = SocialQuest.db.profile
     if not db.follow.enabled or not db.follow.announceFollowed then return end
-    SocialQuest:Print(string.format(L["%s started following you."], sender))
+    local msg = string.format(L["%s started following you."], sender)
+    SocialQuest:Print(msg)
+    displayBanner(msg, "follow")
 end
 
 function SocialQuestAnnounce:OnFollowStop(sender)
     local db = SocialQuest.db.profile
     if not db.follow.enabled or not db.follow.announceFollowed then return end
-    SocialQuest:Print(string.format(L["%s stopped following you."], sender))
+    local msg = string.format(L["%s stopped following you."], sender)
+    SocialQuest:Print(msg)
+    displayBanner(msg, "follow")
 end
 
 ------------------------------------------------------------------------
@@ -663,6 +667,11 @@ function SocialQuestAnnounce:TestFlightDiscovery()
     local nodeName = SocialQuest:GetStartingNode() or "Stormwind"
     local msg = string.format(L["%s unlocked flight path: %s"], UnitName("player") or "You", nodeName)
     displayBanner(msg, "accepted")
+end
+
+function SocialQuestAnnounce:TestFollowNotification()
+    local msg = string.format(L["%s started following you."], "TestPlayer")
+    displayBanner(msg, "follow")
 end
 
 ------------------------------------------------------------------------
