@@ -167,17 +167,22 @@
   The `(Step N)` annotation appears on accepted, abandoned, completed, and failed events for
   quests with known chain data. It does not appear on the "objectives complete" event.
 
-  ### "Everyone Has Completed" Banner
+  ### "Everyone Has Finished" Banner
 
-  When every engaged group member has turned in the same quest, a special purple banner fires:
-  `Everyone has completed: The Cipher of Damnation`
+  When every engaged group member has finished all objectives on the same quest, a special
+  purple banner fires:
+  `Everyone has finished: The Cipher of Damnation`
+
+  Players who have already turned the quest in also count as finished for this check, so the
+  banner fires as soon as the last engaged member completes their objectives — even if some
+  members turned in earlier.
 
   > **Restrictions:**
   > - This banner only fires if **every** member in the group has SocialQuest installed. If even
-  >   one member lacks it, the banner is suppressed entirely, because their completion state
+  >   one member lacks it, the banner is suppressed entirely, because their objective state
   >   cannot be verified.
-  > - "Engaged" means the player has or had the quest active during the current session.
-  >   Players who were never engaged with the quest are excluded from the check.
+  > - "Engaged" means the player currently has the quest active or has already turned it in
+  >   this session. Players who were never engaged with the quest are excluded from the check.
   > - Only the player who triggered the final completion sends the accompanying chat message,
   >   preventing duplicate messages when multiple SocialQuest clients detect the same condition
   >   simultaneously.
