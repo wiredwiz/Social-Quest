@@ -307,7 +307,7 @@ end
 -- Suppressed entirely if any group member lacks SocialQuest (hasSocialQuest == false).
 -- localHasFinished: true when the local player just triggered this via OnQuestEvent;
 --                   false when a remote player's SQ_UPDATE triggered it.
-local function checkAllFinished(questID, localHasFinished)
+checkAllFinished = function(questID, localHasFinished)
     -- db.enabled is checked here rather than relying on callers: this function is
     -- called from two separate entry points and must be self-contained.
     local db = SocialQuest.db.profile

@@ -178,6 +178,12 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.3.7 (March 2026 — Improvements branch)
+- Bug fix: six unescaped ASCII double-quote characters inside Chinese string values in `Locales/zhCN.lua` caused Lua syntax errors at load time. Escaped with `\"` in the translation values for the master-switch description and all five test-button descriptions (lines 126, 173, 175, 177, 179, 181). zhTW was unaffected.
+
+### Version 2.3.6 (March 2026 — Improvements branch)
+- Bug fix: `checkAllFinished` forward declaration was shadowed by `local function checkAllFinished` on the definition line, causing a nil-call crash on every `AQL_QUEST_FINISHED` event. Changed definition to `checkAllFinished = function(...)` (no `local`) so it assigns to the existing upvalue.
+
 ### Version 2.3.5 (March 2026 — Improvements branch)
 - Fixed chat announcements: WoW TBC does not render `|H...|h` hyperlinks in addon-sent party/raid/guild chat. Changed outbound quest and objective messages to use `[Quest Title]` bracket format instead of the full hyperlink string. Added `questInfo.title` to the title resolution chain in `OnQuestEvent` so completed/abandoned quests (already removed from cache) still resolve the correct name.
 
