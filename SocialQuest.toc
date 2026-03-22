@@ -3,12 +3,18 @@
 ## Notes: Social quest coordination for WoW Burning Crusade Anniversary.
 ## Author: Thad Ryker
 ## Version: 2.3.7
+## Category: Quests
 ## Dependencies: Ace3, AbsoluteQuestLog
 ## SavedVariables: SocialQuestDB
 
+# Embedded Libraries
 Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
 Libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
+
+# Color definitions
 Util\Colors.lua
+
+# Localization
 Locales\enUS.lua
 Locales\deDE.lua
 Locales\frFR.lua
@@ -21,11 +27,15 @@ Locales\itIT.lua
 Locales\koKR.lua
 Locales\ruRU.lua
 Locales\jaJP.lua
+
+# Main modules
 SocialQuest.lua
 Core\GroupComposition.lua
 Core\GroupData.lua
 Core\Communications.lua
 Core\Announcements.lua
+
+# UI modules
 UI\TabUtils.lua
 UI\RowFactory.lua
 UI\Tabs\MineTab.lua
