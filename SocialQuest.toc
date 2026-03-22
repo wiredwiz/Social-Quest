@@ -2,7 +2,7 @@
 ## Title: SocialQuest
 ## Notes: Social quest coordination for WoW Burning Crusade Anniversary.
 ## Author: Thad Ryker
-## Version: 2.3.6
+## Version: 2.3.7
 ## Dependencies: Ace3, AbsoluteQuestLog
 ## SavedVariables: SocialQuestDB
 
