@@ -28,7 +28,7 @@ L["%s progressed: %s — %s (%d/%d)"]          = "%s progrediu: %s — %s (%d/%d
 L["|cFF00CCFFSocialQuest (preview):|r "]  = "|cFF00CCFFSocialQuest (prévia):|r "
 
 -- Core/Announcements.lua — all-completed banner
-L["Everyone has completed: %s"]           = "Todos completaram: %s"
+L["Everyone has finished: %s"]            = "Todos terminaram: %s"
 
 -- Core/Announcements.lua — own-quest banner sender label
 L["You"]                                  = "Você"
@@ -185,5 +185,9 @@ L["Test Obj. Complete"]                    = "Testar objetivo concluído"
 L["Display a demo banner and local chat preview for an objective completion (e.g. 8/8)."] = "Exibe um banner de demonstração e prévia do chat local para a conclusão de um objetivo (ex.: 8/8)."
 L["Test Obj. Regression"]                  = "Testar regressão de objetivo"
 L["Display a demo banner and local chat preview for an objective regression (count went backward)."] = "Exibe um banner de demonstração e prévia do chat local para uma regressão de objetivo (contagem voltou atrás)."
-L["Test All Completed"]                    = "Testar todos completados"
-L["Display a demo banner for the 'Everyone has completed' purple notification. No chat preview (this event never generates outbound chat directly)."] = "Exibe um banner de demonstração para a notificação roxa 'Todos completaram'. Sem prévia de chat (este evento nunca gera chat de saída diretamente)."
+L["Test All Finished"]                     = "Testar todos terminados"
+L["Display a demo banner for the 'Everyone has finished' purple notification. No chat preview (this event never generates outbound chat directly)."] = "Exibe um banner de demonstração para a notificação roxa 'Todos terminaram'. Sem pré-visualização de chat (este evento nunca gera chat de saída diretamente)."
+L["Test Chat Link"]                        = "Testar link de chat"
+L["Print a local chat preview of a 'Quest turned in' message for quest 337 using a real WoW quest hyperlink. Verify the quest name appears as clickable gold text in the chat frame."] = "Imprime uma pré-visualização de chat local de uma mensagem 'Missão entregue' para a missão 337 usando um hyperlink real de WoW. Verifique se o nome da missão aparece como texto dourado clicável no frame de chat."
+L["Test Flight Discovery"]                 = "Testar descoberta de rota de voo"
+L["Display a demo flight path unlock banner using your character's starting city as the demo location."] = "Exibe um banner de demonstração de desbloqueio de rota de voo usando a cidade inicial do seu personagem como localização de demonstração."

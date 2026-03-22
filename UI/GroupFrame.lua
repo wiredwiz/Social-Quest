@@ -1,15 +1,15 @@
 -- UI/GroupFrame.lua
 -- Group quest window. Opened via /sq or minimap button.
 -- Tab rendering is delegated to MineTab, PartyTab, SharedTab providers.
--- Zone collapse state and active tab are persisted via AceDB frameState.
+-- Zone collapse state, active tab, and scroll positions are persisted via AceDB char.frameState.
 
 SocialQuestGroupFrame = {}
 
 local frame          = nil
 local refreshPending = false
 local urlPopup       = nil
-local tabScrollPositions = {}  -- [tabID] = last known vertical scroll offset
-local lastRenderedTab    = nil -- set to activeID after each render; nil on first run / reload
+local lastRenderedTab     = nil -- set to activeID after each render; nil on first run / reload
+local scrollRestoreSeq    = 0   -- incremented each Refresh(); deferred scroll callback checks for staleness
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 
 -- Ordered tab providers. The id must match the collapsedZones subtable key.
@@ -129,9 +129,10 @@ local function createFrame()
             -- Save the outgoing tab's scroll position before activeTab is overwritten.
             -- frame is the module-level upvalue (not the local f); it is non-nil by the
             -- time any click fires.
-            local outgoingID = SocialQuest.db.profile.frameState.activeTab or "shared"
-            tabScrollPositions[outgoingID] = frame.scrollFrame:GetVerticalScroll()
-            SocialQuest.db.profile.frameState.activeTab = id
+            local outgoingID = SocialQuest.db.char.frameState.activeTab or "shared"
+            SocialQuest.db.char.frameState.tabScrollPositions[outgoingID] = frame.scrollFrame:GetVerticalScroll()
+            SocialQuest.db.char.frameState.tabContentHeights[outgoingID]  = (frame.content and frame.content:GetHeight()) or 0
+            SocialQuest.db.char.frameState.activeTab = id
             SocialQuestGroupFrame:Refresh()
         end)
         return tab
@@ -162,7 +163,13 @@ local function createFrame()
     sepTex:SetVertexColor(0.4, 0.35, 0.25, 1)
 
     -- Scroll area.
-    f.scrollFrame = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+    -- Named so that UIPanelScrollFrameTemplate helper functions
+    -- (ScrollFrame_OnScrollRangeChanged / UIPanelScrollFrame_OnVerticalScroll)
+    -- can locate the scrollbar child via _G[name.."ScrollBar"].
+    -- Without a name those functions silently no-op, leaving the scrollbar and
+    -- scroll position desynced and causing WoW to fire deferred reconciliation
+    -- callbacks that override SetVerticalScroll calls.
+    f.scrollFrame = CreateFrame("ScrollFrame", "SocialQuestGroupScrollFrame", f, "UIPanelScrollFrameTemplate")
     f.scrollFrame:SetPoint("TOPLEFT",     f, "TOPLEFT",     10, SCROLL_TOP)
     f.scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -28, 10)
 
@@ -217,12 +224,13 @@ function SocialQuestGroupFrame:Refresh()
 
     -- Resolve activeID early so the scroll save below can reference it before
     -- SetScrollChild() is called (SetScrollChild may clamp GetVerticalScroll to 0).
-    local activeID = SocialQuest.db.profile.frameState.activeTab or "shared"
+    local activeID = SocialQuest.db.char.frameState.activeTab or "shared"
 
     -- Save scroll position for same-tab refreshes BEFORE SetScrollChild can clamp it.
     -- Tab-switch paths save the outgoing tab's position in the click handler instead.
     if activeID == lastRenderedTab then
-        tabScrollPositions[activeID] = frame.scrollFrame:GetVerticalScroll()
+        SocialQuest.db.char.frameState.tabScrollPositions[activeID] = frame.scrollFrame:GetVerticalScroll()
+        SocialQuest.db.char.frameState.tabContentHeights[activeID]  = (frame.content and frame.content:GetHeight()) or 0
     end
 
     -- Recreate content child (GetChildren does not return FontStrings; hiding is
@@ -244,17 +252,10 @@ function SocialQuestGroupFrame:Refresh()
     end
     if not activeProvider or not activeProvider.module then return end
 
-    -- Determine which scroll offset to restore after the rebuild.
-    -- Same-tab path: the offset was saved before SetScrollChild above.
-    -- Tab-switch / first-render path (lastRenderedTab is nil on first call):
-    --   restore the remembered offset for the incoming tab (0 on first visit).
-    local scrollToRestore
-    if activeID == lastRenderedTab then
-        scrollToRestore = tabScrollPositions[activeID] or 0
-    else
-        lastRenderedTab = activeID
-        scrollToRestore = tabScrollPositions[activeID] or 0
-    end
+    -- Capture saved scroll data before potentially updating lastRenderedTab.
+    local savedScroll  = SocialQuest.db.char.frameState.tabScrollPositions[activeID] or 0
+    local savedHeight  = SocialQuest.db.char.frameState.tabContentHeights[activeID]  or 0
+    lastRenderedTab = activeID
 
     -- Highlight active tab; deselect others.
     -- PanelTemplates_SelectTab disables the button (standard WoW: can't re-click active tab).
@@ -270,24 +271,64 @@ function SocialQuestGroupFrame:Refresh()
     end
 
     -- Per-tab collapsed zones subtable.
-    local collapsedZones = SocialQuest.db.profile.frameState.collapsedZones
+    local collapsedZones = SocialQuest.db.char.frameState.collapsedZones
     local tabCollapsed   = collapsedZones[activeID] or {}
 
     -- Delegate rendering to the tab provider.
-    local totalHeight = activeProvider.module:Render(frame.content, RowFactory, tabCollapsed)
-    frame.content:SetHeight(math.max(totalHeight, 10))
+    local totalHeight  = activeProvider.module:Render(frame.content, RowFactory, tabCollapsed)
+    local effectiveH   = math.max(totalHeight, 10)
+    frame.content:SetHeight(effectiveH)
+
+    -- Determine scroll to restore.
+    -- If user was at the bottom when the scroll was saved, track the new bottom
+    -- (handles content growth from GroupData sync while on another tab).
+    -- Otherwise restore the absolute pixel offset.
+    -- savedHeight > visibleH is load-bearing: without it, the first render
+    -- (savedHeight == 0, savedMax == 0) would satisfy savedScroll >= savedMax - 1
+    -- (0 >= -1) and incorrectly jump to the "track new bottom" path.
+    local visibleH    = frame.scrollFrame:GetHeight()
+    local savedMax    = math.max(0, savedHeight - visibleH)
+    local scrollToRestore
+    if savedHeight > visibleH and savedScroll >= savedMax - 1 then
+        scrollToRestore = math.max(0, effectiveH - visibleH)
+    else
+        scrollToRestore = savedScroll
+    end
+
+    -- Apply the scroll immediately so the current frame renders correctly,
+    -- then also apply it deferred (next frame) to survive any overrides fired
+    -- by UIPanelScrollFrameTemplate callbacks (OnScrollRangeChanged / scrollbar
+    -- OnValueChanged) that react to SetScrollChild/SetHeight above.
+    -- The deferred call goes through the scrollbar (SetValue) rather than
+    -- SetVerticalScroll directly: scrollBar:SetValue fires OnValueChanged →
+    -- UIPanelScrollFrame_OnVerticalScroll → SetVerticalScroll, which keeps
+    -- the scrollbar handle in sync with the content position.
+    -- The sequence guard discards stale deferred calls when tabs switch rapidly.
     frame.scrollFrame:SetVerticalScroll(scrollToRestore)
+    scrollRestoreSeq = scrollRestoreSeq + 1
+    local seq = scrollRestoreSeq
+    local scrollVal = scrollToRestore
+    C_Timer.After(0, function()
+        if frame and frame:IsShown() and scrollRestoreSeq == seq then
+            local scrollBar = _G["SocialQuestGroupScrollFrameScrollBar"]
+            if scrollBar then
+                scrollBar:SetValue(scrollVal)
+            else
+                frame.scrollFrame:SetVerticalScroll(scrollVal)
+            end
+        end
+    end)
 end
 
 -- Expand all zones in the given tab and redraw.
 function SocialQuestGroupFrame:ExpandAll(tabId)
-    SocialQuest.db.profile.frameState.collapsedZones[tabId] = {}
+    SocialQuest.db.char.frameState.collapsedZones[tabId] = {}
     self:Refresh()
 end
 
 -- Collapse all named zones in the given tab and redraw.
 function SocialQuestGroupFrame:CollapseAll(tabId, zoneNames)
-    local collapsed = SocialQuest.db.profile.frameState.collapsedZones
+    local collapsed = SocialQuest.db.char.frameState.collapsedZones
     if not collapsed[tabId] then collapsed[tabId] = {} end
     for _, name in ipairs(zoneNames) do
         collapsed[tabId][name] = true
@@ -299,7 +340,7 @@ end
 -- Absent key = expanded (spec default). Set true when collapsing, nil when expanding,
 -- so no stale false entries accumulate in the saved variable table.
 function SocialQuestGroupFrame:ToggleZone(tabId, zoneName)
-    local collapsedZones = SocialQuest.db.profile.frameState.collapsedZones
+    local collapsedZones = SocialQuest.db.char.frameState.collapsedZones
     if not collapsedZones[tabId] then
         collapsedZones[tabId] = {}
     end
@@ -309,5 +350,15 @@ function SocialQuestGroupFrame:ToggleZone(tabId, zoneName)
         collapsedZones[tabId][zoneName] = true  -- collapsed
     end
     self:Refresh()
+end
+
+-- Called by the OnProfileReset callback in SocialQuest.lua.
+-- Clears lastRenderedTab so the next Refresh() does not write a stale scroll
+-- offset back into the freshly-reset char.frameState.
+-- RequestRefresh() is a no-op when the frame has never been opened; in that
+-- case nil-clearing lastRenderedTab is the only meaningful work here.
+function SocialQuestGroupFrame:ResetFrameState()
+    lastRenderedTab = nil
+    self:RequestRefresh()
 end
 

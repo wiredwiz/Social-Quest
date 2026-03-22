@@ -275,10 +275,24 @@ function SocialQuestOptions:Initialize()
                 },
             },
 
+            flightPath = {
+                type  = "group",
+                name  = L["Flight Path Discovery"],
+                order = 8,
+                args  = {
+                    enabled = toggle(L["Announce flight path discoveries"],
+                        L["Broadcast to your party when you discover a new flight path."],
+                        { "flightPath", "enabled" }, 1),
+                    announceBanners = toggle(L["Show banner for party discoveries"],
+                        L["Display a banner notification when a party member discovers a new flight path."],
+                        { "flightPath", "announceBanners" }, 2),
+                },
+            },
+
             debug = {
                 type  = "group",
                 name  = L["Debug"],
-                order = 8,
+                order = 9,
                 args  = {
                     enabled = toggle(L["Enable debug mode"],
                         L["Print internal debug messages to the chat frame. Useful for diagnosing comm issues or event flow problems."],
@@ -351,8 +365,8 @@ function SocialQuestOptions:Initialize()
                             },
                             testAllComplete = {
                                 type = "execute",
-                                name = L["Test All Completed"],
-                                desc = L["Display a demo banner for the 'Everyone has completed' purple notification. No chat preview (this event never generates outbound chat directly)."],
+                                name = L["Test All Finished"],
+                                desc = L["Display a demo banner for the 'Everyone has finished' purple notification. No chat preview (this event never generates outbound chat directly)."],
                                 func = function() SocialQuestAnnounce:TestEvent("all_complete") end,
                             },
                             testChatLink = {
@@ -360,6 +374,12 @@ function SocialQuestOptions:Initialize()
                                 name = L["Test Chat Link"],
                                 desc = L["Print a local chat preview of a 'Quest turned in' message for quest 337 using a real WoW quest hyperlink. Verify the quest name appears as clickable gold text in the chat frame."],
                                 func = function() SocialQuestAnnounce:TestChatLink() end,
+                            },
+                            testFlightDiscovery = {
+                                type   = "execute",
+                                name   = L["Test Flight Discovery"],
+                                desc   = L["Display a demo flight path unlock banner using your character's starting city as the demo location."],
+                                func   = function() SocialQuestAnnounce:TestFlightDiscovery() end,
                             },
                         },
                     },

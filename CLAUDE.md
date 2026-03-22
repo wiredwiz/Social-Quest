@@ -79,6 +79,7 @@ All payloads are **numeric-only** — no quest titles or objective text are ever
 | `SQ_FOLLOW_STOP` | whisper | Follow notification |
 | `SQ_REQ_COMPLETED` | broadcast | Requests completed quest history from all group members |
 | `SQ_RESP_COMPLETE` | whisper | Response with completed quest history |
+| `SQ_FLIGHT` | broadcast (PARTY) | Flight path discovery notification |
 
 ### Sync Protocol (current)
 
@@ -176,6 +177,37 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 ---
 
 ## Version History
+
+### Version 2.3.5 (March 2026 — Improvements branch)
+- Fixed chat announcements: WoW TBC does not render `|H...|h` hyperlinks in addon-sent party/raid/guild chat. Changed outbound quest and objective messages to use `[Quest Title]` bracket format instead of the full hyperlink string. Added `questInfo.title` to the title resolution chain in `OnQuestEvent` so completed/abandoned quests (already removed from cache) still resolve the correct name.
+
+### Version 2.3.4 (March 2026 — Improvements branch)
+- "Everyone has finished" feature: changed trigger from `eventType == "completed"` (turned in) to `eventType == "finished"` (objectives done). Updated internal completion check to use `isComplete` flag on quest data instead of `completedQuests`/`HasCompletedQuest`, with fallback to `completedQuests` for players who already turned in. Display gate now uses `display.finished` toggle; chat gate uses `announce.finished`. Renamed function from `checkAllCompleted` to `checkAllFinished`.
+- Renamed locale key `"Everyone has completed: %s"` → `"Everyone has finished: %s"` and test button `"Test All Completed"` → `"Test All Finished"` across all 11 locale files.
+
+### Version 2.3.3 (March 2026 — Improvements branch)
+- Flight path debug logging: added `Debug("Quest", ...)` calls throughout `OnTaxiMapOpened` covering node counts, new discovery announcements, silent-absorb paths (starting city, mid-game install, unknown race), and saved-state update.
+- Exposed `SocialQuest:GetStartingNode()` as a public wrapper around the file-scope `getStartingNode()` local, for use by `Announcements.lua` and other modules.
+- Test Flight Discovery button: added to Debug options page alongside other test buttons; calls `SocialQuestAnnounce:TestFlightDiscovery()` which shows a flight path unlock banner using the player's starting city as the demo node.
+
+### Version 2.3.2 (March 2026 — Improvements branch)
+- Per-character frame state: moved `frameState` (active tab, collapsed zones) and scroll position tables from shared `profile` scope to per-character `char` scope in AceDB. Scroll positions now persist across reloads. Added `OnProfileReset` callback to reset `char.frameState` when the profile is reset.
+- Bug fix: added `local checkAllCompleted` forward declaration in `Core/Announcements.lua` to fix "attempt to call global 'checkAllCompleted'" crash when completing a quest.
+- Bug fix: removed `Bindings.xml` from `SocialQuest.toc`; WoW's bindings parser discovers it automatically. Eliminates all "Unrecognized XML: Binding" warnings.
+
+### Version 2.3.1 (March 2026 — Improvements branch)
+- Scroll position fix: added deferred `C_Timer.After(0)` scroll restoration with sequence guard, so the correct position survives `UIPanelScrollFrameTemplate` callbacks (`OnScrollRangeChanged`/scrollbar `OnValueChanged`) that override `SetVerticalScroll` when `SetScrollChild`/`SetHeight` are called on the new content frame.
+
+### Version 2.3.0 (March 2026 — Improvements branch)
+- Scroll position fix: tracks content height when saving scroll offset; when returning to a tab where the user was at the bottom, restores to the new bottom even if content grew (cross-chain peers from GroupData sync).
+
+### Version 2.2.0 (March 2026 — Improvements branch)
+- Flight Path Discovery: detects new flight path unlocks via `TAXIMAP_OPENED`; broadcasts to party via `SQ_FLIGHT` prefix; displays banner using quest-accepted green color. Per-character `knownFlightNodes` persists across sessions. Handles first-run, mid-game install, and unknown-race edge cases.
+- Needs-Shared Eligibility: "Needs it Shared" rows now suppressed unless the quest is shareable (`GetQuestLogPushable`), the player has not completed it, and any chain prerequisite has been completed.
+- Quest Log Toggle: left-clicking a quest title in the SQ window now closes the quest log if it is already open and showing that quest.
+
+### Version 2.1.2 (March 2026 — Improvements branch)
+- Updated all `knownStatus` comparisons to use `AQL.ChainStatus.Known` / `AQL.ChainStatus.Unknown` constants
 
 ### Version 2.1.1 (March 2026 — Improvements branch)
 - GroupFrame now preserves per-tab scroll position across rebuilds; no longer resets to top on quest updates

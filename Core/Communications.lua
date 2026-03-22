@@ -8,6 +8,7 @@
 --   SQ_OBJECTIVE Single objective progress update.
 --   SQ_REQUEST   Whisper requesting a full SQ_INIT from a specific player.
 --   SQ_FOLLOW_START / SQ_FOLLOW_STOP  Follow notifications (whisper).
+--   SQ_FLIGHT    Flight path discovery notification (party broadcast).
 
 SocialQuestComm = {}
 SocialQuestComm.followTarget = nil  -- last player we started following
@@ -17,6 +18,7 @@ local PREFIXES = {
     "SQ_REQUEST",
     "SQ_FOLLOW_START", "SQ_FOLLOW_STOP",
     "SQ_REQ_COMPLETED", "SQ_RESP_COMPLETE",
+    "SQ_FLIGHT",
 }
 
 -- GroupType enum alias — GroupComposition owns the definition; we reference it here
@@ -137,6 +139,16 @@ function SocialQuestComm:BroadcastObjectiveUpdate(questInfo, objective)
     }
     LibStub("AceComm-3.0"):SendCommMessage("SQ_OBJECTIVE", serialize(payload), channel)
     SocialQuest:Debug("Comm", "Sent SQ_OBJECTIVE: questID=" .. questInfo.questID .. " obj=" .. objective.index .. " " .. objective.numFulfilled .. "/" .. objective.numRequired)
+end
+
+-- Sends the local player's newly discovered flight path name to the party.
+-- Only sent when in a party (not raid, not battleground).
+function SocialQuestComm:SendFlightDiscovery(nodeName)
+    if not IsInGroup() or IsInRaid() then return end
+    -- SocialQuestComm is a plain table, not an Ace3 mixin. All send helpers in
+    -- this file call LibStub("AceComm-3.0"):SendCommMessage directly.
+    LibStub("AceComm-3.0"):SendCommMessage("SQ_FLIGHT", serialize({ node = nodeName }), "PARTY")
+    SocialQuest:Debug("Comm", "Sent SQ_FLIGHT: " .. nodeName)
 end
 
 function SocialQuestComm:SendFollowStart(targetName)
@@ -365,5 +377,11 @@ function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
             entry.completedQuests = payload.completedQuests or {}
         end
         SocialQuestGroupFrame:RequestRefresh()
+
+    elseif prefix == "SQ_FLIGHT" then
+        if payload and payload.node then
+            SocialQuest:Debug("Comm", "Received SQ_FLIGHT from " .. sender .. ": " .. payload.node)
+            SocialQuestAnnounce:OnFlightDiscovery(sender, payload.node)
+        end
     end
 end

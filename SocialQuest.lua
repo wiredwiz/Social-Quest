@@ -19,6 +19,58 @@ local AQL  -- set in OnInitialize
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 
 ------------------------------------------------------------------------
+-- Flight path starting node lookup
+------------------------------------------------------------------------
+
+-- Keys are the second return value of UnitRace("player") (English internal name).
+-- All node name strings require in-game verification against GetTaxiNodeInfo() output
+-- at Interface 20505 — values below are best-effort.
+-- Pandaren, Dracthyr, and Earthen are faction-dependent; handled in getStartingNode().
+local RACE_STARTING_NODES = {
+    -- TBC (currently supported)
+    ["Human"]              = "Stormwind",
+    ["Dwarf"]              = "Ironforge",
+    ["Gnome"]              = "Ironforge",
+    ["NightElf"]           = "Rut'theran Village",
+    ["Scourge"]            = "Undercity",           -- Undead
+    ["Tauren"]             = "Thunder Bluff",
+    ["Orc"]                = "Orgrimmar",
+    ["Troll"]              = "Orgrimmar",
+    ["Draenei"]            = "The Exodar",
+    ["BloodElf"]           = "Silvermoon City",
+    -- Cataclysm
+    ["Worgen"]             = "Stormwind",
+    ["Goblin"]             = "Orgrimmar",
+    -- BfA allied races
+    ["VoidElf"]            = "Stormwind",
+    ["LightforgedDraenei"] = "Stormwind",
+    ["DarkIronDwarf"]      = "Ironforge",
+    ["KulTiran"]           = "Boralus",
+    ["Mechagnome"]         = "Mechagon",
+    ["Nightborne"]         = "Orgrimmar",
+    ["HighmountainTauren"] = "Thunder Bluff",
+    ["MagharOrc"]          = "Orgrimmar",
+    ["ZandalarTroll"]      = "Dazar'alor",
+    ["Vulpera"]            = "Orgrimmar",
+    -- Dragonflight / The War Within
+    -- (Dracthyr and Earthen handled in getStartingNode — faction-dependent)
+}
+
+-- Returns the starting flight node name for the local player.
+-- Handles faction-dependent races (Pandaren, Dracthyr, Earthen) inline.
+-- Returns nil for unknown races; callers treat nil as "no seed available."
+local function getStartingNode()
+    local _, race = UnitRace("player")
+    local node = RACE_STARTING_NODES[race]
+    if node then return node end
+    local faction = UnitFactionGroup("player")
+    if race == "Pandaren" or race == "Dracthyr" or race == "Earthen" then
+        return faction == "Alliance" and "Stormwind" or "Orgrimmar"
+    end
+    return nil
+end
+
+------------------------------------------------------------------------
 -- Lifecycle
 ------------------------------------------------------------------------
 
@@ -32,6 +84,21 @@ function SocialQuest:OnInitialize()
 
     -- AceDB sets up saved variables. Profile key "Default" shared across chars.
     self.db = LibStub("AceDB-3.0"):New("SocialQuestDB", self:GetDefaults(), true)
+
+    -- When the player resets their profile, also reset char-scoped frame state
+    -- so the quest window reverts to defaults (tab = Shared, all zones expanded,
+    -- scroll positions = 0).
+    -- Dot-call (not colon): self.db is the CallbackHandler target, not the
+    -- method receiver. Colon would pass self.db as target instead of self.
+    self.db.RegisterCallback(self, "OnProfileReset", function()
+        self.db.char.frameState = {
+            activeTab          = "shared",
+            collapsedZones     = { mine = {}, party = {}, shared = {} },
+            tabScrollPositions = { mine = 0,  party = 0,  shared = 0  },
+            tabContentHeights  = { mine = 0,  party = 0,  shared = 0  },
+        }
+        SocialQuestGroupFrame:ResetFrameState()
+    end)
 
     -- Expose AQL to sub-modules that need it.
     self.AQL = AQL
@@ -73,6 +140,7 @@ function SocialQuest:OnEnable()
     self:RegisterEvent("PLAYER_ENTERING_WORLD", "OnPlayerEnteringWorld")
     self:RegisterEvent("AUTOFOLLOW_BEGIN",      "OnAutoFollowBegin")
     self:RegisterEvent("AUTOFOLLOW_END",        "OnAutoFollowEnd")
+    self:RegisterEvent("TAXIMAP_OPENED",        "OnTaxiMapOpened")
 
     -- Register AQL callbacks.
     -- Dot-notation is required: AQL is the target in CallbackHandler, so
@@ -252,8 +320,14 @@ function SocialQuest:GetDefaults()
             debug = {
                 enabled = false,
             },
+            flightPath = {
+                enabled         = true,   -- broadcast my discoveries to party
+                announceBanners = true,   -- display banners when party members discover paths
+            },
             minimap = { hide = false },
             -- LibDBIcon writes minimapPos into this table automatically when dragged.
+        },
+        char = {
             frameState = {
                 activeTab = "shared",
                 collapsedZones = {
@@ -261,7 +335,18 @@ function SocialQuest:GetDefaults()
                     party  = {},
                     shared = {},
                 },
+                tabScrollPositions = {
+                    mine   = 0,
+                    party  = 0,
+                    shared = 0,
+                },
+                tabContentHeights = {
+                    mine   = 0,
+                    party  = 0,
+                    shared = 0,
+                },
             },
+            knownFlightNodes = {},  -- [nodeName] = true; persists across sessions
         },
     }
 end
@@ -309,6 +394,88 @@ function SocialQuest:OnAutoFollowEnd()
         SocialQuestComm:SendFollowStop(target)
         SocialQuestComm.followTarget = nil
     end
+end
+
+function SocialQuest:GetStartingNode()
+    return getStartingNode()
+end
+
+function SocialQuest:OnTaxiMapOpened()
+    if not self.db.profile.flightPath.enabled then return end
+
+    -- Collect all node names currently visible on the taxi map.
+    -- GetTaxiNodeInfo(i) returns name, texture, x, y at Interface 20505.
+    -- Iterate until nil is returned. Only named nodes are collected.
+    -- NOTE: exact API behavior (active vs inactive nodes, max index) requires
+    -- in-game verification during implementation.
+    local currentNodes = {}
+    local i = 1
+    while true do
+        local name = GetTaxiNodeInfo(i)
+        if not name then break end
+        currentNodes[name] = true
+        i = i + 1
+    end
+
+    local saved = self.db.char.knownFlightNodes
+    local diff  = {}
+    for name in pairs(currentNodes) do
+        if not saved[name] then
+            table.insert(diff, name)
+        end
+    end
+
+    local diffCount    = #diff
+    local currentCount = 0
+    for _ in pairs(currentNodes) do currentCount = currentCount + 1 end
+
+    self:Debug("Quest", "OnTaxiMapOpened: currentNodes=" .. currentCount .. " saved=" .. (function() local n=0; for _ in pairs(saved) do n=n+1 end; return n end)() .. " diff=" .. diffCount)
+
+    if diffCount == 0 then
+        self:Debug("Quest", "OnTaxiMapOpened: no new nodes — silent return")
+        return  -- nothing new
+    end
+
+    local startNode = getStartingNode()
+    self:Debug("Quest", "OnTaxiMapOpened: startNode=" .. tostring(startNode))
+
+    if diffCount == 1 then
+        -- Normal case: one new node. Announce unless it is the starting city.
+        if diff[1] ~= startNode then
+            self:Debug("Quest", "OnTaxiMapOpened: announcing new node=" .. diff[1])
+            SocialQuestComm:SendFlightDiscovery(diff[1])
+        else
+            self:Debug("Quest", "OnTaxiMapOpened: first-open at starting city (" .. diff[1] .. ") — silent absorb")
+        end
+
+    elseif diffCount > 1 and currentCount == 2 then
+        -- Special case: savedNodes was empty and player has exactly starting city
+        -- + one new discovery. Announce the non-starting-city node only.
+        -- If startNode is nil (unknown race), skip — cannot identify which is new.
+        self:Debug("Quest", "OnTaxiMapOpened: two-node special case — diff=" .. diffCount .. " current=" .. currentCount)
+        if startNode then
+            for _, name in ipairs(diff) do
+                if name ~= startNode then
+                    self:Debug("Quest", "OnTaxiMapOpened: announcing discovery (two-node case) node=" .. name)
+                    SocialQuestComm:SendFlightDiscovery(name)
+                    break
+                end
+            end
+        else
+            self:Debug("Quest", "OnTaxiMapOpened: unknown race — cannot identify new node in two-node case, skipping")
+        end
+
+    else
+        -- diffCount > 1 and currentCount > 2: mid-game install or ambiguous.
+        -- Silently absorb — cannot determine which node is genuinely new.
+        self:Debug("Quest", "OnTaxiMapOpened: mid-game install / ambiguous (" .. diffCount .. " new of " .. currentCount .. " total) — silent absorb")
+    end
+
+    -- Always update saved state regardless of whether anything was announced.
+    for name in pairs(currentNodes) do
+        saved[name] = true
+    end
+    self:Debug("Quest", "OnTaxiMapOpened: knownFlightNodes updated")
 end
 
 ------------------------------------------------------------------------

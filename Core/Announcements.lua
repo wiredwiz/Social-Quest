@@ -43,7 +43,7 @@ local CHAIN_STEP_EVENTS = {
 -- knownStatus != "known", or step is nil. Never errors on nil inputs.
 local function appendChainStep(msg, eventType, chainInfo)
     if not CHAIN_STEP_EVENTS[eventType] then return msg end
-    if not chainInfo or chainInfo.knownStatus ~= "known" or not chainInfo.step then
+    if not chainInfo or chainInfo.knownStatus ~= SocialQuest.AQL.ChainStatus.Known or not chainInfo.step then
         return msg
     end
     return msg .. " " .. string.format(L["(Step %s)"], chainInfo.step)
@@ -185,6 +185,8 @@ end
 -- Local quest event announcements (from AQL callbacks)
 ------------------------------------------------------------------------
 
+local checkAllFinished  -- forward declaration; defined below after OnQuestEvent/OnRemoteQuestEvent
+
 function SocialQuestAnnounce:OnQuestEvent(eventType, questID, questInfo)
     local db = SocialQuest.db.profile
     if not db.enabled then return end
@@ -192,20 +194,12 @@ function SocialQuestAnnounce:OnQuestEvent(eventType, questID, questInfo)
     local AQL   = SocialQuest.AQL
     local info  = AQL and AQL:GetQuest(questID)
     local title = (info and info.title)
+               or (questInfo and questInfo.title)
                or (AQL and AQL:GetQuestTitle(questID))
                or ("Quest " .. questID)
-    -- Prefer the WoW quest hyperlink string from the AQL snapshot so that recipients
-    -- can ctrl-click the quest link in chat. Falls back progressively:
-    --   1. questInfo.link  — AQL snapshot link (nil for "finished"; questInfo not passed)
-    --   2. info.link       — live AQL log entry (nil after "abandoned"; quest removed first)
-    --   3. AQL:GetQuestLink — builds link from provider DB even when quest left the log
-    --   4. title           — plain text last resort
-    -- RaidNotice_AddMessage (banners) cannot render hyperlinks — title is used there.
-    local display = (questInfo and questInfo.link)
-                 or (info and info.link)
-                 or (AQL and AQL:GetQuestLink(questID))
-                 or title
-    local msg   = formatOutboundQuestMsg(eventType, display)
+    -- WoW TBC does not render |H...|h hyperlinks in addon-sent party chat messages;
+    -- use [Title] bracket format instead. Banners also use plain title.
+    local msg   = formatOutboundQuestMsg(eventType, "[" .. title .. "]")
     local chainInfo = questInfo and questInfo.chainInfo
     msg = appendChainStep(msg, eventType, chainInfo)
 
@@ -254,10 +248,10 @@ function SocialQuestAnnounce:OnQuestEvent(eventType, questID, questInfo)
     -- Own-quest banner: fires regardless of chat suppression.
     self:OnOwnQuestEvent(eventType, title, chainInfo)
 
-    -- Party-wide completion check: fires "Everyone has completed" when all engaged
-    -- group members have turned in this quest.
-    if eventType == "completed" then
-        checkAllCompleted(questID, true)
+    -- Party-wide objectives check: fires "Everyone has finished" when all engaged
+    -- group members have completed this quest's objectives.
+    if eventType == "finished" then
+        checkAllFinished(questID, true)
     end
 end
 
@@ -271,7 +265,7 @@ function SocialQuestAnnounce:OnObjectiveEvent(eventType, questInfo, objective, i
         SocialQuest:Debug("Banner", "Chat suppressed: Questie will announce " .. eventType)
     else
         local msg = formatOutboundObjectiveMsg(
-            questInfo.link or questInfo.title,
+            "[" .. (questInfo.title or ("Quest " .. questInfo.questID)) .. "]",
             objective.name or "",
             objective.numFulfilled,
             objective.numRequired,
@@ -308,12 +302,12 @@ end
 -- Remote event banner notifications (inbound from other SocialQuest users)
 ------------------------------------------------------------------------
 
--- Fires "Everyone has completed [Quest Name]" when every engaged group member
--- (those who have or had the quest) has turned it in.
+-- Fires "Everyone has finished [Quest Name]" when every engaged group member
+-- (those who have or had the quest) has completed all objectives.
 -- Suppressed entirely if any group member lacks SocialQuest (hasSocialQuest == false).
--- localHasCompleted: true when the local player just triggered this via OnQuestEvent;
---                    false when a remote player's SQ_UPDATE triggered it.
-local function checkAllCompleted(questID, localHasCompleted)
+-- localHasFinished: true when the local player just triggered this via OnQuestEvent;
+--                   false when a remote player's SQ_UPDATE triggered it.
+local function checkAllFinished(questID, localHasFinished)
     -- db.enabled is checked here rather than relying on callers: this function is
     -- called from two separate entry points and must be self-contained.
     local db = SocialQuest.db.profile
@@ -325,38 +319,39 @@ local function checkAllCompleted(questID, localHasCompleted)
     local anyRemote = false
     for _ in pairs(PlayerQuests) do anyRemote = true; break end
     if not anyRemote then
-        SocialQuest:Debug("Banner", "All complete suppressed: not in group")
+        SocialQuest:Debug("Banner", "All finished suppressed: not in group")
         return
     end
 
     -- Every group member must have SocialQuest; suppress entirely if any lacks it.
+    -- Without full visibility, we cannot reliably confirm that everyone has finished.
     for _, entry in pairs(PlayerQuests) do
         if not entry.hasSocialQuest then
-            SocialQuest:Debug("Banner", "All complete suppressed: non-SQ member present")
+            SocialQuest:Debug("Banner", "All finished suppressed: non-SQ member present")
             return
         end
     end
 
     -- Build engaged set: only players who have or had the quest this session.
-    -- "Engaged" = currently has the quest active OR has completed it THIS session.
+    -- "Engaged" = currently has the quest active OR has already turned it in.
+    -- "Done" = quest objectives are complete (isComplete) OR already turned in
+    --          (completedQuests — a turned-in quest implies objectives were done).
     -- Players who never had the quest are excluded entirely.
-    -- Note: IsQuestFlaggedCompleted is NOT used for engagement — it returns true
-    -- for quests completed in prior sessions, which would cause false positives.
     local AQL = SocialQuest.AQL
 
-    -- Local player: engaged if they just completed it or have it active right now.
-    -- IsQuestFlaggedCompleted is intentionally NOT used for engagement — it returns
-    -- true for quests completed in prior sessions and would cause false positives.
-    local localActive   = AQL and AQL:GetQuest(questID) ~= nil
-    local localEngaged  = localHasCompleted or localActive
-    -- localFlagged is only consulted inside the localEngaged guard below.
-    local localFlagged  = localHasCompleted or (AQL and AQL:HasCompletedQuest(questID))
-    if localEngaged and not localFlagged then
-        SocialQuest:Debug("Banner", "All complete suppressed: local player engaged but not done")
+    -- Local player: engaged if they just finished objectives or have the quest active.
+    local localActive  = AQL and AQL:GetQuest(questID) ~= nil
+    local localEngaged = localHasFinished or localActive
+    local localQuest   = AQL and AQL:GetQuest(questID)
+    local localDone    = localHasFinished
+                      or (localQuest and localQuest.isComplete)
+                      or (AQL and AQL:HasCompletedQuest(questID))
+    if localEngaged and not localDone then
+        SocialQuest:Debug("Banner", "All finished suppressed: local player engaged but not done")
         return
     end
 
-    -- Remote players: check engagement and completion.
+    -- Remote players: check engagement and objective completion.
     local anyEngaged = localEngaged
     for _, entry in pairs(PlayerQuests) do
         local hasActive    = entry.quests and entry.quests[questID] ~= nil
@@ -364,8 +359,10 @@ local function checkAllCompleted(questID, localHasCompleted)
         local engaged      = hasActive or hasCompleted
         if engaged then
             anyEngaged = true
-            if not hasCompleted then
-                SocialQuest:Debug("Banner", "All complete suppressed: not all engaged players completed")
+            local questData = entry.quests and entry.quests[questID]
+            local done      = (questData and questData.isComplete) or hasCompleted
+            if not done then
+                SocialQuest:Debug("Banner", "All finished suppressed: not all engaged players finished")
                 return
             end
         end
@@ -373,16 +370,16 @@ local function checkAllCompleted(questID, localHasCompleted)
 
     -- No one in the group has or had the quest.
     if not anyEngaged then
-        SocialQuest:Debug("Banner", "All complete suppressed: no engaged players")
+        SocialQuest:Debug("Banner", "All finished suppressed: no engaged players")
         return
     end
 
-    -- Display gating: same toggle as normal completion banners.
+    -- Display gating: same toggle as the individual "objectives done" banners.
     local section   = getSenderSection()
     local sectionDb = db[section]
     if not sectionDb or not sectionDb.display then return end
-    if not sectionDb.display.completed then
-        SocialQuest:Debug("Banner", "All complete suppressed: display.completed off")
+    if not sectionDb.display.finished then
+        SocialQuest:Debug("Banner", "All finished suppressed: display.finished off")
         return
     end
 
@@ -392,13 +389,13 @@ local function checkAllCompleted(questID, localHasCompleted)
                or (AQL and AQL:GetQuestTitle(questID))
                or ("Quest " .. questID)
 
-    local msg = string.format(L["Everyone has completed: %s"], title)
-    SocialQuest:Debug("Banner", "All complete: questID=" .. questID .. " \xe2\x80\x94 banner displayed")
+    local msg = string.format(L["Everyone has finished: %s"], title)
+    SocialQuest:Debug("Banner", "All finished: questID=" .. questID .. " \xe2\x80\x94 banner displayed")
     displayBanner(msg, "all_complete")
 
     -- Chat message only when the local player triggered it (avoids duplicate
     -- sends from multiple SQ clients simultaneously detecting the same condition).
-    if localHasCompleted and sectionDb.transmit and sectionDb.announce.completed then
+    if localHasFinished and sectionDb.transmit and sectionDb.announce.finished then
         local channelMap = { party = "PARTY", raid = "RAID", battleground = "BATTLEGROUND" }
         local channel = channelMap[section]
         if channel then
@@ -411,10 +408,10 @@ function SocialQuestAnnounce:OnRemoteQuestEvent(sender, eventType, questID, cach
     local db = SocialQuest.db.profile
     if not db.enabled then return end
 
-    -- Party-wide completion check: fires regardless of displayReceived, because
-    -- "Everyone has completed" is a synthesized local event, not a raw inbound banner.
-    if eventType == "completed" then
-        checkAllCompleted(questID, false)
+    -- Party-wide objectives check: fires regardless of displayReceived, because
+    -- "Everyone has finished" is a synthesized local event, not a raw inbound banner.
+    if eventType == "finished" then
+        checkAllFinished(questID, false)
     end
 
     if not db.general.displayReceived then
@@ -614,7 +611,7 @@ local TEST_DEMOS = {
     },
     all_complete = {
         outbound = nil,   -- no outbound chat for this synthesized event
-        banner   = "Everyone has completed: [A Daunting Task]",
+        banner   = "Everyone has finished: [A Daunting Task]",
         colorKey = "all_complete",
     },
 }
@@ -649,6 +646,23 @@ function SocialQuestAnnounce:OnFollowStop(sender)
     local db = SocialQuest.db.profile
     if not db.follow.enabled or not db.follow.announceFollowed then return end
     SocialQuest:Print(string.format(L["%s stopped following you."], sender))
+end
+
+------------------------------------------------------------------------
+-- Flight path discovery notifications
+------------------------------------------------------------------------
+
+function SocialQuestAnnounce:OnFlightDiscovery(sender, nodeName)
+    local db = SocialQuest.db.profile
+    if not db.flightPath.announceBanners then return end
+    local msg = string.format(L["%s unlocked flight path: %s"], sender, nodeName)
+    displayBanner(msg, "accepted")  -- reuses the quest-accepted green color
+end
+
+function SocialQuestAnnounce:TestFlightDiscovery()
+    local nodeName = SocialQuest:GetStartingNode() or "Stormwind"
+    local msg = string.format(L["%s unlocked flight path: %s"], UnitName("player") or "You", nodeName)
+    displayBanner(msg, "accepted")
 end
 
 ------------------------------------------------------------------------

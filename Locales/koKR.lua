@@ -28,7 +28,7 @@ L["%s progressed: %s — %s (%d/%d)"]          = "%s 진행: %s — %s (%d/%d)"
 L["|cFF00CCFFSocialQuest (preview):|r "]  = "|cFF00CCFFSocialQuest (미리보기):|r "
 
 -- Core/Announcements.lua — all-completed banner
-L["Everyone has completed: %s"]           = "모두 완료: %s"
+L["Everyone has finished: %s"]            = "모두가 목표를 완료했습니다: %s"
 
 -- Core/Announcements.lua — own-quest banner sender label
 L["You"]                                  = "나"
@@ -185,5 +185,9 @@ L["Test Obj. Complete"]                    = "목표 달성 테스트"
 L["Display a demo banner and local chat preview for an objective completion (e.g. 8/8)."] = "목표 달성 (예: 8/8)에 대한 데모 배너와 로컬 채팅 미리보기를 표시합니다."
 L["Test Obj. Regression"]                  = "목표 퇴보 테스트"
 L["Display a demo banner and local chat preview for an objective regression (count went backward)."] = "목표 퇴보 (카운트가 감소됨)에 대한 데모 배너와 로컬 채팅 미리보기를 표시합니다."
-L["Test All Completed"]                    = "모두 완료 테스트"
-L["Display a demo banner for the 'Everyone has completed' purple notification. No chat preview (this event never generates outbound chat directly)."] = "'모두 완료' 보라색 알림에 대한 데모 배너를 표시합니다. 채팅 미리보기 없음 (이 이벤트는 직접 발신 채팅을 생성하지 않습니다)."
+L["Test All Finished"]                     = "모두 완료 테스트"
+L["Display a demo banner for the 'Everyone has finished' purple notification. No chat preview (this event never generates outbound chat directly)."] = "'모두가 목표를 완료했습니다' 보라색 알림의 데모 배너를 표시합니다. 채팅 미리보기 없음 (이 이벤트는 직접 발신 채팅을 생성하지 않습니다)."
+L["Test Chat Link"]                        = "채팅 링크 테스트"
+L["Print a local chat preview of a 'Quest turned in' message for quest 337 using a real WoW quest hyperlink. Verify the quest name appears as clickable gold text in the chat frame."] = "실제 WoW 퀘스트 하이퍼링크를 사용하여 퀘스트 337의 '퀘스트 제출' 메시지에 대한 로컬 채팅 미리보기를 출력합니다. 퀘스트 이름이 채팅 프레임에 클릭 가능한 금색 텍스트로 나타나는지 확인하세요."
+L["Test Flight Discovery"]                 = "비행 경로 발견 테스트"
+L["Display a demo flight path unlock banner using your character's starting city as the demo location."] = "캐릭터의 시작 도시를 데모 위치로 사용하여 비행 경로 해제 데모 배너를 표시합니다."
