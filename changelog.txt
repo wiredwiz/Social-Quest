@@ -1,0 +1,96 @@
+SocialQuest Changelog
+=====================
+
+Version 2.4.0 (March 2026)
+- Follow banner notifications: OnFollowStart and OnFollowStop now display a
+  banner in addition to the existing chat message. Uses new follow color key
+  (warm tan / Okabe-Ito yellow in colorblind mode). Added TestFollowNotification
+  debug function and corresponding debug panel button.
+
+Version 2.3.7 (March 2026)
+- Bug fix: six unescaped double-quote characters inside Chinese string values in
+  Locales/zhCN.lua caused Lua syntax errors at load time. Escaped in the
+  translation values for the master-switch description and all five test-button
+  descriptions. zhTW was unaffected.
+
+Version 2.3.6 (March 2026)
+- Bug fix: checkAllFinished forward declaration was shadowed by its own
+  definition line, causing a nil-call crash on every AQL_QUEST_FINISHED event.
+
+Version 2.3.5 (March 2026)
+- Fixed chat announcements: WoW TBC does not render hyperlinks in addon-sent
+  party/raid/guild chat. Changed outbound quest and objective messages to use
+  [Quest Title] bracket format. Added quest title fallback for
+  completed/abandoned quests already removed from cache.
+
+Version 2.3.4 (March 2026)
+- "Everyone has finished" feature: changed trigger from completed (turned in) to
+  finished (objectives done). Completion check now uses isComplete flag with
+  fallback to completedQuests. Display gate uses display.finished toggle.
+- Renamed locale key "Everyone has completed" to "Everyone has finished" and
+  test button "Test All Completed" to "Test All Finished" across all 11 locales.
+
+Version 2.3.3 (March 2026)
+- Flight path debug logging: added Debug calls throughout OnTaxiMapOpened.
+- Exposed SocialQuest:GetStartingNode() as a public wrapper for use by
+  Announcements.lua and other modules.
+- Test Flight Discovery button added to debug options page.
+
+Version 2.3.2 (March 2026)
+- Per-character frame state: moved frameState and scroll positions from shared
+  profile scope to per-character char scope in AceDB. Scroll positions now
+  persist across reloads. Added OnProfileReset callback.
+- Bug fix: added checkAllCompleted forward declaration to fix nil-call crash on
+  AQL_QUEST_FINISHED.
+- Bug fix: removed Bindings.xml from SocialQuest.toc; WoW discovers it
+  automatically, eliminating all "Unrecognized XML: Binding" warnings.
+
+Version 2.3.1 (March 2026)
+- Scroll position fix: added deferred C_Timer.After(0) restoration with sequence
+  guard so the correct position survives UIPanelScrollFrameTemplate callbacks.
+
+Version 2.3.0 (March 2026)
+- Scroll position fix: tracks content height when saving scroll offset; when
+  returning to a tab where the user was at the bottom, restores to the new
+  bottom even if content grew.
+
+Version 2.2.0 (March 2026)
+- Flight Path Discovery: detects new flight path unlocks via TAXIMAP_OPENED;
+  broadcasts to party via SQ_FLIGHT prefix; displays banner in quest-accepted
+  green. Per-character knownFlightNodes persists across sessions.
+- Needs-Shared Eligibility: "Needs it Shared" rows suppressed unless the quest
+  is shareable, the player has not completed it, and any chain prerequisite has
+  been completed.
+- Quest Log Toggle: left-clicking a quest title in the SQ window now closes the
+  quest log if it is already open and showing that quest.
+
+Version 2.1.2 (March 2026)
+- Updated all knownStatus comparisons to use AQL.ChainStatus.Known /
+  AQL.ChainStatus.Unknown constants.
+
+Version 2.1.1 (March 2026)
+- GroupFrame now preserves per-tab scroll position across rebuilds; no longer
+  resets to top on quest updates.
+
+Version 2.1.0 (March 2026)
+- Added Core\GroupComposition.lua module — sole owner of GROUP_ROSTER_UPDATE /
+  PLAYER_LOGIN events.
+- Eliminated SQ_BEACON storm pattern; replaced with direct SQ_INIT broadcast
+  and jittered responses.
+- Subgroup moves in raids no longer trigger sync activity.
+- Immediate player eviction on leave (no 30-second delay).
+- Added GroupType enum (Party/Raid/Battleground) replacing raw string
+  comparisons.
+- 7 bug fixes: hyperlink fallback in abandoned banners, tracked/untracked storm,
+  zone-transition re-announce suppression, BAG_UPDATE regression debounce,
+  /reload group re-sync ordering, remote-only quest zone resolution, remote
+  objective text fallback.
+
+Version 2.0 (early 2026)
+- Major refactor: added AQL integration, group progress tracking, PartyTab,
+  GroupFrame, tooltip enhancement, banner notifications, follow system, minimap
+  button, and multi-language locale support.
+
+Version 1.01 (March 2026)
+- Updated for TBC Anniversary compatibility (Interface 20505).
+- Replaced deprecated APIs.
