@@ -13,7 +13,7 @@
 --      OnOwnObjectiveEvent
 --   7. InitEventHooks: UIErrorsFrame_OnEvent hook for suppression backup
 --   8. Debug test entry point: TestEvent
---   8. Follow notifications + WhisperFriends helpers  (unchanged)
+--   9. Follow notifications + WhisperFriends helpers  (unchanged)
 --
 -- Chat queue: all SendChatMessage calls pass through a FIFO queue with a
 -- 1-second minimum interval to avoid bot-detection throttling. Duplicate
