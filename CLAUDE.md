@@ -179,6 +179,7 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 ## Version History
 
 ### Version 2.5.1 (March 2026 — Improvements branch)
+- Changed `all_complete` banner color from dark purple (`#9900E6`) to hot magenta (`#FF00CC`) for better contrast against WoW's outdoor and dungeon environments. Colorblind color (Okabe-Ito blue `#0072B2`) unchanged.
 - Bug fix: `{rt1}` displayed as literal text in the "Test Chat Link" chat preview. `displayChatPreview` now converts `{rt1}`–`{rt8}` to WoW `|T...|t` texture escape sequences before calling `DEFAULT_CHAT_FRAME:AddMessage`. `SendChatMessage` handles `{rt1}` natively; `AddMessage` does not.
 - Bug fix: Force Resync button did not automatically re-enable after its 30-second cooldown. The button's `func` now schedules an `AceConfigRegistry:NotifyChange("SocialQuest")` call 30 seconds after each press, causing AceConfig to re-evaluate the `disabled` callback and re-enable the button without requiring the user to reopen the config panel.
 

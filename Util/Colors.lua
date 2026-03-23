@@ -23,7 +23,7 @@ SocialQuestColors.event = {
     failed             = { r = 1,     g = 0,     b = 0     },  -- red    (#FF0000)
     objective_progress = { r = 1,     g = 0.6,   b = 0     },  -- orange (#FF9900)
     objective_complete = { r = 0.4,   g = 1,     b = 0.4   },  -- lime   (#66FF66)
-    all_complete       = { r = 0.6,   g = 0.0,   b = 0.9   },  -- purple (#9900E6)
+    all_complete       = { r = 1,     g = 0,     b = 0.8   },  -- magenta (#FF00CC)
     follow             = { r = 1,     g = 0.85,  b = 0.6   },  -- warm tan (#FFD999)
 }
 
