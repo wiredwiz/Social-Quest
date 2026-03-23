@@ -1,6 +1,14 @@
 SocialQuest Changelog
 =====================
 
+Version 2.5.0 (March 2026)
+- Quest language consistency: "Complete" now means all objectives are filled (matching WoW's
+  own quest log label). "Turned in" means the quest was delivered to the NPC. Updated banner
+  text, outbound chat messages, options toggle labels, and debug test button names across all
+  12 locale files. Non-English translations use natural player vocabulary for each language
+  rather than literal translations (e.g. German "abgegeben", French "rendu", Korean "반납",
+  Chinese "交任务").
+
 Version 2.4.0 (March 2026)
 - Follow banner notifications: OnFollowStart and OnFollowStop now display a
   banner in addition to the existing chat message. Uses new follow color key

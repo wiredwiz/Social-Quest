@@ -178,6 +178,9 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.5.0 (March 2026 — Improvements branch)
+- Quest language consistency: corrected player-facing text to match how WoW's UI and players refer to quest states. "Complete" now consistently means all objectives are filled (the yellow checkmark state in the quest log). "Turned in" means the quest was delivered to the NPC. The word "completed" had been used ambiguously for both states and has been reassigned to the objectives-done banner only, where players expect it. Changes affect banner text, outbound chat, options toggle labels, and debug test button names across all 12 locale files. Non-English translations use natural player vocabulary (e.g. German "abgegeben", French "rendu", Korean "반납", Chinese "交任务"). No internal event names or data structures changed.
+
 ### Version 2.4.0 (March 2026 — Improvements branch)
 - Follow banner notifications: `OnFollowStart` and `OnFollowStop` now display a banner in addition to the existing chat message. Uses new `follow` color key (warm tan normal / Okabe-Ito yellow colorblind). Added `TestFollowNotification` debug function and corresponding debug panel button.
 
