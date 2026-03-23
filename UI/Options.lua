@@ -307,6 +307,9 @@ function SocialQuestOptions:Initialize()
                         func     = function()
                             lastResyncTime = GetTime()
                             SocialQuestComm:SendResyncRequest()
+                            SocialQuest:ScheduleTimer(function()
+                                LibStub("AceConfigRegistry-3.0"):NotifyChange("SocialQuest")
+                            end, 30)
                         end,
                     },
                     testBanners = {

@@ -136,7 +136,8 @@ local function displayBanner(msg, eventType)
 end
 
 local function displayChatPreview(msg)
-    DEFAULT_CHAT_FRAME:AddMessage(L["|cFF00CCFFSocialQuest (preview):|r "] .. msg)
+    local preview = msg:gsub("{rt(%d)}", "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_%1:0|t")
+    DEFAULT_CHAT_FRAME:AddMessage(L["|cFF00CCFFSocialQuest (preview):|r "] .. preview)
 end
 
 ------------------------------------------------------------------------
