@@ -2,6 +2,10 @@ SocialQuest Changelog
 =====================
 
 Version 2.5.1 (March 2026)
+- Changed "Everyone has completed" banner color from dark purple (#9900E6) to hot
+  magenta (#FF00CC) for better contrast against WoW's outdoor and dungeon environments.
+  Colorblind color (Okabe-Ito blue #0072B2) unchanged.
+
 - Bug fix: {rt1} displayed as literal text in the "Test Chat Link" chat preview. Added
   gsub in displayChatPreview to convert {rt1}–{rt8} to WoW texture escape sequences
   before passing to DEFAULT_CHAT_FRAME:AddMessage (SendChatMessage handles the
