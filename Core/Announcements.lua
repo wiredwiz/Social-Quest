@@ -80,7 +80,7 @@ local OUTBOUND_QUEST_TEMPLATES = {
     accepted  = L["{rt1} SocialQuest: Quest Accepted: %s"],
     abandoned = L["{rt1} SocialQuest: Quest Abandoned: %s"],
     finished  = L["{rt1} SocialQuest: Quest Complete: %s"],
-    completed = L["{rt1} SocialQuest: Quest Completed: %s"],
+    completed = L["{rt1} SocialQuest: Quest Turned In: %s"],
     failed    = L["{rt1} SocialQuest: Quest Failed: %s"],
 }
 
@@ -99,8 +99,8 @@ end
 local BANNER_QUEST_TEMPLATES = {
     accepted  = L["%s accepted: %s"],
     abandoned = L["%s abandoned: %s"],
-    finished  = L["%s finished objectives: %s"],
-    completed = L["%s completed: %s"],
+    finished  = L["%s completed: %s"],
+    completed = L["%s turned in: %s"],
     failed    = L["%s failed: %s"],
 }
 
@@ -389,7 +389,7 @@ checkAllFinished = function(questID, localHasFinished)
                or (AQL and AQL:GetQuestTitle(questID))
                or ("Quest " .. questID)
 
-    local msg = string.format(L["Everyone has finished: %s"], title)
+    local msg = string.format(L["Everyone has completed: %s"], title)
     SocialQuest:Debug("Banner", "All finished: questID=" .. questID .. " \xe2\x80\x94 banner displayed")
     displayBanner(msg, "all_complete")
 
@@ -581,12 +581,12 @@ local TEST_DEMOS = {
     },
     finished = {
         outbound = "{rt1} SocialQuest: Quest Complete: |cFFFFD200[A Daunting Task]|r",
-        banner   = "TestPlayer finished objectives: [A Daunting Task]",
+        banner   = "TestPlayer completed: [A Daunting Task]",
         colorKey = "finished",
     },
     completed = {
-        outbound = "{rt1} SocialQuest: Quest Completed: |cFFFFD200[A Daunting Task]|r (Step 2)",
-        banner   = "TestPlayer completed: [A Daunting Task] (Step 2)",
+        outbound = "{rt1} SocialQuest: Quest Turned In: |cFFFFD200[A Daunting Task]|r (Step 2)",
+        banner   = "TestPlayer turned in: [A Daunting Task] (Step 2)",
         colorKey = "completed",
     },
     failed = {
@@ -611,7 +611,7 @@ local TEST_DEMOS = {
     },
     all_complete = {
         outbound = nil,   -- no outbound chat for this synthesized event
-        banner   = "Everyone has finished: [A Daunting Task]",
+        banner   = "Everyone has completed: [A Daunting Task]",
         colorKey = "all_complete",
     },
 }
