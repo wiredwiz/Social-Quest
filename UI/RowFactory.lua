@@ -330,7 +330,7 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent)
         fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
         fs:SetWidth(CONTENT_WIDTH - x - 4)
         fs:SetJustifyH("LEFT")
-        fs:SetText(C.white .. name .. C.reset .. " " .. SocialQuestColors.GetUIColor("completed") .. L["Completed"] .. C.reset)
+        fs:SetText(C.white .. name .. C.reset .. " " .. SocialQuestColors.GetUIColor("completed") .. L["Complete"] .. C.reset)
         return y + ROW_H + 2
 
     elseif playerEntry.needsShare then
