@@ -41,10 +41,10 @@ function SocialQuestOptions:Initialize()
             abandoned = toggle(L["Abandoned"],
                 L["Send a chat message when you abandon a quest."],
                 { sectionKey, "announce", "abandoned" }),
-            finished  = toggle(L["Finished"],
+            finished  = toggle(L["Complete"],
                 L["Send a chat message when all your quest objectives are complete (before turning in)."],
                 { sectionKey, "announce", "finished"  }),
-            completed = toggle(L["Completed"],
+            completed = toggle(L["Turned In"],
                 L["Send a chat message when you turn in a quest."],
                 { sectionKey, "announce", "completed" }),
             failed    = toggle(L["Failed"],
@@ -78,10 +78,10 @@ function SocialQuestOptions:Initialize()
                 abandoned = toggle(L["Abandoned"],
                     L["Show a banner when you abandon a quest."],
                     { "general", "displayOwnEvents", "abandoned" }),
-                finished  = toggle(L["Finished"],
+                finished  = toggle(L["Complete"],
                     L["Show a banner when all objectives on a quest are complete (before turning in)."],
                     { "general", "displayOwnEvents", "finished"  }),
-                completed = toggle(L["Completed"],
+                completed = toggle(L["Turned In"],
                     L["Show a banner when you turn in a quest."],
                     { "general", "displayOwnEvents", "completed" }),
                 failed    = toggle(L["Failed"],
@@ -118,10 +118,10 @@ function SocialQuestOptions:Initialize()
                 abandoned = toggle(L["Abandoned"],
                     L["Show a banner on screen when a group member abandons a quest."],
                     { sectionKey, "display", "abandoned" }),
-                finished  = toggle(L["Finished"],
-                    L["Show a banner on screen when a group member finishes all objectives on a quest."],
+                finished  = toggle(L["Complete"],
+                    L["Show a banner on screen when a group member completes all objectives on a quest."],
                     { sectionKey, "display", "finished"  }),
-                completed = toggle(L["Completed"],
+                completed = toggle(L["Turned In"],
                     L["Show a banner on screen when a group member turns in a quest."],
                     { sectionKey, "display", "completed" }),
                 failed    = toggle(L["Failed"],
@@ -307,6 +307,9 @@ function SocialQuestOptions:Initialize()
                         func     = function()
                             lastResyncTime = GetTime()
                             SocialQuestComm:SendResyncRequest()
+                            SocialQuest:ScheduleTimer(function()
+                                LibStub("AceConfigRegistry-3.0"):NotifyChange("SocialQuest")
+                            end, 30)
                         end,
                     },
                     testBanners = {
@@ -329,13 +332,13 @@ function SocialQuestOptions:Initialize()
                             },
                             testFinished = {
                                 type = "execute",
-                                name = L["Test Finished"],
-                                desc = L["Display a demo banner and local chat preview for the 'Quest finished objectives' event."],
+                                name = L["Test Complete"],
+                                desc = L["Display a demo banner and local chat preview for the 'Quest complete' event (all objectives filled, not yet turned in)."],
                                 func = function() SocialQuestAnnounce:TestEvent("finished") end,
                             },
                             testCompleted = {
                                 type = "execute",
-                                name = L["Test Completed"],
+                                name = L["Test Turned In"],
                                 desc = L["Display a demo banner and local chat preview for the 'Quest turned in' event."],
                                 func = function() SocialQuestAnnounce:TestEvent("completed") end,
                             },
@@ -365,8 +368,8 @@ function SocialQuestOptions:Initialize()
                             },
                             testAllComplete = {
                                 type = "execute",
-                                name = L["Test All Finished"],
-                                desc = L["Display a demo banner for the 'Everyone has finished' purple notification. No chat preview (this event never generates outbound chat directly)."],
+                                name = L["Test All Completed"],
+                                desc = L["Display a demo banner for the 'Everyone has completed' purple notification. No chat preview (this event never generates outbound chat directly)."],
                                 func = function() SocialQuestAnnounce:TestEvent("all_complete") end,
                             },
                             testChatLink = {

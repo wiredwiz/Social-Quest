@@ -118,7 +118,7 @@
   |---|---|
   | Objective counts (e.g. `3/8 · 1/1`) | Member has the quest in progress |
   | *Objectives complete* | Member has finished all objectives but not yet turned in |
-  | *Completed* | Member has already turned the quest in this session |
+  | *Turned In* | Member has already turned the quest in this session |
   | *Needs it Shared* | Member lacks the quest and you have it — you may be able to share it |
   | *(shared, no data)* | Member appears to have the quest (via group data) but has no SocialQuest |
 
@@ -157,8 +157,8 @@
   |---|---|
   | Accepted | `Thralldar accepted: The Cipher of Damnation (Step 1)` |
   | Abandoned | `Thralldar abandoned: The Cipher of Damnation` |
-  | Objectives complete | `Thralldar finished objectives: The Cipher of Damnation` |
-  | Turned in | `Thralldar completed: The Cipher of Damnation (Step 1)` |
+  | Objectives complete | `Thralldar completed: The Cipher of Damnation` |
+  | Turned in | `Thralldar turned in: The Cipher of Damnation (Step 1)` |
   | Failed | `Thralldar failed: The Cipher of Damnation` |
   | Objective progress | `Thralldar progressed: The Cipher of Damnation — Fragments Collected (3/8)` |
   | Objective complete | `Thralldar completed objective: The Cipher of Damnation — Fragments Collected (8/8)` |
@@ -167,11 +167,11 @@
   The `(Step N)` annotation appears on accepted, abandoned, completed, and failed events for
   quests with known chain data. It does not appear on the "objectives complete" event.
 
-  ### "Everyone Has Finished" Banner
+  ### "Everyone Has Completed" Banner
 
   When every engaged group member has finished all objectives on the same quest, a special
   purple banner fires:
-  `Everyone has finished: The Cipher of Damnation`
+  `Everyone has completed: The Cipher of Damnation`
 
   Players who have already turned the quest in also count as finished for this check, so the
   banner fires as soon as the last engaged member completes their objectives — even if some

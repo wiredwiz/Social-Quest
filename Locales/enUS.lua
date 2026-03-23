@@ -8,7 +8,7 @@ if not L then return end
 L["{rt1} SocialQuest: Quest Accepted: %s"]   = true
 L["{rt1} SocialQuest: Quest Abandoned: %s"]  = true
 L["{rt1} SocialQuest: Quest Complete: %s"]   = true  -- objectives done, not yet turned in
-L["{rt1} SocialQuest: Quest Completed: %s"]  = true  -- turned in
+L["{rt1} SocialQuest: Quest Turned In: %s"]  = true  -- turned in
 L["{rt1} SocialQuest: Quest Failed: %s"]     = true
 -- Defensive fallback in formatOutboundQuestMsg; unreachable in current call graph.
 -- Include for safety; non-English locales need not prioritize it.
@@ -25,7 +25,7 @@ L["{rt1} SocialQuest: %d/%d %s%s for %s!"] = true
 -- Core/Announcements.lua — inbound banner templates
 L["%s accepted: %s"]                      = true
 L["%s abandoned: %s"]                     = true
-L["%s finished objectives: %s"]           = true
+L["%s turned in: %s"]                     = true
 L["%s completed: %s"]                     = true
 L["%s failed: %s"]                        = true
 L["%s completed objective: %s — %s (%d/%d)"] = true
@@ -39,7 +39,7 @@ L["|cFF00CCFFSocialQuest (preview):|r "]  = true
 
 -- Core/Announcements.lua — all-completed banner
 -- %s = quest title
-L["Everyone has finished: %s"]            = true
+L["Everyone has completed: %s"]           = true
 
 -- Core/Announcements.lua — own-quest banner sender label
 -- Used as the sender name in "You accepted: [Quest]" banners. No parentheses.
@@ -102,8 +102,8 @@ L["Shared"]                                 = true
 -- UI/Options.lua — toggle names (shared across multiple groups)
 L["Accepted"]                               = true
 L["Abandoned"]                              = true
-L["Finished"]                               = true
-L["Completed"]                              = true
+L["Complete"]                               = true
+L["Turned In"]                             = true
 L["Failed"]                                 = true
 L["Objective Progress"]                     = true
 L["Objective Complete"]                     = true
@@ -141,7 +141,7 @@ L["Show a banner when one of your quest objectives reaches its goal (e.g. 8/8)."
 -- UI/Options.lua — display events toggle descriptions
 L["Show a banner on screen when a group member accepts a quest."]                      = true
 L["Show a banner on screen when a group member abandons a quest."]                     = true
-L["Show a banner on screen when a group member finishes all objectives on a quest."]   = true
+L["Show a banner on screen when a group member completes all objectives on a quest."]   = true
 L["Show a banner on screen when a group member turns in a quest."]                     = true
 L["Show a banner on screen when a group member fails a quest."]                        = true
 L["Show a banner on screen when a group member's quest objective count changes (includes partial progress and regression)."] = true
@@ -203,9 +203,9 @@ L["Test Accepted"]                          = true
 L["Display a demo banner and local chat preview for the 'Quest accepted' event. Bypasses all display filters."] = true
 L["Test Abandoned"]                         = true
 L["Display a demo banner and local chat preview for the 'Quest abandoned' event."] = true
-L["Test Finished"]                          = true
-L["Display a demo banner and local chat preview for the 'Quest finished objectives' event."] = true
-L["Test Completed"]                         = true
+L["Test Complete"]                          = true
+L["Display a demo banner and local chat preview for the 'Quest complete' event (all objectives filled, not yet turned in)."] = true
+L["Test Turned In"]                         = true
 L["Display a demo banner and local chat preview for the 'Quest turned in' event."] = true
 L["Test Failed"]                            = true
 L["Display a demo banner and local chat preview for the 'Quest failed' event."]    = true
@@ -215,8 +215,8 @@ L["Test Obj. Complete"]                     = true
 L["Display a demo banner and local chat preview for an objective completion (e.g. 8/8)."] = true
 L["Test Obj. Regression"]                   = true
 L["Display a demo banner and local chat preview for an objective regression (count went backward)."] = true
-L["Test All Finished"]                       = true
-L["Display a demo banner for the 'Everyone has finished' purple notification. No chat preview (this event never generates outbound chat directly)."] = true
+L["Test All Completed"]                      = true
+L["Display a demo banner for the 'Everyone has completed' purple notification. No chat preview (this event never generates outbound chat directly)."] = true
 L["Test Chat Link"]                         = true
 L["Print a local chat preview of a 'Quest turned in' message for quest 337 using a real WoW quest hyperlink. Verify the quest name appears as clickable gold text in the chat frame."] = true
 L["Test Flight Discovery"]                  = true
