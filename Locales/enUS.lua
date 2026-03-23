@@ -204,7 +204,7 @@ L["Display a demo banner and local chat preview for the 'Quest accepted' event. 
 L["Test Abandoned"]                         = true
 L["Display a demo banner and local chat preview for the 'Quest abandoned' event."] = true
 L["Test Complete"]                          = true
-L["Display a demo banner and local chat preview for the 'Quest complete' event."] = true
+L["Display a demo banner and local chat preview for the 'Quest complete' event (all objectives filled, not yet turned in)."] = true
 L["Test Turned In"]                         = true
 L["Display a demo banner and local chat preview for the 'Quest turned in' event."] = true
 L["Test Failed"]                            = true

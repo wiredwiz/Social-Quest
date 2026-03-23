@@ -119,7 +119,7 @@ function SocialQuestOptions:Initialize()
                     L["Show a banner on screen when a group member abandons a quest."],
                     { sectionKey, "display", "abandoned" }),
                 finished  = toggle(L["Complete"],
-                    L["Show a banner on screen when a group member finishes all objectives on a quest."],
+                    L["Show a banner on screen when a group member completes all objectives on a quest."],
                     { sectionKey, "display", "finished"  }),
                 completed = toggle(L["Turned In"],
                     L["Show a banner on screen when a group member turns in a quest."],
