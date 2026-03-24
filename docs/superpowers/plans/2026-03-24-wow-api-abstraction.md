@@ -260,8 +260,16 @@ local function openQuestLogToQuest(questID)
     AQL:ExpandAllQuestLogHeaders()
     local logIndex = AQL:GetQuestLogIndex(questID)
     if logIndex then AQL:SetQuestLogSelection(logIndex) end
+    -- Keep the zone containing the target quest expanded so it remains visible.
+    -- AQL:GetQuest returns the cached QuestInfo whose .zone identifies the header.
+    -- If nil (cache miss), targetZone is nil and all originally-collapsed zones
+    -- are restored — safe degradation.
+    local questInfo = AQL:GetQuest(questID)
+    local targetZone = questInfo and questInfo.zone
     for _, z in ipairs(zones) do
-        if z.isCollapsed then AQL:CollapseQuestLogZoneByName(z.name) end
+        if z.isCollapsed and z.name ~= targetZone then
+            AQL:CollapseQuestLogZoneByName(z.name)
+        end
     end
 end
 ```
