@@ -507,16 +507,16 @@ end
 function SocialQuest:OnQuestAccepted(event, questInfo)
     if SQWowAPI.GetTime() < self.zoneTransitionSuppressUntil then return end
     self:Debug("Quest", "Quest accepted: [" .. (questInfo.title or "?") .. "] (id=" .. questInfo.questID .. ")")
-    SocialQuestAnnounce:OnQuestEvent("accepted", questInfo.questID, questInfo)
-    SocialQuestComm:BroadcastQuestUpdate(questInfo, "accepted")
+    SocialQuestAnnounce:OnQuestEvent(ET.Accepted, questInfo.questID, questInfo)
+    SocialQuestComm:BroadcastQuestUpdate(questInfo, ET.Accepted)
     SocialQuestGroupFrame:RequestRefresh()
 end
 
 function SocialQuest:OnQuestAbandoned(event, questInfo)
     if SQWowAPI.GetTime() < self.zoneTransitionSuppressUntil then return end
     self:Debug("Quest", "Quest abandoned: [" .. (questInfo.title or "?") .. "] (id=" .. questInfo.questID .. ")")
-    SocialQuestAnnounce:OnQuestEvent("abandoned", questInfo.questID, questInfo)
-    SocialQuestComm:BroadcastQuestUpdate(questInfo, "abandoned")
+    SocialQuestAnnounce:OnQuestEvent(ET.Abandoned, questInfo.questID, questInfo)
+    SocialQuestComm:BroadcastQuestUpdate(questInfo, ET.Abandoned)
     SocialQuestGroupFrame:RequestRefresh()
 end
 
@@ -525,24 +525,24 @@ function SocialQuest:OnQuestFinished(event, questInfo)
     self:Debug("Quest", "Quest finished: [" .. (questInfo.title or "?") .. "] (id=" .. questInfo.questID .. ")")
     -- questInfo intentionally NOT passed: "finished" is excluded from chain-step
     -- annotation. See CHAIN_STEP_EVENTS in Core/Announcements.lua.
-    SocialQuestAnnounce:OnQuestEvent("finished", questInfo.questID)
-    SocialQuestComm:BroadcastQuestUpdate(questInfo, "finished")
+    SocialQuestAnnounce:OnQuestEvent(ET.Finished, questInfo.questID)
+    SocialQuestComm:BroadcastQuestUpdate(questInfo, ET.Finished)
     SocialQuestGroupFrame:RequestRefresh()
 end
 
 function SocialQuest:OnQuestCompleted(event, questInfo)
     if SQWowAPI.GetTime() < self.zoneTransitionSuppressUntil then return end
     self:Debug("Quest", "Quest completed: [" .. (questInfo.title or "?") .. "] (id=" .. questInfo.questID .. ")")
-    SocialQuestAnnounce:OnQuestEvent("completed", questInfo.questID, questInfo)
-    SocialQuestComm:BroadcastQuestUpdate(questInfo, "completed")
+    SocialQuestAnnounce:OnQuestEvent(ET.Completed, questInfo.questID, questInfo)
+    SocialQuestComm:BroadcastQuestUpdate(questInfo, ET.Completed)
     SocialQuestGroupFrame:RequestRefresh()
 end
 
 function SocialQuest:OnQuestFailed(event, questInfo)
     if SQWowAPI.GetTime() < self.zoneTransitionSuppressUntil then return end
     self:Debug("Quest", "Quest failed: [" .. (questInfo.title or "?") .. "] (id=" .. questInfo.questID .. ")")
-    SocialQuestAnnounce:OnQuestEvent("failed", questInfo.questID, questInfo)
-    SocialQuestComm:BroadcastQuestUpdate(questInfo, "failed")
+    SocialQuestAnnounce:OnQuestEvent(ET.Failed, questInfo.questID, questInfo)
+    SocialQuestComm:BroadcastQuestUpdate(questInfo, ET.Failed)
     SocialQuestGroupFrame:RequestRefresh()
 end
 
