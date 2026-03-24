@@ -39,6 +39,8 @@ Core\GroupComposition.lua
 Core\GroupData.lua
 Core\Communications.lua
 Core\Announcements.lua
+Core\BridgeRegistry.lua
+Core\QuestieBridge.lua
 
 # UI modules
 UI\TabUtils.lua
