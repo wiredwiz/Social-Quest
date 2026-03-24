@@ -94,6 +94,7 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
                 needsShare     = false,
                 isComplete     = false,
                 objectives     = {},
+                dataProvider   = playerData.dataProvider,
             })
         elseif hasQuest then
             local pquest = playerData.quests[questID]
@@ -108,6 +109,7 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
                 objectives     = SocialQuestTabUtils.BuildRemoteObjectives(pquest, myInfo),
                 step           = pCI.knownStatus == AQL.ChainStatus.Known and pCI.step   or nil,
                 chainLength    = pCI.knownStatus == AQL.ChainStatus.Known and pCI.length or nil,
+                dataProvider   = playerData.dataProvider,
             })
         elseif localHasIt then
             -- Party member lacks the quest; local player has it → "Needs it Shared".
@@ -119,6 +121,7 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
                 isComplete     = false,
                 needsShare     = isEligibleForShare(questID, playerData),
                 objectives     = {},
+                dataProvider   = playerData.dataProvider,
             })
         end
         -- else: member has no stake and local doesn't have it → omit.

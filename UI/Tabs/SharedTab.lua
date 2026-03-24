@@ -154,6 +154,7 @@ function SharedTab:BuildTree()
                                     objectives     = SocialQuestTabUtils.BuildRemoteObjectives(pEng.qdata or {}, localInfo),
                                     step           = pEng.step,
                                     chainLength    = pEng.chainLength,
+                                    dataProvider   = playerData and playerData.dataProvider,
                                 })
                             end
                         end
@@ -221,6 +222,7 @@ function SharedTab:BuildTree()
                         needsShare     = false,
                         isComplete     = eng.qdata and eng.qdata.isComplete or false,
                         objectives     = SocialQuestTabUtils.BuildRemoteObjectives(eng.qdata or {}, localInfo),
+                        dataProvider   = playerData and playerData.dataProvider,
                     })
                 end
             end
