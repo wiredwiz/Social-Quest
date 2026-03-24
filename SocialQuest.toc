@@ -29,6 +29,10 @@ Locales\koKR.lua
 Locales\ruRU.lua
 Locales\jaJP.lua
 
+# Core abstraction layer — after locales, before all game-logic modules
+Core\WowAPI.lua
+Core\WowUI.lua
+
 # Main modules
 SocialQuest.lua
 Core\GroupComposition.lua
