@@ -178,6 +178,9 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.6.0 (March 2026 — Improvements branch)
+- Bug fix: chain header label in the Mine tab showed the title of whichever quest step the player was currently on, rather than a consistent name for the chain. `MineTab:BuildTree` now resolves the chain label by calling `AQL:GetQuestInfo(chainID)` on the chain's root questID (step 1), giving a stable name regardless of which step is active. Falls back to the current quest's title when step-1 data is unavailable. The previous "prefer step 1" override block is removed.
+
 ### Version 2.5.1 (March 2026 — Improvements branch)
 - Changed `all_complete` banner color from dark purple (`#9900E6`) to hot magenta (`#FF00CC`) for better contrast against WoW's outdoor and dungeon environments. Colorblind color (Okabe-Ito blue `#0072B2`) unchanged.
 - Bug fix: `{rt1}` displayed as literal text in the "Test Chat Link" chat preview. `displayChatPreview` now converts `{rt1}`–`{rt8}` to WoW `|T...|t` texture escape sequences before calling `DEFAULT_CHAT_FRAME:AddMessage`. `SendChatMessage` handles `{rt1}` natively; `AddMessage` does not.

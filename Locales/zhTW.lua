@@ -127,6 +127,8 @@ L["Show received events"]                  = "顯示接收到的事件"
 L["Master switch: allow any banner notifications to appear. Individual 'Display Events' groups below control which event types are shown per section."] = "總開關：允許顯示橫幅通知。下方各「顯示事件」組分別控制每個區域顯示的事件類型。"
 L["Colorblind Mode"]                       = "色盲模式"
 L["Use colorblind-friendly colors for all SocialQuest banners and UI text. It is unnecessary to enable this if Color Blind mode is already enabled in the game client."] = "為所有 SocialQuest 橫幅和介面文字使用色盲友好顏色。若遊戲客戶端已啟用色盲模式，則無需開啟此項。"
+L["Show minimap button"]                    = "顯示小地圖按鈕"
+L["Show or hide the SocialQuest minimap button."]                        = "顯示或隱藏 SocialQuest 小地圖按鈕。"
 L["Show banners for your own quest events"] = "為自身任務事件顯示橫幅"
 L["Show a banner on screen for your own quest events."]                  = "為自身任務事件在螢幕上顯示橫幅。"
 

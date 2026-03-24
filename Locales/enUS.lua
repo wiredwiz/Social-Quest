@@ -154,6 +154,8 @@ L["Show received events"]                   = true
 L["Master switch: allow any banner notifications to appear. Individual 'Display Events' groups below control which event types are shown per section."] = true
 L["Colorblind Mode"]                        = true
 L["Use colorblind-friendly colors for all SocialQuest banners and UI text. It is unnecessary to enable this if Color Blind mode is already enabled in the game client."] = true
+L["Show minimap button"]                    = true
+L["Show or hide the SocialQuest minimap button."]                        = true
 L["Show banners for your own quest events"] = true
 L["Show a banner on screen for your own quest events."]                  = true
 

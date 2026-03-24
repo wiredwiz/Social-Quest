@@ -127,6 +127,8 @@ L["Show received events"]                  = "수신된 이벤트 표시"
 L["Master switch: allow any banner notifications to appear. Individual 'Display Events' groups below control which event types are shown per section."] = "마스터 스위치: 배너 알림 표시를 허용합니다. 아래의 각 '이벤트 표시' 그룹은 섹션별로 표시할 이벤트 유형을 제어합니다."
 L["Colorblind Mode"]                       = "색맹 모드"
 L["Use colorblind-friendly colors for all SocialQuest banners and UI text. It is unnecessary to enable this if Color Blind mode is already enabled in the game client."] = "모든 SocialQuest 배너 및 UI 텍스트에 색맹 친화적인 색상을 사용합니다. 게임 클라이언트에서 색맹 모드가 이미 활성화된 경우 활성화할 필요가 없습니다."
+L["Show minimap button"]                    = "미니맵 버튼 표시"
+L["Show or hide the SocialQuest minimap button."]                        = "SocialQuest 미니맵 버튼을 표시하거나 숨깁니다."
 L["Show banners for your own quest events"] = "내 퀘스트 이벤트에 배너 표시"
 L["Show a banner on screen for your own quest events."]                  = "내 퀘스트 이벤트에 대한 배너를 화면에 표시합니다."
 

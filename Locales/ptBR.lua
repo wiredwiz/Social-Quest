@@ -126,6 +126,8 @@ L["Show received events"]                  = "Exibir eventos recebidos"
 L["Master switch: allow any banner notifications to appear. Individual 'Display Events' groups below control which event types are shown per section."] = "Interruptor principal: permite que notificações de banner apareçam. Os grupos 'Exibir eventos' abaixo controlam quais tipos de eventos são mostrados por seção."
 L["Colorblind Mode"]                       = "Modo daltônico"
 L["Use colorblind-friendly colors for all SocialQuest banners and UI text. It is unnecessary to enable this if Color Blind mode is already enabled in the game client."] = "Usa cores amigáveis para daltônicos em todos os banners e textos de interface do SocialQuest. Não é necessário ativar se o modo daltônico já estiver habilitado no cliente do jogo."
+L["Show minimap button"]                    = "Mostrar botão do minimapa"
+L["Show or hide the SocialQuest minimap button."]                        = "Exibe ou oculta o botão do minimapa do SocialQuest."
 L["Show banners for your own quest events"] = "Exibir banners para seus próprios eventos de missão"
 L["Show a banner on screen for your own quest events."]                  = "Exibe um banner na tela para seus próprios eventos de missão."
 

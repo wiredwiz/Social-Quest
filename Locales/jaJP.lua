@@ -127,6 +127,8 @@ L["Show received events"]                  = "受信イベントを表示"
 L["Master switch: allow any banner notifications to appear. Individual 'Display Events' groups below control which event types are shown per section."] = "バナー通知の表示を許可するマスタースイッチ。下の「イベント表示」グループで各セクションのイベントタイプを制御します。"
 L["Colorblind Mode"]                       = "色覚補助モード"
 L["Use colorblind-friendly colors for all SocialQuest banners and UI text. It is unnecessary to enable this if Color Blind mode is already enabled in the game client."] = "SocialQuestのバナーとUIテキストに色覚補助向けの色を使用します。ゲームクライアントで色覚補助モードが有効な場合は不要です。"
+L["Show minimap button"]                    = "ミニマップボタンを表示"
+L["Show or hide the SocialQuest minimap button."]                        = "SocialQuestのミニマップボタンを表示/非表示にします。"
 L["Show banners for your own quest events"] = "自分のクエストイベントにバナーを表示"
 L["Show a banner on screen for your own quest events."]                  = "自分のクエストイベントにバナーを表示します。"
 

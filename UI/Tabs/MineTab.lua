@@ -61,11 +61,11 @@ function MineTab:BuildTree()
             -- Place in chain group.
             local chainID = ci.chainID
             if not zone.chains[chainID] then
-                zone.chains[chainID] = { title = questInfo.title, steps = {} }
-            end
-            -- Prefer the title of step 1 as the chain label (deterministic).
-            if ci.step == 1 then
-                zone.chains[chainID].title = questInfo.title
+                -- chainID is always the questID of step 1; resolve its title for a
+                -- stable chain label regardless of which step the player is currently on.
+                local step1Info = AQL:GetQuestInfo(chainID)
+                local chainTitle = (step1Info and step1Info.title) or questInfo.title
+                zone.chains[chainID] = { title = chainTitle, steps = {} }
             end
             table.insert(zone.chains[chainID].steps, entry)
 

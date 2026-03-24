@@ -126,6 +126,8 @@ L["Show received events"]                  = "Empfangene Ereignisse anzeigen"
 L["Master switch: allow any banner notifications to appear. Individual 'Display Events' groups below control which event types are shown per section."] = "Hauptschalter: Erlaubt das Anzeigen von Banner-Benachrichtigungen. Die einzelnen 'Ereignisse anzeigen'-Gruppen unten steuern, welche Ereignistypen je Abschnitt angezeigt werden."
 L["Colorblind Mode"]                       = "Farbenblind-Modus"
 L["Use colorblind-friendly colors for all SocialQuest banners and UI text. It is unnecessary to enable this if Color Blind mode is already enabled in the game client."] = "Verwendet farbenblindfreundliche Farben für alle SocialQuest-Banner und UI-Texte. Nicht nötig, wenn der Farbenblind-Modus bereits im Spielclient aktiviert ist."
+L["Show minimap button"]                    = "Minimap-Schaltfläche anzeigen"
+L["Show or hide the SocialQuest minimap button."]                        = "Zeigt oder versteckt die SocialQuest-Minimap-Schaltfläche."
 L["Show banners for your own quest events"] = "Banner für eigene Quest-Ereignisse anzeigen"
 L["Show a banner on screen for your own quest events."]                  = "Zeigt einen Banner auf dem Bildschirm für eigene Quest-Ereignisse."
 
