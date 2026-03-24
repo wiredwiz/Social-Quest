@@ -4,7 +4,7 @@
 --
 -- PlayerQuests["Name-Realm"] = {
 --     hasSocialQuest = true,
---     lastSync       = <GetTime()>,
+--     lastSync       = <SQWowAPI.GetTime()>,
 --     quests = {
 --         [questID] = {
 --             questID=N, isComplete=bool, isFailed=bool,
@@ -18,6 +18,8 @@
 SocialQuestGroupData = {}
 
 SocialQuestGroupData.PlayerQuests = {}
+
+local SQWowAPI = SocialQuestWowAPI
 
 -- Called by GroupComposition when a new player appears in the group.
 -- Creates a hasSocialQuest=false stub so receive handlers can accept their
@@ -67,7 +69,7 @@ function SocialQuestGroupData:OnInitReceived(sender, payload)
     local existing = self.PlayerQuests[sender]
     self.PlayerQuests[sender] = {
         hasSocialQuest  = true,
-        lastSync        = GetTime(),
+        lastSync        = SQWowAPI.GetTime(),
         quests          = quests,
         completedQuests = (existing and existing.completedQuests) or {},
     }
@@ -88,11 +90,11 @@ function SocialQuestGroupData:OnUpdateReceived(sender, payload)
 
     local entry = self.PlayerQuests[sender]
     if not entry then
-        entry = { hasSocialQuest = true, lastSync = GetTime(), quests = {}, completedQuests = {} }
+        entry = { hasSocialQuest = true, lastSync = SQWowAPI.GetTime(), quests = {}, completedQuests = {} }
         self.PlayerQuests[sender] = entry
     end
     entry.hasSocialQuest = true
-    entry.lastSync       = GetTime()
+    entry.lastSync       = SQWowAPI.GetTime()
 
     local eventType = payload.eventType
     local questID   = payload.questID
@@ -172,7 +174,7 @@ function SocialQuestGroupData:OnUnitQuestLogChanged(unit)
     -- Only handle party/raid units, not "player".
     if not unit or unit == "player" then return end
 
-    local name, realm = UnitName(unit)
+    local name, realm = SQWowAPI.UnitName(unit)
     if not name then return end
     local fullName = realm and realm ~= "" and (name.."-"..realm) or name
 
@@ -181,7 +183,7 @@ function SocialQuestGroupData:OnUnitQuestLogChanged(unit)
 
     self.PlayerQuests[fullName] = {
         hasSocialQuest  = false,
-        lastSync        = GetTime(),
+        lastSync        = SQWowAPI.GetTime(),
         quests          = {},
         completedQuests = {},
     }

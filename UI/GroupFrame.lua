@@ -11,6 +11,8 @@ local urlPopup       = nil
 local lastRenderedTab     = nil -- set to activeID after each render; nil on first run / reload
 local scrollRestoreSeq    = 0   -- incremented each Refresh(); deferred scroll callback checks for staleness
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
+local SQWowAPI = SocialQuestWowAPI
+local SQWowUI  = SocialQuestWowUI
 
 -- Ordered tab providers. The id must match the collapsedZones subtable key.
 -- MineTab/PartyTab/SharedTab are loaded before GroupFrame per TOC order, so
@@ -140,7 +142,7 @@ local function createFrame()
 
     for _, p in ipairs(providers) do
         p.tab = makeTab(p.id, p.module:GetLabel(), p.offsetX)
-        PanelTemplates_TabResize(p.tab, 0, 120, 120)
+        SQWowUI.TabResize(p.tab, 0, 120, 120)
         p.tab:SetFrameStrata("HIGH")
         p.tab:SetScript("OnMouseDown", function() f:Raise() end)
     end
@@ -213,7 +215,7 @@ function SocialQuestGroupFrame:RequestRefresh()
     if not frame or not frame:IsShown() then return end
     if refreshPending then return end
     refreshPending = true
-    C_Timer.After(0, function()
+    SQWowAPI.TimerAfter(0, function()
         refreshPending = false
         SocialQuestGroupFrame:Refresh()
     end)
@@ -258,14 +260,14 @@ function SocialQuestGroupFrame:Refresh()
     lastRenderedTab = activeID
 
     -- Highlight active tab; deselect others.
-    -- PanelTemplates_SelectTab disables the button (standard WoW: can't re-click active tab).
-    -- PanelTemplates_DeselectTab re-enables inactive tabs.
+    -- SQWowUI.SelectTab disables the button (standard WoW: can't re-click active tab).
+    -- SQWowUI.DeselectTab re-enables inactive tabs.
     for _, p in ipairs(providers) do
         if p.tab then
             if p.id == activeID then
-                PanelTemplates_SelectTab(p.tab)
+                SQWowUI.SelectTab(p.tab)
             else
-                PanelTemplates_DeselectTab(p.tab)
+                SQWowUI.DeselectTab(p.tab)
             end
         end
     end
@@ -308,7 +310,7 @@ function SocialQuestGroupFrame:Refresh()
     scrollRestoreSeq = scrollRestoreSeq + 1
     local seq = scrollRestoreSeq
     local scrollVal = scrollToRestore
-    C_Timer.After(0, function()
+    SQWowAPI.TimerAfter(0, function()
         if frame and frame:IsShown() and scrollRestoreSeq == seq then
             local scrollBar = _G["SocialQuestGroupScrollFrameScrollBar"]
             if scrollBar then

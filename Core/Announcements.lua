@@ -28,6 +28,8 @@ local THROTTLE_DELAY = 1.0  -- seconds between chat sends
 -- Ticker drives the throttle queue. Created once and kept running.
 local ticker = nil
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
+local SQWowAPI = SocialQuestWowAPI
+local SQWowUI  = SocialQuestWowUI
 
 -- Set of event types that carry chain-step annotation when chainInfo is known.
 -- "finished" is intentionally excluded (objectives done, not yet turned in).
@@ -52,10 +54,10 @@ end
 local function startThrottleTicker()
     if ticker then return end
     ticker = SocialQuest:ScheduleRepeatingTimer(function()
-        local now = GetTime()
+        local now = SQWowAPI.GetTime()
         if #throttleQueue > 0 and (now - lastSendTime) >= THROTTLE_DELAY then
             local item = table.remove(throttleQueue, 1)
-            SendChatMessage(item.text, item.channel, nil, item.target)
+            SQWowAPI.SendChatMessage(item.text, item.channel, nil, item.target)
             lastSendTime = now
         end
     end, 0.25)
@@ -128,16 +130,15 @@ end
 ------------------------------------------------------------------------
 
 local function displayBanner(msg, eventType)
-    if not RaidWarningFrame then return end
     local color = SocialQuestColors.GetEventColor(eventType)
     local colorInfo = color and { r = color.r, g = color.g, b = color.b }
                    or { r = 1, g = 1, b = 0 }
-    RaidNotice_AddMessage(RaidWarningFrame, msg, colorInfo)
+    SQWowUI.AddRaidNotice(msg, colorInfo)
 end
 
 local function displayChatPreview(msg)
     local preview = msg:gsub("{rt(%d)}", "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_%1:0|t")
-    DEFAULT_CHAT_FRAME:AddMessage(L["|cFF00CCFFSocialQuest (preview):|r "] .. preview)
+    SQWowUI.AddChatMessage(L["|cFF00CCFFSocialQuest (preview):|r "] .. preview)
 end
 
 ------------------------------------------------------------------------
@@ -173,9 +174,9 @@ end
 -- "whisperFriends" is never returned: whisper-to-friends is outbound only;
 -- inbound addon-comm messages always arrive via PARTY, RAID, or BATTLEGROUND.
 local function getSenderSection()
-    if IsInRaid() then
+    if SQWowAPI.IsInRaid() then
         return "raid"
-    elseif IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
+    elseif SQWowAPI.IsInGroup(SQWowAPI.PARTY_CATEGORY_INSTANCE) then
         return "battleground"
     else
         return "party"
@@ -208,7 +209,7 @@ function SocialQuestAnnounce:OnQuestEvent(eventType, questID, questInfo)
         SocialQuest:Debug("Banner", "Chat suppressed: Questie will announce " .. eventType)
     else
         -- Party
-        if IsInGroup(LE_PARTY_CATEGORY_HOME) and not IsInRaid() then
+        if SQWowAPI.IsInGroup(SQWowAPI.PARTY_CATEGORY_HOME) and not SQWowAPI.IsInRaid() then
             if db.party.transmit and db.party.announce[eventType] then
                 SocialQuest:Debug("Banner", "Chat [PARTY]: " .. string.sub(msg, 1, 60))
                 enqueueChat(msg, "PARTY")
@@ -216,7 +217,7 @@ function SocialQuestAnnounce:OnQuestEvent(eventType, questID, questInfo)
         end
 
         -- Raid
-        if IsInRaid() then
+        if SQWowAPI.IsInRaid() then
             if db.raid.transmit and db.raid.announce[eventType] then
                 SocialQuest:Debug("Banner", "Chat [RAID]: " .. string.sub(msg, 1, 60))
                 enqueueChat(msg, "RAID")
@@ -224,7 +225,7 @@ function SocialQuestAnnounce:OnQuestEvent(eventType, questID, questInfo)
         end
 
         -- Guild
-        if IsInGuild() then
+        if SQWowAPI.IsInGuild() then
             if db.guild.transmit and db.guild.announce[eventType] then
                 SocialQuest:Debug("Banner", "Chat [GUILD]: " .. string.sub(msg, 1, 60))
                 enqueueChat(msg, "GUILD")
@@ -232,7 +233,7 @@ function SocialQuestAnnounce:OnQuestEvent(eventType, questID, questInfo)
         end
 
         -- Battleground
-        if IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
+        if SQWowAPI.IsInGroup(SQWowAPI.PARTY_CATEGORY_INSTANCE) then
             if db.battleground.transmit and db.battleground.announce[eventType] then
                 SocialQuest:Debug("Banner", "Chat [BATTLEGROUND]: " .. string.sub(msg, 1, 60))
                 enqueueChat(msg, "BATTLEGROUND")
@@ -273,7 +274,7 @@ function SocialQuestAnnounce:OnObjectiveEvent(eventType, questInfo, objective, i
             isRegression)
 
         -- Party
-        if IsInGroup(LE_PARTY_CATEGORY_HOME) and not IsInRaid() then
+        if SQWowAPI.IsInGroup(SQWowAPI.PARTY_CATEGORY_HOME) and not SQWowAPI.IsInRaid() then
             if db.party.transmit and db.party.announce[eventType] then
                 SocialQuest:Debug("Banner", "Chat [PARTY]: " .. string.sub(msg, 1, 60))
                 enqueueChat(msg, "PARTY")
@@ -281,7 +282,7 @@ function SocialQuestAnnounce:OnObjectiveEvent(eventType, questInfo, objective, i
         end
 
         -- Battleground
-        if IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
+        if SQWowAPI.IsInGroup(SQWowAPI.PARTY_CATEGORY_INSTANCE) then
             if db.battleground.transmit and db.battleground.announce[eventType] then
                 SocialQuest:Debug("Banner", "Chat [BATTLEGROUND]: " .. string.sub(msg, 1, 60))
                 enqueueChat(msg, "BATTLEGROUND")
@@ -434,12 +435,12 @@ function SocialQuestAnnounce:OnRemoteQuestEvent(sender, eventType, questID, cach
 
     -- Friends-only filter.
     if section == "raid" and db.raid.friendsOnly
-        and not C_FriendList.IsFriend(sender) then
+        and not SQWowAPI.IsFriend(sender) then
         SocialQuest:Debug("Banner", "Banner suppressed: friends-only filter")
         return
     end
     if section == "battleground" and db.battleground.friendsOnly
-        and not C_FriendList.IsFriend(sender) then
+        and not SQWowAPI.IsFriend(sender) then
         SocialQuest:Debug("Banner", "Banner suppressed: friends-only filter")
         return
     end
@@ -486,12 +487,12 @@ function SocialQuestAnnounce:OnRemoteObjectiveEvent(sender, questID, objIndex, n
 
     -- Friends-only filter.
     if section == "raid" and db.raid.friendsOnly
-        and not C_FriendList.IsFriend(sender) then
+        and not SQWowAPI.IsFriend(sender) then
         SocialQuest:Debug("Banner", "Banner suppressed: friends-only filter")
         return
     end
     if section == "battleground" and db.battleground.friendsOnly
-        and not C_FriendList.IsFriend(sender) then
+        and not SQWowAPI.IsFriend(sender) then
         SocialQuest:Debug("Banner", "Banner suppressed: friends-only filter")
         return
     end
@@ -666,7 +667,7 @@ end
 
 function SocialQuestAnnounce:TestFlightDiscovery()
     local nodeName = SocialQuest:GetStartingNode() or "Stormwind"
-    local msg = string.format(L["%s unlocked flight path: %s"], UnitName("player") or "You", nodeName)
+    local msg = string.format(L["%s unlocked flight path: %s"], SQWowAPI.UnitName("player") or "You", nodeName)
     displayBanner(msg, "accepted")
 end
 
@@ -680,9 +681,9 @@ end
 ------------------------------------------------------------------------
 
 function SocialQuestAnnounce:WhisperFriends(msg, groupOnly)
-    local numFriends = C_FriendList.GetNumFriends()
+    local numFriends = SQWowAPI.GetNumFriends()
     for i = 1, numFriends do
-        local info = C_FriendList.GetFriendInfoByIndex(i)
+        local info = SQWowAPI.GetFriendInfoByIndex(i)
         if info and info.connected then
             local friendName = info.name
             if groupOnly then
@@ -699,10 +700,10 @@ function SocialQuestAnnounce:WhisperFriends(msg, groupOnly)
 end
 
 function SocialQuestAnnounce:IsFriendInGroup(name)
-    local numMembers = GetNumGroupMembers()
+    local numMembers = SQWowAPI.GetNumGroupMembers()
     for i = 1, numMembers do
-        local unit = IsInRaid() and ("raid"..i) or ("party"..i)
-        local unitName = UnitName(unit)
+        local unit = SQWowAPI.IsInRaid() and ("raid"..i) or ("party"..i)
+        local unitName = SQWowAPI.UnitName(unit)
         if unitName == name then return true end
     end
     return false

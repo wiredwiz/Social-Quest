@@ -2,6 +2,7 @@
 -- AceConfig options table. Accessible via /sq config or Interface Options.
 
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
+local SQWowAPI = SocialQuestWowAPI
 local lastResyncTime = 0
 
 SocialQuestOptions = {}
@@ -324,9 +325,9 @@ function SocialQuestOptions:Initialize()
                         desc     = L["Request a fresh quest snapshot from all current group members. Disabled for 30 seconds after each use."],
                         order    = 2,
                         hidden   = function() return not db.debug.enabled end,
-                        disabled = function() return GetTime() - lastResyncTime < 30 end,
+                        disabled = function() return SQWowAPI.GetTime() - lastResyncTime < 30 end,
                         func     = function()
-                            lastResyncTime = GetTime()
+                            lastResyncTime = SQWowAPI.GetTime()
                             SocialQuestComm:SendResyncRequest()
                             SocialQuest:ScheduleTimer(function()
                                 LibStub("AceConfigRegistry-3.0"):NotifyChange("SocialQuest")

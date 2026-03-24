@@ -21,6 +21,8 @@ local GroupType = {
     Battleground = "battleground",
 }
 
+local SQWowAPI = SocialQuestWowAPI
+
 SocialQuestGroupComposition = {}
 
 -- Expose for Communications.lua, which compares groupType arguments
@@ -32,11 +34,11 @@ SocialQuestGroupComposition.GroupType = GroupType
 ------------------------------------------------------------------------
 
 local function currentGroupType()
-    if IsInRaid() then
+    if SQWowAPI.IsInRaid() then
         return GroupType.Raid
-    elseif IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
+    elseif SQWowAPI.IsInGroup(SQWowAPI.PARTY_CATEGORY_INSTANCE) then
         return GroupType.Battleground
-    elseif IsInGroup(LE_PARTY_CATEGORY_HOME) then
+    elseif SQWowAPI.IsInGroup(SQWowAPI.PARTY_CATEGORY_HOME) then
         return GroupType.Party
     end
     return nil
@@ -72,7 +74,7 @@ function SocialQuestGroupComposition:OnGroupRosterUpdate()
     local groupType = currentGroupType()
     -- UnitName("player") returns name, realm where realm is nil for same-realm.
     -- normalize() handles nil realm correctly.
-    local selfName  = normalize(UnitName("player"))
+    local selfName  = normalize(SQWowAPI.UnitName("player"))
 
     -- ── Self left all groups ──────────────────────────────────────────────────
     if groupType == nil then
@@ -92,9 +94,9 @@ function SocialQuestGroupComposition:OnGroupRosterUpdate()
     local newSubgroups = {}   -- [fullName] = subgroupNumber (raid/BG only)
 
     if groupType == GroupType.Raid or groupType == GroupType.Battleground then
-        local count = GetNumGroupMembers()
+        local count = SQWowAPI.GetNumGroupMembers()
         for i = 1, count do
-            local name, _, subgroup = GetRaidRosterInfo(i)
+            local name, _, subgroup = SQWowAPI.GetRaidRosterInfo(i)
             if name then
                 local fullName = normalize(name)  -- one-arg: name may already have "-Realm"
                 newMembers[fullName]   = true
@@ -104,9 +106,9 @@ function SocialQuestGroupComposition:OnGroupRosterUpdate()
     else
         -- Party: self is not a "partyX" unit; add explicitly.
         newMembers[selfName] = true
-        local count = GetNumGroupMembers()
+        local count = SQWowAPI.GetNumGroupMembers()
         for i = 1, count - 1 do  -- count includes self; partyX units are non-self members
-            local name, realm = UnitName("party" .. i)
+            local name, realm = SQWowAPI.UnitName("party" .. i)
             if name then
                 local fullName = normalize(name, realm)
                 newMembers[fullName] = true
