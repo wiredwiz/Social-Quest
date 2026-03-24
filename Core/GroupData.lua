@@ -247,3 +247,31 @@ function SocialQuestGroupData:OnBridgeQuestUpdate(provider, fullName, questEntry
 
     SocialQuestGroupFrame:RequestRefresh()
 end
+
+-- Called by bridge modules when a quest is removed from a player's log.
+-- Reason (turn-in vs abandon) is unverifiable from the bridge; no Announce is fired.
+-- completedQuests[questID] is NOT set — reason unknown.
+function SocialQuestGroupData:OnBridgeQuestRemove(provider, fullName, questID)
+    local pdata = self.PlayerQuests[fullName]
+    if not pdata or pdata.hasSocialQuest then return end
+    if pdata.quests[questID] then
+        pdata.quests[questID] = nil
+        SocialQuestGroupFrame:RequestRefresh()
+    end
+end
+
+-- Called by BridgeRegistry before Enable() to populate initial quest state.
+-- No banners are fired. Only hydrates players who already have a stub in
+-- PlayerQuests (current group members) — skips non-group players in the snapshot.
+function SocialQuestGroupData:OnBridgeHydrate(provider, snapshot)
+    for fullName, quests in pairs(snapshot) do
+        local pdata = self.PlayerQuests[fullName]
+        if pdata and not pdata.hasSocialQuest then
+            pdata.dataProvider = provider
+            pdata.lastSync     = SQWowAPI.GetTime()
+            pdata.quests       = quests
+            -- completedQuests preserved if accumulated before hydration
+        end
+    end
+    SocialQuestGroupFrame:RequestRefresh()
+end
