@@ -18,30 +18,12 @@ local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 -- Falls back gracefully when chain info is unavailable (no Questie).
 -- NOTE: AQL is a hard dependency — the addon disables itself if AQL is missing,
 -- so the `if not AQL then return false end` guard is a safety net only.
--- NOTE: GetQuestLogSelection() requires in-game verification at Interface 20505.
--- If absent or returning nil, prevSel is nil; the restoration guard silently
--- skips it, leaving the log on the last-selected entry — acceptable trade-off.
 local function isEligibleForShare(questID, playerData)
     local AQL = SocialQuest.AQL
     if not AQL then return false end
 
-    -- Check 1: quest is shareable via WoW API.
-    -- Guard against stale logIndex: confirm the entry actually maps to questID
-    -- before calling GetQuestLogPushable (the log may have shifted since last AQL update).
-    local qi = AQL:GetQuest(questID)
-    if not qi or not qi.logIndex then return false end
-    local prevSel = GetQuestLogSelection()
-    SelectQuestLogEntry(qi.logIndex)
-    local _, _, _, _, _, _, _, confirmID = GetQuestLogTitle(qi.logIndex)
-    if confirmID ~= questID then
-        if prevSel and prevSel > 0 then SelectQuestLogEntry(prevSel) end
-        return false
-    end
-    local shareable = GetQuestLogPushable() and true or false
-    if prevSel and prevSel > 0 then
-        SelectQuestLogEntry(prevSel)
-    end
-    if not shareable then return false end
+    -- Check 1: quest is shareable via AQL.
+    if not AQL:IsQuestIdShareable(questID) then return false end
 
     -- Check 2: player has not already completed this quest.
     if playerData.completedQuests and playerData.completedQuests[questID] then
