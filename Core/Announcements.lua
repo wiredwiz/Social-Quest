@@ -30,6 +30,7 @@ local ticker = nil
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 local SQWowAPI = SocialQuestWowAPI
 local SQWowUI  = SocialQuestWowUI
+local ET = SocialQuest.EventTypes
 
 -- Set of event types that carry chain-step annotation when chainInfo is known.
 -- "finished" is intentionally excluded (objectives done, not yet turned in).
@@ -252,7 +253,7 @@ function SocialQuestAnnounce:OnQuestEvent(eventType, questID, questInfo)
 
     -- Party-wide objectives check: fires "Everyone has finished" when all engaged
     -- group members have completed this quest's objectives.
-    if eventType == "finished" then
+    if eventType == ET.Finished then
         checkAllFinished(questID, true)
     end
 end
@@ -412,7 +413,7 @@ function SocialQuestAnnounce:OnRemoteQuestEvent(sender, eventType, questID, cach
 
     -- Party-wide objectives check: fires regardless of displayReceived, because
     -- "Everyone has finished" is a synthesized local event, not a raw inbound banner.
-    if eventType == "finished" then
+    if eventType == ET.Finished then
         checkAllFinished(questID, false)
     end
 
@@ -479,7 +480,7 @@ function SocialQuestAnnounce:OnRemoteObjectiveEvent(sender, questID, objIndex, n
         return
     end
 
-    local eventType = isComplete and "objective_complete" or "objective_progress"
+    local eventType = isComplete and ET.ObjectiveComplete or ET.ObjectiveProgress
     if not sectionDb.display[eventType] then
         SocialQuest:Debug("Banner", "Banner suppressed: display." .. eventType .. " off")
         return
