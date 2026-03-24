@@ -1,6 +1,16 @@
 SocialQuest Changelog
 =====================
 
+Version 2.7.0 (March 2026)
+- Added Core/WowAPI.lua and Core/WowUI.lua abstraction modules. All direct WoW
+  game-state and data API calls (GetTime, IsInRaid, IsInGroup, IsInGuild, UnitName,
+  UnitFullName, UnitRace, UnitFactionGroup, GetNumGroupMembers, GetRaidRosterInfo,
+  SendChatMessage, C_FriendList.*, C_Timer.After, GetTaxiNodeInfo) now route through
+  SocialQuestWowAPI. Volatile UI primitives (RaidNotice_AddMessage, PanelTemplates_*,
+  DEFAULT_CHAT_FRAME:AddMessage) route through SocialQuestWowUI. Quest and quest-log
+  API calls replaced with AQL public API equivalents. Prepares SocialQuest to support
+  multiple WoW interface versions without scattered direct API usage.
+
 Version 2.6.0 (March 2026)
 - Bug fix: chain header label in the Mine tab showed the title of whichever quest step
   the player was currently on, rather than a consistent name for the chain. Because WoW
