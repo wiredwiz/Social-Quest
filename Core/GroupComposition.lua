@@ -84,6 +84,7 @@ function SocialQuestGroupComposition:OnGroupRosterUpdate()
             self.lastGroupType   = nil
             SocialQuestComm:OnSelfLeftGroup()
             SocialQuestGroupData:OnSelfLeftGroup()
+            SocialQuestBridgeRegistry:DisableAll()
             SocialQuest:Debug("Group", "Self left all groups")
         end
         return
@@ -122,9 +123,11 @@ function SocialQuestGroupComposition:OnGroupRosterUpdate()
     if not self.memberSet[selfName] then
         SocialQuest:Debug("Group", "Self joined group: " .. groupType)
         SocialQuestComm:OnSelfJoinedGroup(groupType)
+        SocialQuestBridgeRegistry:EnableAll()
     elseif groupType ~= self.lastGroupType then
         SocialQuest:Debug("Group", "Group type changed: " .. (self.lastGroupType or "nil") .. " → " .. groupType)
         SocialQuestComm:OnSelfJoinedGroup(groupType)
+        SocialQuestBridgeRegistry:EnableAll()
     end
 
     -- ── Detect member joins ───────────────────────────────────────────────────
