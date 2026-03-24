@@ -326,11 +326,11 @@ checkAllFinished = function(questID, localHasFinished)
         return
     end
 
-    -- Every group member must have SocialQuest; suppress entirely if any lacks it.
+    -- Every group member must have a data source (SQ or bridge); suppress if any has neither.
     -- Without full visibility, we cannot reliably confirm that everyone has finished.
     for _, entry in pairs(PlayerQuests) do
-        if not entry.hasSocialQuest then
-            SocialQuest:Debug("Banner", "All finished suppressed: non-SQ member present")
+        if not entry.hasSocialQuest and not entry.dataProvider then
+            SocialQuest:Debug("Banner", "All finished suppressed: member with no data present")
             return
         end
     end
