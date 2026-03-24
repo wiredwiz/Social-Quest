@@ -14,7 +14,7 @@
 
 ### In scope
 - All direct WoW game-state and data API calls across SocialQuest (unit info, group membership, friend list, taxi, communications, timers)
-- All volatile WoW UI-layer primitive calls (`RaidNotice_AddMessage`, `PanelTemplates_TabResize`, `DEFAULT_CHAT_FRAME:AddMessage`)
+- All volatile WoW UI-layer primitive calls (`RaidNotice_AddMessage`, `PanelTemplates_TabResize`, `PanelTemplates_SelectTab`, `PanelTemplates_DeselectTab`, `DEFAULT_CHAT_FRAME:AddMessage`)
 - All quest and quest-log WoW API calls — replaced with AQL public API calls (not wrapped)
 - WoW enum constants (`LE_PARTY_CATEGORY_HOME`, `LE_PARTY_CATEGORY_INSTANCE`) exposed as module properties
 
@@ -27,7 +27,7 @@
 
 ## File Structure
 
-Two new files added to `Core/`, loaded before all existing Core and UI modules:
+Two new files added to `Core/`, loaded after locale files and before all game-logic modules:
 
 | File | Global | Responsibility |
 |---|---|---|
@@ -36,10 +36,17 @@ Two new files added to `Core/`, loaded before all existing Core and UI modules:
 
 ### TOC load order
 
-Both files load immediately after the locales and before `SocialQuest.lua`:
+Both files load after `Colors.lua` and the locale files, immediately before `SocialQuest.lua`:
 
 ```
-# Core abstraction layer  (NEW — before all other modules)
+# Color definitions
+Util\Colors.lua
+
+# Localization
+Locales\enUS.lua
+...
+
+# Core abstraction layer  (NEW — after locales, before game-logic modules)
 Core\WowAPI.lua
 Core\WowUI.lua
 
@@ -88,6 +95,8 @@ Plain global table. No metatables, no OOP, no lazy initialization. All stubs are
 | `SocialQuestWowAPI.TimerAfter(delay, fn)` | `C_Timer.After(delay, fn)` |
 | `SocialQuestWowAPI.GetTaxiNodeInfo(index)` | `GetTaxiNodeInfo(index)` |
 
+**Note on `IsInGroup`:** The WoW API accepts `IsInGroup()` with no argument (checks home group) or `IsInGroup(category)` with a category constant. The single `SocialQuestWowAPI.IsInGroup(category)` wrapper handles both forms — when called without a category argument (`SQWowAPI.IsInGroup()`), Lua passes `nil`, and the WoW API interprets that as the no-argument form.
+
 ### Constants (set at load time)
 
 ```lua
@@ -113,9 +122,11 @@ Same plain table pattern as `WowAPI.lua`. Only the volatile WoW UI primitives ar
 |---|---|---|
 | `SocialQuestWowUI.AddRaidNotice(msg, colorInfo)` | `RaidNotice_AddMessage(RaidWarningFrame, msg, colorInfo)` | Signature and `RaidWarningFrame` reference differ across versions |
 | `SocialQuestWowUI.TabResize(tab, padding, minWidth)` | `PanelTemplates_TabResize(tab, padding, minWidth)` | Reworked in Dragonflight UI redesign |
+| `SocialQuestWowUI.SelectTab(tab)` | `PanelTemplates_SelectTab(tab)` | Same PanelTemplates family as TabResize; reworked in Dragonflight |
+| `SocialQuestWowUI.DeselectTab(tab)` | `PanelTemplates_DeselectTab(tab)` | Same PanelTemplates family as TabResize; reworked in Dragonflight |
 | `SocialQuestWowUI.AddChatMessage(msg)` | `DEFAULT_CHAT_FRAME:AddMessage(msg)` | WoW-specific object method call; included for completeness |
 
-`AddRaidNotice` also guards against `RaidWarningFrame` being nil (possible before the UI is fully loaded):
+`AddRaidNotice` guards against `RaidWarningFrame` being nil (possible before the UI is fully loaded):
 
 ```lua
 function SocialQuestWowUI.AddRaidNotice(msg, colorInfo)
@@ -156,7 +167,7 @@ end
 
 ### Case 2: `isEligibleForShare` in `UI/Tabs/PartyTab.lua`
 
-The current code manually saves selection, selects the entry by logIndex, calls `GetQuestLogPushable()`, and restores — exactly what `AQL:IsQuestIdShareable(questID)` does internally. Check 1 collapses to:
+The current code manually saves selection, selects the entry by logIndex, calls `GetQuestLogPushable()`, and restores — exactly what `AQL:IsQuestIdShareable(questID)` does internally. `AQL:IsQuestIdShareable` resolves the questID to a logIndex via `AQL:GetQuestLogIndex` before selecting, which also protects against stale logIndex data (the same guard the original code performs manually). Check 1 collapses to:
 
 ```lua
 if not AQL:IsQuestIdShareable(questID) then return false end
@@ -174,37 +185,40 @@ local color = AQL:GetQuestDifficultyColor(questLevel)
 
 ### All other quest/quest-log replacements (one-for-one)
 
-| Current call | Replaced with |
-|---|---|
-| `GetQuestLogSelection()` | `AQL:GetQuestLogSelection()` |
-| `SelectQuestLogEntry(i)` | `AQL:SelectQuestLogEntry(i)` |
-| `QuestLog_SetSelection(i)` + `QuestLog_Update()` | `AQL:SetQuestLogSelection(i)` |
-| `ShowUIPanel(QuestLogFrame)` | `AQL:ShowQuestLog()` |
-| `HideUIPanel(QuestLogFrame)` | `AQL:HideQuestLog()` |
-| `ExpandQuestHeader(i)` | `AQL:ExpandQuestLogHeader(i)` |
-| `CollapseQuestHeader(i)` | `AQL:CollapseQuestLogHeader(i)` |
-| `GetQuestLogPushable()` | `AQL:IsQuestIdShareable(questID)` |
-| `QuestLogFrame:IsShown()` | `AQL:IsQuestLogShown()` |
-| `GetQuestLogTitle(i)` (for questID) | `AQL:GetSelectedQuestId()` or `AQL:GetQuestLogEntries()` |
-| `GetNumQuestLogEntries()` + `GetQuestLogTitle(i)` loop | `AQL:GetQuestLogEntries()` |
+| Current call | Replaced with | Location |
+|---|---|---|
+| `GetQuestLogSelection()` | `AQL:GetQuestLogSelection()` | `PartyTab.lua` (outside of `isEligibleForShare`) |
+| `SelectQuestLogEntry(i)` | `AQL:SelectQuestLogEntry(i)` | `PartyTab.lua` |
+| `QuestLog_SetSelection(i)` + `QuestLog_Update()` | `AQL:SetQuestLogSelection(i)` | `RowFactory.lua` |
+| `ShowUIPanel(QuestLogFrame)` | `AQL:ShowQuestLog()` | `RowFactory.lua` |
+| `HideUIPanel(QuestLogFrame)` | `AQL:HideQuestLog()` | `RowFactory.lua` |
+| `ExpandQuestHeader(i)` | `AQL:ExpandQuestLogHeader(i)` | `RowFactory.lua` |
+| `CollapseQuestHeader(i)` | `AQL:CollapseQuestLogHeader(i)` | `RowFactory.lua` |
+| `GetQuestLogPushable()` | `AQL:IsQuestIdShareable(questID)` | `PartyTab.lua` |
+| `QuestLogFrame:IsShown()` | `AQL:IsQuestLogShown()` | `RowFactory.lua` |
+| `GetQuestLogTitle(i)` (for questID) | `AQL:GetSelectedQuestId()` or `AQL:GetQuestLogEntries()` | `RowFactory.lua`, `PartyTab.lua` |
+| `GetNumQuestLogEntries()` + `GetQuestLogTitle(i)` loop | `AQL:GetQuestLogEntries()` | `RowFactory.lua` |
+
+**Note:** All of the `RowFactory.lua` replacements above are part of the `openQuestLogToQuest` function, which is replaced wholesale by the rewrite in Case 1. There are no standalone call sites for these APIs outside of that function in `RowFactory.lua`.
 
 ---
 
 ## Files Modified
 
-| File | Change |
+| File | Changes |
 |---|---|
 | `Core/WowAPI.lua` | **New** — game-state/data stub module |
 | `Core/WowUI.lua` | **New** — volatile UI primitive stub module |
-| `SocialQuest.toc` | Add both new files before existing Core modules |
-| `SocialQuest.lua` | Add `local SQWowAPI`; replace `UnitRace`, `UnitFactionGroup`, `GetTaxiNodeInfo` calls |
-| `Core/GroupComposition.lua` | Add `local SQWowAPI`; replace `IsInRaid`, `IsInGroup`, `LE_PARTY_CATEGORY_*`, `GetNumGroupMembers`, `GetRaidRosterInfo`, `UnitName` calls |
+| `SocialQuest.toc` | Add `Core\WowAPI.lua` and `Core\WowUI.lua` after locale entries, before `SocialQuest.lua` |
+| `SocialQuest.lua` | Add `local SQWowAPI`, `local SQWowUI`; replace `UnitRace`, `UnitFactionGroup`, `GetTaxiNodeInfo`, `GetTime` (9 call sites: 1 setter in `OnPlayerEnteringWorld` + 8 suppression guards at the top of each AQL callback handler), `UnitName` (in `OnAutoFollowBegin`), `DEFAULT_CHAT_FRAME:AddMessage` (in `Debug` helper) |
+| `Core/GroupComposition.lua` | Add `local SQWowAPI`; replace `IsInRaid`, `IsInGroup` (with both `LE_PARTY_CATEGORY_HOME` and `LE_PARTY_CATEGORY_INSTANCE`), `SQWowAPI.PARTY_CATEGORY_HOME`, `SQWowAPI.PARTY_CATEGORY_INSTANCE`, `GetNumGroupMembers`, `GetRaidRosterInfo`, `UnitName` calls |
 | `Core/GroupData.lua` | Add `local SQWowAPI`; replace `GetTime`, `UnitName` calls |
-| `Core/Communications.lua` | Add `local SQWowAPI`; replace `IsInRaid`, `IsInGroup`, `LE_PARTY_CATEGORY_*`, `UnitFullName`, `GetTime` calls |
-| `Core/Announcements.lua` | Add `local SQWowAPI`, `local SQWowUI`; replace `GetTime`, `IsInRaid`, `IsInGroup`, `IsInGuild`, `SendChatMessage`, `C_FriendList.*`, `GetNumGroupMembers`, `UnitName`, `RaidNotice_AddMessage`, `DEFAULT_CHAT_FRAME:AddMessage` calls |
-| `UI/RowFactory.lua` | Add `local SQWowAPI`; replace `GetTime`; replace quest-log calls with AQL; remove `getDifficultyColor` helper |
-| `UI/Tabs/PartyTab.lua` | Replace quest-log calls with AQL; simplify `isEligibleForShare` |
-| `UI/GroupFrame.lua` | Add `local SQWowUI`; replace `PanelTemplates_TabResize` with `SQWowUI.TabResize` |
+| `Core/Communications.lua` | Add `local SQWowAPI`; replace `IsInRaid`, `IsInGroup` (zero-argument form in `SendFlightDiscovery` and category form elsewhere), `LE_PARTY_CATEGORY_HOME`, `LE_PARTY_CATEGORY_INSTANCE`, `UnitFullName`, `GetTime` calls |
+| `Core/Announcements.lua` | Add `local SQWowAPI`, `local SQWowUI`; replace `GetTime` (in throttle ticker, line ~56), `IsInRaid`, `IsInGroup` (with category constants), `IsInGuild`, `SendChatMessage` (single call site inside throttle ticker), `C_FriendList.IsFriend` (in friends-only filter blocks and in `WhisperFriends` helper), `C_FriendList.GetNumFriends`, `C_FriendList.GetFriendInfoByIndex`, `GetNumGroupMembers`, `UnitName`, `RaidNotice_AddMessage` → `SQWowUI.AddRaidNotice`, `DEFAULT_CHAT_FRAME:AddMessage` → `SQWowUI.AddChatMessage` |
+| `UI/RowFactory.lua` | Add `local SQWowAPI`; replace `GetTime` (in `formatTimeRemaining`); replace all quest-log calls with AQL (see Cases 1 and 3 above); remove `getDifficultyColor` helper |
+| `UI/Tabs/PartyTab.lua` | Replace quest-log calls with AQL (see Case 2 above); simplify `isEligibleForShare`. No other in-scope WoW API calls in this file. |
+| `UI/Tooltips.lua` | No in-scope WoW API calls. Uses only `hooksecurefunc` and `ItemRefTooltip` (both stable, explicitly out of scope). No changes required. |
+| `UI/GroupFrame.lua` | Add `local SQWowAPI`, `local SQWowUI`; replace `C_Timer.After` (2 call sites: lines 216 and 311) → `SQWowAPI.TimerAfter`; replace `PanelTemplates_TabResize` → `SQWowUI.TabResize`; replace `PanelTemplates_SelectTab` → `SQWowUI.SelectTab`; replace `PanelTemplates_DeselectTab` → `SQWowUI.DeselectTab` |
 
 ---
 
@@ -218,4 +232,4 @@ One focused commit per logical unit:
 4. `refactor: replace direct WoW API calls with SQWowAPI in SocialQuest.lua`
 5. `refactor: replace direct WoW API calls with SQWowAPI in Core modules`
 6. `refactor: replace direct WoW API calls with SQWowAPI/SQWowUI in UI modules`
-7. `chore: bump version, update CLAUDE.md`
+7. `chore: bump version, update internal documentation`
