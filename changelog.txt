@@ -1,6 +1,13 @@
 SocialQuest Changelog
 =====================
 
+Version 2.6.0 (March 2026)
+- Bug fix: chain header label in the Mine tab showed the title of whichever quest step
+  the player was currently on, rather than a consistent name for the chain. Because WoW
+  has no native chain-name concept, SocialQuest now resolves the chain label from step 1's
+  quest title (via AQL:GetQuestInfo on the chainID, which is always the step-1 questID).
+  The chain name is now stable regardless of how far into the chain the player is.
+
 Version 2.5.1 (March 2026)
 - Changed "Everyone has completed" banner color from dark purple (#9900E6) to hot
   magenta (#FF00CC) for better contrast against WoW's outdoor and dungeon environments.
