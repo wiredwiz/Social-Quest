@@ -24,6 +24,8 @@
 
 | File | Global | Responsibility |
 |---|---|---|
+| `Core\WowAPI.lua` | `SocialQuestWowAPI` | Thin pass-through wrappers for all WoW game-state and data globals. All version-specific branching for non-quest APIs lives here. Consumer files access via `local SQWowAPI = SocialQuestWowAPI`. |
+| `Core\WowUI.lua` | `SocialQuestWowUI` | Thin pass-through wrappers for volatile WoW UI-layer primitives (`RaidNotice_AddMessage`, `PanelTemplates_*`, `DEFAULT_CHAT_FRAME`). Consumer files access via `local SQWowUI = SocialQuestWowUI`. |
 | `Core\GroupComposition.lua` | `SocialQuestGroupComposition` | Sole handler for group membership changes. Diffs `GROUP_ROSTER_UPDATE` against a membership snapshot to classify join/leave/subgroup-move events, then dispatches typed callbacks to Communications and GroupData. Owns the `GroupType` enum. |
 | `Core\GroupData.lua` | `SocialQuestGroupData` | Owns `PlayerQuests` table. Populated entirely from incoming AceComm messages. Stores numeric-only data — no quest titles or objective text from remote players. |
 | `Core\Communications.lua` | `SocialQuestComm` | All AceComm send/receive. Manages sync protocol, jitter timers, and per-sender cooldowns. |
@@ -177,6 +179,9 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 ---
 
 ## Version History
+
+### Version 2.7.0 (March 2026 — Improvements branch)
+- Added `Core/WowAPI.lua` (`SocialQuestWowAPI`) and `Core/WowUI.lua` (`SocialQuestWowUI`) abstraction modules. All direct WoW game-state/data API calls now route through `SQWowAPI`; volatile WoW UI primitives route through `SQWowUI`. Quest and quest-log API calls replaced with AQL public API calls. Prepares SocialQuest to support multiple WoW interface versions without scattered direct WoW API usage.
 
 ### Version 2.6.0 (March 2026 — Improvements branch)
 - Bug fix: chain header label in the Mine tab showed the title of whichever quest step the player was currently on, rather than a consistent name for the chain. `MineTab:BuildTree` now resolves the chain label by calling `AQL:GetQuestInfo(chainID)` on the chain's root questID (step 1), giving a stable name regardless of which step is active. Falls back to the current quest's title when step-1 data is unavailable. The previous "prefer step 1" override block is removed.
