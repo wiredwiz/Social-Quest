@@ -15,11 +15,30 @@ SocialQuest = LibStub("AceAddon-3.0"):NewAddon(
     "AceConsole-3.0"
 )
 
+SocialQuest.DataProviders = {
+    SocialQuest = "SocialQuest",
+    Questie     = "Questie",
+}
+
+SocialQuest.EventTypes = {
+    Accepted          = "accepted",
+    Completed         = "completed",         -- turned in to NPC
+    Abandoned         = "abandoned",
+    Failed            = "failed",
+    Finished          = "finished",          -- all objectives done, not yet turned in
+    Tracked           = "tracked",
+    Untracked         = "untracked",
+    ObjectiveComplete = "objective_complete",
+    ObjectiveProgress = "objective_progress",
+}
+
 local AQL  -- set in OnInitialize
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 
 local SQWowAPI = SocialQuestWowAPI
 local SQWowUI  = SocialQuestWowUI
+
+local ET = SocialQuest.EventTypes
 
 ------------------------------------------------------------------------
 -- Flight path starting node lookup
