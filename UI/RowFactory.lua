@@ -10,6 +10,7 @@ local CONTENT_WIDTH = 360
 local ROW_H         = 18     -- standard row height in pixels
 local INDENT_STEP   = 16     -- pixels per indent level
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
+local SQWowAPI = SocialQuestWowAPI
 
 -- Called by GroupFrame:Refresh() to set content width before rendering.
 -- Writes to the CONTENT_WIDTH upvalue so all row functions use the current frame width.
@@ -21,85 +22,39 @@ end
 -- Private helpers
 ------------------------------------------------------------------------
 
--- Returns a difficulty colour table {r, g, b} for questLevel.
--- Uses GetQuestDifficultyColor when present (exists in TBC 20505).
-local function getDifficultyColor(questLevel)
-    if GetQuestDifficultyColor then
-        return GetQuestDifficultyColor(questLevel or 0)
-    end
-    local diff = UnitLevel("player") - (questLevel or 0)
-    if     diff >= 5  then return { r = 0.75, g = 0.75, b = 0.75 }
-    elseif diff >= 3  then return { r = 0.25, g = 0.75, b = 0.25 }
-    elseif diff >= -2 then return { r = 1.0,  g = 1.0,  b = 0.0  }
-    elseif diff >= -4 then return { r = 1.0,  g = 0.5,  b = 0.25 }
-    else                   return { r = 1.0,  g = 0.1,  b = 0.1  }
-    end
-end
-
 -- Formats remaining timer as "M:SS". Returns nil when expired or no data.
 local function formatTimeRemaining(timerSeconds, snapshotTime)
     if not timerSeconds or not snapshotTime then return nil end
-    local remaining = timerSeconds - (GetTime() - snapshotTime)
+    local remaining = timerSeconds - (SQWowAPI.GetTime() - snapshotTime)
     if remaining <= 0 then return nil end
     return string.format("%d:%02d", math.floor(remaining / 60), math.floor(remaining % 60))
 end
 
--- Opens the WoW Quest Log and selects the given questID.
--- Expands collapsed zone headers one at a time to locate the quest,
--- collapsing them back if the quest is not in them, so only the zone
--- containing the target quest ends up expanded.
--- If the quest is not found (stale data), the log is opened but nothing
--- is selected.
 local function openQuestLogToQuest(questID)
-    -- Toggle: if the quest log is already open and this quest is currently
-    -- selected, close the log instead of re-opening it.
-    -- NOTE: GetQuestLogSelection() requires in-game verification at Interface 20505.
-    -- If absent or returning nil, sel is nil, the guard skips, and the function
-    -- falls through to the existing open-and-select logic — safe degradation.
-    if QuestLogFrame:IsShown() then
-        local sel = GetQuestLogSelection()
-        if sel and sel > 0 then
-            local _, _, _, _, _, _, _, selID = GetQuestLogTitle(sel)
-            if selID == questID then
-                HideUIPanel(QuestLogFrame)
-                return
-            end
-        end
+    local AQL = SocialQuest.AQL
+    if not AQL then return end
+    -- Toggle: if the log is shown and this quest is already selected, close it.
+    if AQL:IsQuestLogShown() and AQL:GetSelectedQuestId() == questID then
+        AQL:HideQuestLog()
+        return
     end
-
-    ShowUIPanel(QuestLogFrame)
-    local numEntries = GetNumQuestLogEntries()
-    local i = 1
-    while i <= numEntries do
-        local _, _, _, isHeader, isCollapsed, _, _, id = GetQuestLogTitle(i)
-        if isHeader and isCollapsed then
-            local headerIdx = i
-            ExpandQuestHeader(headerIdx)
-            numEntries = GetNumQuestLogEntries()
-            local found = false
-            i = i + 1
-            while i <= numEntries do
-                local _, _, _, subIsHeader, _, _, _, subId = GetQuestLogTitle(i)
-                if subIsHeader then break end
-                if subId == questID then
-                    found = true
-                    QuestLog_SetSelection(i)
-                    QuestLog_Update()
-                    return
-                end
-                i = i + 1
-            end
-            if not found then
-                CollapseQuestHeader(headerIdx)
-                numEntries = GetNumQuestLogEntries()
-                i = headerIdx + 1
-            end
-        elseif not isHeader and id == questID then
-            QuestLog_SetSelection(i)
-            QuestLog_Update()
-            return
-        else
-            i = i + 1
+    -- Save collapsed state, expand all to make the quest visible, navigate, restore.
+    local zones = AQL:GetQuestLogZones()
+    AQL:ShowQuestLog()
+    AQL:ExpandAllQuestLogHeaders()
+    local logIndex = AQL:GetQuestLogIndex(questID)
+    -- targetZone is only set when logIndex is non-nil: quest confirmed in the
+    -- live log, guaranteed to have a zone. Keep that zone expanded.
+    local targetZone
+    if logIndex then
+        AQL:SetQuestLogSelection(logIndex)
+        targetZone = AQL:GetQuest(questID).zone
+    end
+    -- Restore collapsed state for all other zones. If logIndex was nil,
+    -- targetZone is nil and everything restores to its original state.
+    for _, z in ipairs(zones) do
+        if z.isCollapsed and z.name ~= targetZone then
+            AQL:CollapseQuestLogZoneByName(z.name)
         end
     end
 end
@@ -248,7 +203,7 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     if callbacks and callbacks.onTitleShiftClick and questEntry.isTracked then
         titleText = titleText .. " |TInterface\\Buttons\\UI-CheckBox-Check:12:12:0:0|t"
     end
-    local c = getDifficultyColor(questEntry.level)
+    local c = SocialQuest.AQL:GetQuestDifficultyColor(questEntry.level)
     local colorCode = string.format("|cFF%02X%02X%02X",
         math.floor(c.r * 255),
         math.floor(c.g * 255),
