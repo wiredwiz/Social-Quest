@@ -209,6 +209,7 @@ function SocialQuestGroupData:OnBridgeQuestUpdate(provider, fullName, questEntry
 
     pdata.dataProvider = provider
     pdata.lastSync     = SQWowAPI.GetTime()
+    if not pdata.quests then pdata.quests = {} end
 
     local questID  = questEntry.questID
     local existing = pdata.quests[questID]
@@ -254,7 +255,7 @@ end
 function SocialQuestGroupData:OnBridgeQuestRemove(provider, fullName, questID)
     local pdata = self.PlayerQuests[fullName]
     if not pdata or pdata.hasSocialQuest then return end
-    if pdata.quests[questID] then
+    if pdata.quests and pdata.quests[questID] then
         pdata.quests[questID] = nil
         SocialQuestGroupFrame:RequestRefresh()
     end
