@@ -20,6 +20,7 @@ SocialQuestGroupData = {}
 SocialQuestGroupData.PlayerQuests = {}
 
 local SQWowAPI = SocialQuestWowAPI
+local ET = SocialQuest.EventTypes
 
 -- Called by GroupComposition when a new player appears in the group.
 -- Creates a hasSocialQuest=false stub so receive handlers can accept their
@@ -100,14 +101,14 @@ function SocialQuestGroupData:OnUpdateReceived(sender, payload)
     local questID   = payload.questID
 
     local cachedTitle
-    if eventType == "abandoned" or eventType == "completed" or eventType == "failed" then
-        if eventType == "completed" then
+    if eventType == ET.Abandoned or eventType == ET.Completed or eventType == ET.Failed then
+        if eventType == ET.Completed then
             entry.completedQuests[questID] = true
         end
         -- Grab the title we stored when this quest was first received, before removing it.
         cachedTitle = entry.quests[questID] and entry.quests[questID].title
         entry.quests[questID] = nil
-    elseif eventType == "tracked" or eventType == "untracked" then
+    elseif eventType == ET.Tracked or eventType == ET.Untracked then
         -- Tracking state has no meaning in remote data; skip without modifying the entry.
         -- Guard also prevents recreating an entry that was already removed by a terminal event.
         return
