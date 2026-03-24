@@ -411,6 +411,18 @@ function SocialQuestAnnounce:OnRemoteQuestEvent(sender, eventType, questID, cach
     local db = SocialQuest.db.profile
     if not db.enabled then return end
 
+    -- Defense-in-depth: bridge providers cannot verify Completed/Abandoned/Failed
+    -- (remove packet carries no reason code). Block them here regardless of call site.
+    local pdata    = SocialQuestGroupData.PlayerQuests[sender]
+    local provider = pdata and pdata.dataProvider
+    if provider and provider ~= SocialQuest.DataProviders.SocialQuest then
+        if eventType == ET.Completed
+        or eventType == ET.Abandoned
+        or eventType == ET.Failed then
+            return
+        end
+    end
+
     -- Party-wide objectives check: fires regardless of displayReceived, because
     -- "Everyone has finished" is a synthesized local event, not a raw inbound banner.
     if eventType == ET.Finished then
