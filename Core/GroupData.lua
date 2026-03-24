@@ -197,3 +197,53 @@ end
 function SocialQuestGroupData:IsInGroup(fullName)
     return self.PlayerQuests[fullName] ~= nil
 end
+
+-- Called by bridge modules when a quest update packet arrives for a player.
+-- provider: SocialQuest.DataProviders.* constant identifying the data source.
+-- fullName:  "Name-Realm" or "Name" — same format used as PlayerQuests keys.
+-- questEntry: { questID, title, isComplete, isFailed, snapshotTime, objectives={...} }
+function SocialQuestGroupData:OnBridgeQuestUpdate(provider, fullName, questEntry)
+    local pdata = self.PlayerQuests[fullName]
+    if not pdata then return end            -- not a known group member; ignore
+    if pdata.hasSocialQuest then return end -- SQ data takes precedence
+
+    pdata.dataProvider = provider
+    pdata.lastSync     = SQWowAPI.GetTime()
+
+    local questID  = questEntry.questID
+    local existing = pdata.quests[questID]
+    local isNew    = existing == nil
+
+    -- Diff objectives only when the quest was already known.
+    -- Avoids progress banners for catch-up data seen for the first time.
+    if existing then
+        for i, obj in ipairs(questEntry.objectives) do
+            local prev        = existing.objectives[i]
+            local wasFinished = prev and prev.isFinished
+            if obj.isFinished and not wasFinished then
+                SocialQuestAnnounce:OnRemoteObjectiveEvent(
+                    fullName, questID, i,
+                    obj.numFulfilled, obj.numRequired, true, false)
+            elseif prev and obj.numFulfilled > prev.numFulfilled then
+                SocialQuestAnnounce:OnRemoteObjectiveEvent(
+                    fullName, questID, i,
+                    obj.numFulfilled, obj.numRequired, false, false)
+            end
+        end
+
+        -- Quest complete: all objectives finished and wasn't complete before.
+        if questEntry.isComplete and not existing.isComplete then
+            SocialQuestAnnounce:OnRemoteQuestEvent(
+                fullName, ET.Finished, questID, questEntry.title)
+        end
+    end
+
+    pdata.quests[questID] = questEntry
+
+    if isNew then
+        SocialQuestAnnounce:OnRemoteQuestEvent(
+            fullName, ET.Accepted, questID, questEntry.title)
+    end
+
+    SocialQuestGroupFrame:RequestRefresh()
+end
