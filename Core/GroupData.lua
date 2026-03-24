@@ -4,7 +4,7 @@
 --
 -- PlayerQuests["Name-Realm"] = {
 --     hasSocialQuest = true,
---     lastSync       = <GetTime()>,
+--     lastSync       = <SQWowAPI.GetTime()>,
 --     quests = {
 --         [questID] = {
 --             questID=N, isComplete=bool, isFailed=bool,
