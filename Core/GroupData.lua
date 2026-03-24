@@ -70,6 +70,7 @@ function SocialQuestGroupData:OnInitReceived(sender, payload)
     local existing = self.PlayerQuests[sender]
     self.PlayerQuests[sender] = {
         hasSocialQuest  = true,
+        dataProvider    = SocialQuest.DataProviders.SocialQuest,
         lastSync        = SQWowAPI.GetTime(),
         quests          = quests,
         completedQuests = (existing and existing.completedQuests) or {},
@@ -91,7 +92,7 @@ function SocialQuestGroupData:OnUpdateReceived(sender, payload)
 
     local entry = self.PlayerQuests[sender]
     if not entry then
-        entry = { hasSocialQuest = true, lastSync = SQWowAPI.GetTime(), quests = {}, completedQuests = {} }
+        entry = { hasSocialQuest = true, dataProvider = SocialQuest.DataProviders.SocialQuest, lastSync = SQWowAPI.GetTime(), quests = {}, completedQuests = {} }
         self.PlayerQuests[sender] = entry
     end
     entry.hasSocialQuest = true
