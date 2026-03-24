@@ -181,7 +181,7 @@ function SocialQuestGroupData:OnUnitQuestLogChanged(unit)
     local fullName = realm and realm ~= "" and (name.."-"..realm) or name
 
     local entry = self.PlayerQuests[fullName]
-    if entry and entry.hasSocialQuest then return end  -- Full data already available.
+    if entry and (entry.hasSocialQuest or entry.dataProvider) then return end  -- Full data already available.
 
     self.PlayerQuests[fullName] = {
         hasSocialQuest  = false,

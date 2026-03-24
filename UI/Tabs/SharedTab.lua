@@ -141,6 +141,7 @@ function SharedTab:BuildTree()
                                     objectives     = SocialQuestTabUtils.BuildLocalObjectives(info or {}),
                                     step           = pEng.step,
                                     chainLength    = pEng.chainLength,
+                                    dataProvider   = SocialQuest.DataProviders.SocialQuest,
                                 })
                             else
                                 local playerData = SocialQuestGroupData.PlayerQuests[pName]
@@ -211,6 +212,7 @@ function SharedTab:BuildTree()
                         needsShare     = false,
                         isComplete     = localInfo and localInfo.isComplete or false,
                         objectives     = SocialQuestTabUtils.BuildLocalObjectives(localInfo or {}),
+                        dataProvider   = SocialQuest.DataProviders.SocialQuest,
                     })
                 else
                     local playerData = SocialQuestGroupData.PlayerQuests[playerName]
