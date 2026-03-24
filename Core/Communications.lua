@@ -25,6 +25,7 @@ local PREFIXES = {
 -- so comparisons read GroupType.Party rather than raw "party" strings.
 -- GroupComposition.lua loads before Communications.lua (see TOC), so this is safe.
 local GroupType = SocialQuestGroupComposition.GroupType
+local SQWowAPI = SocialQuestWowAPI
 
 local lastInitSent = {}   -- keyed by sender name; tracks when SQ_INIT was last sent per player
 
@@ -63,10 +64,10 @@ local function buildQuestPayload(questInfo, eventType)
         eventType    = eventType,
         isComplete   = questInfo.isComplete  and 1 or 0,
         isFailed     = questInfo.isFailed    and 1 or 0,
-        -- snapshotTime is the sender's GetTime() AT MOMENT OF TRANSMISSION, not
+        -- snapshotTime is the sender's SQWowAPI.GetTime() AT MOMENT OF TRANSMISSION, not
         -- the time AQL built its local cache. This gives receivers an accurate
-        -- reference for timer estimation: remaining = timerSeconds - (GetTime() - snapshotTime).
-        snapshotTime = GetTime(),
+        -- reference for timer estimation: remaining = timerSeconds - (SQWowAPI.GetTime() - snapshotTime).
+        snapshotTime = SQWowAPI.GetTime(),
         timerSeconds = questInfo.timerSeconds,  -- nil if no timer (serializes cleanly)
         objectives   = objs,
     }
@@ -89,7 +90,7 @@ local function buildInitPayload()
             questID      = questID,
             isComplete   = info.isComplete  and 1 or 0,
             isFailed     = info.isFailed    and 1 or 0,
-            snapshotTime = GetTime(),  -- stamp at transmission time, not AQL cache build time
+            snapshotTime = SQWowAPI.GetTime(),  -- stamp at transmission time, not AQL cache build time
             timerSeconds = info.timerSeconds,
             objectives   = objs,
         }
@@ -144,7 +145,7 @@ end
 -- Sends the local player's newly discovered flight path name to the party.
 -- Only sent when in a party (not raid, not battleground).
 function SocialQuestComm:SendFlightDiscovery(nodeName)
-    if not IsInGroup() or IsInRaid() then return end
+    if not SQWowAPI.IsInGroup() or SQWowAPI.IsInRaid() then return end
     -- SocialQuestComm is a plain table, not an Ace3 mixin. All send helpers in
     -- this file call LibStub("AceComm-3.0"):SendCommMessage directly.
     LibStub("AceComm-3.0"):SendCommMessage("SQ_FLIGHT", serialize({ node = nodeName }), "PARTY")
@@ -243,11 +244,11 @@ end
 -- Returns the appropriate AceComm channel string for the player's current group context.
 -- Returns nil if not in a group or guild-only (guild has no AceComm sync).
 function SocialQuestComm:GetActiveChannel()
-    if IsInRaid() then
+    if SQWowAPI.IsInRaid() then
         return "RAID"
-    elseif IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
+    elseif SQWowAPI.IsInGroup(SQWowAPI.PARTY_CATEGORY_INSTANCE) then
         return "INSTANCE_CHAT"
-    elseif IsInGroup(LE_PARTY_CATEGORY_HOME) then
+    elseif SQWowAPI.IsInGroup(SQWowAPI.PARTY_CATEGORY_HOME) then
         return "PARTY"
     end
     return nil
@@ -278,7 +279,7 @@ end
 
 function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
     -- Ignore our own messages.
-    local myName, myRealm = UnitFullName("player")
+    local myName, myRealm = SQWowAPI.UnitFullName("player")
     local myFullName = myRealm and (myName .. "-" .. myRealm) or myName
     if sender == myName or sender == myFullName then return end
 
@@ -300,10 +301,10 @@ function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
         --   Party:   OnMemberJoined already sent a direct whisper to new members.
         --   Whisper: This is their response to us; no further response needed.
         if distribution == "RAID" or distribution == "INSTANCE_CHAT" then
-            if lastInitSent[sender] and (GetTime() - lastInitSent[sender] < 15) then
+            if lastInitSent[sender] and (SQWowAPI.GetTime() - lastInitSent[sender] < 15) then
                 SocialQuest:Debug("Comm", "SQ_INIT from " .. sender .. " — response suppressed (cooldown)")
             else
-                lastInitSent[sender] = GetTime()
+                lastInitSent[sender] = SQWowAPI.GetTime()
                 if pendingResponses[sender] then
                     SocialQuest:CancelTimer(pendingResponses[sender])
                 end
@@ -328,13 +329,13 @@ function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
             SocialQuest:Debug("Comm", "Received SQ_REQUEST from " .. sender .. " — dropped (not in group)")
             return
         end
-        if lastInitSent[sender] and (GetTime() - lastInitSent[sender] < 15) then
+        if lastInitSent[sender] and (SQWowAPI.GetTime() - lastInitSent[sender] < 15) then
             SocialQuest:Debug("Comm", "Received SQ_REQUEST from " .. sender .. " — dropped (cooldown)")
             return
         end
         -- Stamp at schedule time (not fire time) so a second SQ_REQUEST arriving
         -- during the jitter window doesn't schedule a duplicate response.
-        lastInitSent[sender] = GetTime()
+        lastInitSent[sender] = SQWowAPI.GetTime()
         if pendingResponses[sender] then
             SocialQuest:CancelTimer(pendingResponses[sender])
         end
