@@ -18,6 +18,9 @@ SocialQuest = LibStub("AceAddon-3.0"):NewAddon(
 local AQL  -- set in OnInitialize
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 
+local SQWowAPI = SocialQuestWowAPI
+local SQWowUI  = SocialQuestWowUI
+
 ------------------------------------------------------------------------
 -- Flight path starting node lookup
 ------------------------------------------------------------------------
@@ -60,10 +63,10 @@ local RACE_STARTING_NODES = {
 -- Handles faction-dependent races (Pandaren, Dracthyr, Earthen) inline.
 -- Returns nil for unknown races; callers treat nil as "no seed available."
 local function getStartingNode()
-    local _, race = UnitRace("player")
+    local _, race = SQWowAPI.UnitRace("player")
     local node = RACE_STARTING_NODES[race]
     if node then return node end
-    local faction = UnitFactionGroup("player")
+    local faction = SQWowAPI.UnitFactionGroup("player")
     if race == "Pandaren" or race == "Dracthyr" or race == "Earthen" then
         return faction == "Alliance" and "Stormwind" or "Orgrimmar"
     end
@@ -210,7 +213,7 @@ end
 
 function SocialQuest:Debug(tag, msg)
     if not self.db.profile.debug.enabled then return end
-    DEFAULT_CHAT_FRAME:AddMessage("|cFFFFD200[SQ][" .. tag .. "]|r " .. tostring(msg))
+    SQWowUI.AddChatMessage("|cFFFFD200[SQ][" .. tag .. "]|r " .. tostring(msg))
 end
 
 ------------------------------------------------------------------------
@@ -371,14 +374,14 @@ end
 -- The /reload case is harmless (PLAYER_LOGIN fires first and re-syncs the group; the
 -- suppression window just silences the redundant AQL replay that follows).
 function SocialQuest:OnPlayerEnteringWorld()
-    self.zoneTransitionSuppressUntil = GetTime() + 3
+    self.zoneTransitionSuppressUntil = SQWowAPI.GetTime() + 3
     self:Debug("Zone", "Zone transition detected — suppressing AQL callbacks for 3 s")
 end
 
 function SocialQuest:OnAutoFollowBegin(event, unit)
     if not self.db.profile.follow.enabled then return end
     if not self.db.profile.follow.announceFollowing then return end
-    local name = UnitName(unit)
+    local name = SQWowAPI.UnitName(unit)
     if name then
         SocialQuestComm:SendFollowStart(name)
     end
@@ -411,7 +414,7 @@ function SocialQuest:OnTaxiMapOpened()
     local currentNodes = {}
     local i = 1
     while true do
-        local name = GetTaxiNodeInfo(i)
+        local name = SQWowAPI.GetTaxiNodeInfo(i)
         if not name then break end
         currentNodes[name] = true
         i = i + 1
@@ -483,7 +486,7 @@ end
 ------------------------------------------------------------------------
 
 function SocialQuest:OnQuestAccepted(event, questInfo)
-    if GetTime() < self.zoneTransitionSuppressUntil then return end
+    if SQWowAPI.GetTime() < self.zoneTransitionSuppressUntil then return end
     self:Debug("Quest", "Quest accepted: [" .. (questInfo.title or "?") .. "] (id=" .. questInfo.questID .. ")")
     SocialQuestAnnounce:OnQuestEvent("accepted", questInfo.questID, questInfo)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "accepted")
@@ -491,7 +494,7 @@ function SocialQuest:OnQuestAccepted(event, questInfo)
 end
 
 function SocialQuest:OnQuestAbandoned(event, questInfo)
-    if GetTime() < self.zoneTransitionSuppressUntil then return end
+    if SQWowAPI.GetTime() < self.zoneTransitionSuppressUntil then return end
     self:Debug("Quest", "Quest abandoned: [" .. (questInfo.title or "?") .. "] (id=" .. questInfo.questID .. ")")
     SocialQuestAnnounce:OnQuestEvent("abandoned", questInfo.questID, questInfo)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "abandoned")
@@ -499,7 +502,7 @@ function SocialQuest:OnQuestAbandoned(event, questInfo)
 end
 
 function SocialQuest:OnQuestFinished(event, questInfo)
-    if GetTime() < self.zoneTransitionSuppressUntil then return end
+    if SQWowAPI.GetTime() < self.zoneTransitionSuppressUntil then return end
     self:Debug("Quest", "Quest finished: [" .. (questInfo.title or "?") .. "] (id=" .. questInfo.questID .. ")")
     -- questInfo intentionally NOT passed: "finished" is excluded from chain-step
     -- annotation. See CHAIN_STEP_EVENTS in Core/Announcements.lua.
@@ -509,7 +512,7 @@ function SocialQuest:OnQuestFinished(event, questInfo)
 end
 
 function SocialQuest:OnQuestCompleted(event, questInfo)
-    if GetTime() < self.zoneTransitionSuppressUntil then return end
+    if SQWowAPI.GetTime() < self.zoneTransitionSuppressUntil then return end
     self:Debug("Quest", "Quest completed: [" .. (questInfo.title or "?") .. "] (id=" .. questInfo.questID .. ")")
     SocialQuestAnnounce:OnQuestEvent("completed", questInfo.questID, questInfo)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "completed")
@@ -517,7 +520,7 @@ function SocialQuest:OnQuestCompleted(event, questInfo)
 end
 
 function SocialQuest:OnQuestFailed(event, questInfo)
-    if GetTime() < self.zoneTransitionSuppressUntil then return end
+    if SQWowAPI.GetTime() < self.zoneTransitionSuppressUntil then return end
     self:Debug("Quest", "Quest failed: [" .. (questInfo.title or "?") .. "] (id=" .. questInfo.questID .. ")")
     SocialQuestAnnounce:OnQuestEvent("failed", questInfo.questID, questInfo)
     SocialQuestComm:BroadcastQuestUpdate(questInfo, "failed")
@@ -537,7 +540,7 @@ function SocialQuest:OnQuestUntracked(event, questInfo)
 end
 
 function SocialQuest:OnObjectiveProgressed(event, questInfo, objective, delta)
-    if GetTime() < self.zoneTransitionSuppressUntil then return end
+    if SQWowAPI.GetTime() < self.zoneTransitionSuppressUntil then return end
 
     -- Cancel any pending regression debounce for this objective.
     -- When a BAG_UPDATE stack split causes a temporary count dip, AQL fires
@@ -562,7 +565,7 @@ function SocialQuest:OnObjectiveProgressed(event, questInfo, objective, delta)
 end
 
 function SocialQuest:OnObjectiveCompleted(event, questInfo, objective)
-    if GetTime() < self.zoneTransitionSuppressUntil then return end
+    if SQWowAPI.GetTime() < self.zoneTransitionSuppressUntil then return end
 
     -- Also cancel any pending regression debounce (objective completed = not regressed).
     local key = questInfo.questID .. "_" .. (objective.index or 0)
@@ -578,7 +581,7 @@ function SocialQuest:OnObjectiveCompleted(event, questInfo, objective)
 end
 
 function SocialQuest:OnObjectiveRegressed(event, questInfo, objective, delta)
-    if GetTime() < self.zoneTransitionSuppressUntil then return end
+    if SQWowAPI.GetTime() < self.zoneTransitionSuppressUntil then return end
 
     -- Debounce: delay by 0.5 s. If PROGRESSED or COMPLETED fires for the same
     -- objective within that window, the timer is cancelled — indicating a transient
