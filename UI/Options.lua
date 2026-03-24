@@ -70,7 +70,7 @@ function SocialQuestOptions:Initialize()
             type   = "group",
             name   = L["Own Quest Banners"],
             inline = true,
-            order  = 5,
+            order  = 6,
             args   = {
                 accepted  = toggle(L["Accepted"],
                     L["Show a banner when you accept a quest."],
@@ -163,11 +163,32 @@ function SocialQuestOptions:Initialize()
                     colorblindMode  = toggle(L["Colorblind Mode"],
                         L["Use colorblind-friendly colors for all SocialQuest banners and UI text. It is unnecessary to enable this if Color Blind mode is already enabled in the game client."],
                         { "general", "colorblindMode" }, 3),
+                    showMinimapButton = {
+                        type   = "toggle",
+                        name   = L["Show minimap button"],
+                        desc   = L["Show or hide the SocialQuest minimap button."],
+                        order  = 4,
+                        hidden = function()
+                            return LibStub("LibDBIcon-1.0", true) == nil
+                        end,
+                        get    = function(info) return not db.minimap.hide end,
+                        set    = function(info, value)
+                            db.minimap.hide = not value
+                            local DBIcon = LibStub("LibDBIcon-1.0", true)
+                            if DBIcon then
+                                if value then
+                                    DBIcon:Show("SocialQuest")
+                                else
+                                    DBIcon:Hide("SocialQuest")
+                                end
+                            end
+                        end,
+                    },
                     displayOwn      = {
                         type  = "toggle",
                         name  = L["Show banners for your own quest events"],
                         desc  = L["Show a banner on screen for your own quest events."],
-                        order = 4,
+                        order = 5,
                         get   = function(info) return db.general.displayOwn end,
                         set   = function(info, value)
                             db.general.displayOwn = value

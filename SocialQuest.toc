@@ -4,6 +4,7 @@
 ## Author: Thad Ryker
 ## Version: 2.6.0
 ## Category: Quests
+## IconTexture: Interface\AddOns\SocialQuest\Logo.png
 ## Dependencies: Ace3, AbsoluteQuestLog
 ## SavedVariables: SocialQuestDB
 
