@@ -7,6 +7,8 @@ Version 2.6.0 (March 2026)
   has no native chain-name concept, SocialQuest now resolves the chain label from step 1's
   quest title (via AQL:GetQuestInfo on the chainID, which is always the step-1 questID).
   The chain name is now stable regardless of how far into the chain the player is.
+- Added addon logo for addon screen
+- Added minimap button toggle to general configuration tab.
 
 Version 2.5.1 (March 2026)
 - Changed "Everyone has completed" banner color from dark purple (#9900E6) to hot
