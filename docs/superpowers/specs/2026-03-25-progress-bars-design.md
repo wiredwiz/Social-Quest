@@ -87,9 +87,9 @@ Text on the bar is `GameFontNormalSmall` (white with black shadow). The shadow p
 
 ### RowFactory.lua
 
-**New helper: `RowFactory.MeasureNameWidth(name)`**
+**New helper: `RowFactory.MeasureNameWidth(displayName)`**
 
-Creates a temporary FontString on `UIParent` using `GameFontNormalSmall`, sets the text, calls `GetStringWidth()`, then releases the FontString (hides it). Returns the pixel width as a number. Used by tab Render methods before calling `AddPlayerRow`.
+Accepts the fully-resolved display name string (i.e., after nameTag suffix has been appended, matching what `AddPlayerRow` actually renders in the name column). Creates a temporary FontString on `UIParent` using `GameFontNormalSmall`, sets the text, calls `GetStringWidth()`, then releases the FontString (hides it). Returns the pixel width as a number. Used by tab Render methods before calling `AddPlayerRow`.
 
 **Modified: `AddPlayerRow(contentFrame, y, playerEntry, indent, nameColumnWidth)`**
 
@@ -99,12 +99,13 @@ New optional fifth parameter `nameColumnWidth`. Behavior:
 - When `nameColumnWidth` is provided and the player has in-progress objectives: renders the two-column bar layout for each objective.
 
 Bar construction per objective:
-1. Create a `Frame` anchored at `(indent + nameColumnWidth + 4, -y)`.
-2. On the frame, create a background `Texture` (BACKGROUND layer): `SetColorTexture(0, 0, 0, 0.35)`, `SetAllPoints`.
-3. On the frame, create a fill `Texture` (ARTWORK layer): color from `GetUIColor("completed")` (complete) or yellow (in-progress), alpha 0.45. Anchor TOPLEFT to TOPLEFT. Width = `barWidth * (numFulfilled / numRequired)`. Height = `ROW_H`. Guard: if `numRequired == 0`, fill width = 0.
-4. On the frame, create a `FontString` (OVERLAY layer): `GameFontNormalSmall`, white, left-aligned, 4px left padding, objective text (`obj.text`).
-5. Create a separate name `FontString` at `(indent, -y)`, width = `nameColumnWidth`, white, `GameFontNormalSmall`, left-aligned.
-6. Advance `y` by `ROW_H + 2`.
+1. Guard: if `obj.numRequired` is nil or `== 0`, fall back to the existing plain-text single-column rendering for that objective row (same as when `nameColumnWidth` is nil). This handles any objective that lacks numeric data.
+2. Create a `Frame` anchored at `(indent + nameColumnWidth + 4, -y)`.
+3. On the frame, create a background `Texture` (BACKGROUND layer): `SetColorTexture(0, 0, 0, 0.35)`, `SetAllPoints`.
+4. On the frame, create a fill `Texture` (ARTWORK layer): color from `GetUIColor("completed")` (complete) or yellow (in-progress), alpha 0.45. Anchor TOPLEFT to TOPLEFT. Width = `barWidth * (numFulfilled / numRequired)`. Height = `ROW_H`.
+5. On the frame, create a `FontString` (OVERLAY layer): `GameFontNormalSmall`, white, left-aligned, 4px left padding, objective text (`obj.text`).
+6. Create a separate name `FontString` at `(indent, -y)`, width = `nameColumnWidth`, white, `GameFontNormalSmall`, left-aligned.
+7. Advance `y` by `ROW_H + 2`.
 
 ### PartyTab.lua and SharedTab.lua
 
@@ -113,7 +114,11 @@ Before the player-row rendering loop for each quest, add a pre-pass:
 ```lua
 local nameColumnWidth = 0
 for _, playerEntry in ipairs(players) do
-    local w = RowFactory.MeasureNameWidth(playerEntry.name or "Unknown")
+    local name = playerEntry.name or "Unknown"
+    local nameTag = playerEntry.dataProvider
+                 and SocialQuestBridgeRegistry:GetNameTag(playerEntry.dataProvider)
+    local displayName = nameTag and (name .. " " .. nameTag) or name
+    local w = RowFactory.MeasureNameWidth(displayName)
     if w > nameColumnWidth then nameColumnWidth = w end
 end
 ```
