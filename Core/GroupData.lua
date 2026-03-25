@@ -20,6 +20,7 @@ SocialQuestGroupData = {}
 SocialQuestGroupData.PlayerQuests = {}
 
 local SQWowAPI = SocialQuestWowAPI
+local ET = SocialQuest.EventTypes
 
 -- Called by GroupComposition when a new player appears in the group.
 -- Creates a hasSocialQuest=false stub so receive handlers can accept their
@@ -69,6 +70,7 @@ function SocialQuestGroupData:OnInitReceived(sender, payload)
     local existing = self.PlayerQuests[sender]
     self.PlayerQuests[sender] = {
         hasSocialQuest  = true,
+        dataProvider    = SocialQuest.DataProviders.SocialQuest,
         lastSync        = SQWowAPI.GetTime(),
         quests          = quests,
         completedQuests = (existing and existing.completedQuests) or {},
@@ -90,7 +92,7 @@ function SocialQuestGroupData:OnUpdateReceived(sender, payload)
 
     local entry = self.PlayerQuests[sender]
     if not entry then
-        entry = { hasSocialQuest = true, lastSync = SQWowAPI.GetTime(), quests = {}, completedQuests = {} }
+        entry = { hasSocialQuest = true, dataProvider = SocialQuest.DataProviders.SocialQuest, lastSync = SQWowAPI.GetTime(), quests = {}, completedQuests = {} }
         self.PlayerQuests[sender] = entry
     end
     entry.hasSocialQuest = true
@@ -100,14 +102,14 @@ function SocialQuestGroupData:OnUpdateReceived(sender, payload)
     local questID   = payload.questID
 
     local cachedTitle
-    if eventType == "abandoned" or eventType == "completed" or eventType == "failed" then
-        if eventType == "completed" then
+    if eventType == ET.Abandoned or eventType == ET.Completed or eventType == ET.Failed then
+        if eventType == ET.Completed then
             entry.completedQuests[questID] = true
         end
         -- Grab the title we stored when this quest was first received, before removing it.
         cachedTitle = entry.quests[questID] and entry.quests[questID].title
         entry.quests[questID] = nil
-    elseif eventType == "tracked" or eventType == "untracked" then
+    elseif eventType == ET.Tracked or eventType == ET.Untracked then
         -- Tracking state has no meaning in remote data; skip without modifying the entry.
         -- Guard also prevents recreating an entry that was already removed by a terminal event.
         return
@@ -179,7 +181,7 @@ function SocialQuestGroupData:OnUnitQuestLogChanged(unit)
     local fullName = realm and realm ~= "" and (name.."-"..realm) or name
 
     local entry = self.PlayerQuests[fullName]
-    if entry and entry.hasSocialQuest then return end  -- Full data already available.
+    if entry and (entry.hasSocialQuest or entry.dataProvider) then return end  -- Full data already available.
 
     self.PlayerQuests[fullName] = {
         hasSocialQuest  = false,
@@ -194,4 +196,83 @@ end
 -- Helper: is this sender currently in our group?
 function SocialQuestGroupData:IsInGroup(fullName)
     return self.PlayerQuests[fullName] ~= nil
+end
+
+-- Called by bridge modules when a quest update packet arrives for a player.
+-- provider: SocialQuest.DataProviders.* constant identifying the data source.
+-- fullName:  "Name-Realm" or "Name" — same format used as PlayerQuests keys.
+-- questEntry: { questID, title, isComplete, isFailed, snapshotTime, objectives={...} }
+function SocialQuestGroupData:OnBridgeQuestUpdate(provider, fullName, questEntry)
+    local pdata = self.PlayerQuests[fullName]
+    if not pdata then return end            -- not a known group member; ignore
+    if pdata.hasSocialQuest then return end -- SQ data takes precedence
+
+    pdata.dataProvider = provider
+    pdata.lastSync     = SQWowAPI.GetTime()
+    if not pdata.quests then pdata.quests = {} end
+
+    local questID  = questEntry.questID
+    local existing = pdata.quests[questID]
+    local isNew    = existing == nil
+
+    -- Diff objectives only when the quest was already known.
+    -- Avoids progress banners for catch-up data seen for the first time.
+    if existing then
+        for i, obj in ipairs(questEntry.objectives) do
+            local prev        = existing.objectives[i]
+            local wasFinished = prev and prev.isFinished
+            if obj.isFinished and not wasFinished then
+                SocialQuestAnnounce:OnRemoteObjectiveEvent(
+                    fullName, questID, i,
+                    obj.numFulfilled, obj.numRequired, true, false)
+            elseif prev and obj.numFulfilled > prev.numFulfilled then
+                SocialQuestAnnounce:OnRemoteObjectiveEvent(
+                    fullName, questID, i,
+                    obj.numFulfilled, obj.numRequired, false, false)
+            end
+        end
+
+        -- Quest complete: all objectives finished and wasn't complete before.
+        if questEntry.isComplete and not existing.isComplete then
+            SocialQuestAnnounce:OnRemoteQuestEvent(
+                fullName, ET.Finished, questID, questEntry.title)
+        end
+    end
+
+    pdata.quests[questID] = questEntry
+
+    if isNew then
+        SocialQuestAnnounce:OnRemoteQuestEvent(
+            fullName, ET.Accepted, questID, questEntry.title)
+    end
+
+    SocialQuestGroupFrame:RequestRefresh()
+end
+
+-- Called by bridge modules when a quest is removed from a player's log.
+-- Reason (turn-in vs abandon) is unverifiable from the bridge; no Announce is fired.
+-- completedQuests[questID] is NOT set — reason unknown.
+function SocialQuestGroupData:OnBridgeQuestRemove(provider, fullName, questID)
+    local pdata = self.PlayerQuests[fullName]
+    if not pdata or pdata.hasSocialQuest then return end
+    if pdata.quests and pdata.quests[questID] then
+        pdata.quests[questID] = nil
+        SocialQuestGroupFrame:RequestRefresh()
+    end
+end
+
+-- Called by BridgeRegistry before Enable() to populate initial quest state.
+-- No banners are fired. Only hydrates players who already have a stub in
+-- PlayerQuests (current group members) — skips non-group players in the snapshot.
+function SocialQuestGroupData:OnBridgeHydrate(provider, snapshot)
+    for fullName, quests in pairs(snapshot) do
+        local pdata = self.PlayerQuests[fullName]
+        if pdata and not pdata.hasSocialQuest then
+            pdata.dataProvider = provider
+            pdata.lastSync     = SQWowAPI.GetTime()
+            pdata.quests       = quests
+            -- completedQuests preserved if accumulated before hydration
+        end
+    end
+    SocialQuestGroupFrame:RequestRefresh()
 end

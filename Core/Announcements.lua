@@ -30,6 +30,7 @@ local ticker = nil
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 local SQWowAPI = SocialQuestWowAPI
 local SQWowUI  = SocialQuestWowUI
+local ET = SocialQuest.EventTypes
 
 -- Set of event types that carry chain-step annotation when chainInfo is known.
 -- "finished" is intentionally excluded (objectives done, not yet turned in).
@@ -252,7 +253,7 @@ function SocialQuestAnnounce:OnQuestEvent(eventType, questID, questInfo)
 
     -- Party-wide objectives check: fires "Everyone has finished" when all engaged
     -- group members have completed this quest's objectives.
-    if eventType == "finished" then
+    if eventType == ET.Finished then
         checkAllFinished(questID, true)
     end
 end
@@ -325,11 +326,11 @@ checkAllFinished = function(questID, localHasFinished)
         return
     end
 
-    -- Every group member must have SocialQuest; suppress entirely if any lacks it.
+    -- Every group member must have a data source (SQ or bridge); suppress if any has neither.
     -- Without full visibility, we cannot reliably confirm that everyone has finished.
     for _, entry in pairs(PlayerQuests) do
-        if not entry.hasSocialQuest then
-            SocialQuest:Debug("Banner", "All finished suppressed: non-SQ member present")
+        if not entry.hasSocialQuest and not entry.dataProvider then
+            SocialQuest:Debug("Banner", "All finished suppressed: member with no data present")
             return
         end
     end
@@ -410,9 +411,21 @@ function SocialQuestAnnounce:OnRemoteQuestEvent(sender, eventType, questID, cach
     local db = SocialQuest.db.profile
     if not db.enabled then return end
 
+    -- Defense-in-depth: bridge providers cannot verify Completed/Abandoned/Failed
+    -- (remove packet carries no reason code). Block them here regardless of call site.
+    local pdata    = SocialQuestGroupData.PlayerQuests[sender]
+    local provider = pdata and pdata.dataProvider
+    if provider and provider ~= SocialQuest.DataProviders.SocialQuest then
+        if eventType == ET.Completed
+        or eventType == ET.Abandoned
+        or eventType == ET.Failed then
+            return
+        end
+    end
+
     -- Party-wide objectives check: fires regardless of displayReceived, because
     -- "Everyone has finished" is a synthesized local event, not a raw inbound banner.
-    if eventType == "finished" then
+    if eventType == ET.Finished then
         checkAllFinished(questID, false)
     end
 
@@ -479,7 +492,7 @@ function SocialQuestAnnounce:OnRemoteObjectiveEvent(sender, questID, objIndex, n
         return
     end
 
-    local eventType = isComplete and "objective_complete" or "objective_progress"
+    local eventType = isComplete and ET.ObjectiveComplete or ET.ObjectiveProgress
     if not sectionDb.display[eventType] then
         SocialQuest:Debug("Banner", "Banner suppressed: display." .. eventType .. " off")
         return

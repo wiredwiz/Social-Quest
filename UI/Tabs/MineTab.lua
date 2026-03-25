@@ -88,6 +88,7 @@ function MineTab:BuildTree()
                                                playerData.quests[pQuestID].isComplete or false,
                                 hasCompleted = false,
                                 needsShare   = false,
+                                dataProvider = playerData.dataProvider,
                             })
                         end
                     end

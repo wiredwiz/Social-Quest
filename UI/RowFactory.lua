@@ -270,14 +270,17 @@ end
 function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent)
     local C    = SocialQuestColors
     local x    = indent or 0
-    local name = playerEntry.name or "Unknown"
+    local name        = playerEntry.name or "Unknown"
+    local nameTag     = playerEntry.dataProvider
+                     and SocialQuestBridgeRegistry:GetNameTag(playerEntry.dataProvider)
+    local displayName = nameTag and (name .. " " .. nameTag) or name
 
     if playerEntry.hasCompleted then
         local fs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
         fs:SetWidth(CONTENT_WIDTH - x - 4)
         fs:SetJustifyH("LEFT")
-        fs:SetText(SocialQuestColors.GetUIColor("completed") .. string.format(L["%s FINISHED"], name) .. C.reset)
+        fs:SetText(SocialQuestColors.GetUIColor("completed") .. string.format(L["%s FINISHED"], displayName) .. C.reset)
         return y + ROW_H + 2
 
     elseif playerEntry.isComplete then
@@ -285,7 +288,7 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent)
         fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
         fs:SetWidth(CONTENT_WIDTH - x - 4)
         fs:SetJustifyH("LEFT")
-        fs:SetText(C.white .. name .. C.reset .. " " .. SocialQuestColors.GetUIColor("completed") .. L["Complete"] .. C.reset)
+        fs:SetText(C.white .. displayName .. C.reset .. " " .. SocialQuestColors.GetUIColor("completed") .. L["Complete"] .. C.reset)
         return y + ROW_H + 2
 
     elseif playerEntry.needsShare then
@@ -293,7 +296,7 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent)
         fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
         fs:SetWidth(CONTENT_WIDTH - x - 4)
         fs:SetJustifyH("LEFT")
-        fs:SetText(C.unknown .. string.format(L["%s Needs it Shared"], name) .. C.reset)
+        fs:SetText(C.unknown .. string.format(L["%s Needs it Shared"], displayName) .. C.reset)
         return y + ROW_H + 2
 
     elseif not playerEntry.hasSocialQuest
@@ -302,7 +305,7 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent)
         fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
         fs:SetWidth(CONTENT_WIDTH - x - 4)
         fs:SetJustifyH("LEFT")
-        fs:SetText(C.unknown .. string.format(L["%s (no data)"], name) .. C.reset)
+        fs:SetText(C.unknown .. string.format(L["%s (no data)"], displayName) .. C.reset)
         return y + ROW_H + 2
 
     else
@@ -313,7 +316,7 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent)
             fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
             fs:SetWidth(CONTENT_WIDTH - x - 4)
             fs:SetJustifyH("LEFT")
-            fs:SetText(C.white .. name .. C.reset)
+            fs:SetText(C.white .. displayName .. C.reset)
             return y + ROW_H + 2
         end
 
@@ -324,7 +327,7 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent)
             fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
             fs:SetWidth(CONTENT_WIDTH - x - 4)
             fs:SetJustifyH("LEFT")
-            fs:SetText(C.white .. name .. C.reset .. " " .. clr .. (obj.text or "") .. C.reset)
+            fs:SetText(C.white .. displayName .. C.reset .. " " .. clr .. (obj.text or "") .. C.reset)
             y = y + fs:GetStringHeight() + 2
         end
         return y

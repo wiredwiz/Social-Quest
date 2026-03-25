@@ -26,10 +26,12 @@
 |---|---|---|
 | `Core\WowAPI.lua` | `SocialQuestWowAPI` | Thin pass-through wrappers for all WoW game-state and data globals. All version-specific branching for non-quest APIs lives here. Consumer files access via `local SQWowAPI = SocialQuestWowAPI`. |
 | `Core\WowUI.lua` | `SocialQuestWowUI` | Thin pass-through wrappers for volatile WoW UI-layer primitives (`RaidNotice_AddMessage`, `PanelTemplates_*`, `DEFAULT_CHAT_FRAME`). Consumer files access via `local SQWowUI = SocialQuestWowUI`. |
-| `Core\GroupComposition.lua` | `SocialQuestGroupComposition` | Sole handler for group membership changes. Diffs `GROUP_ROSTER_UPDATE` against a membership snapshot to classify join/leave/subgroup-move events, then dispatches typed callbacks to Communications and GroupData. Owns the `GroupType` enum. |
-| `Core\GroupData.lua` | `SocialQuestGroupData` | Owns `PlayerQuests` table. Populated entirely from incoming AceComm messages. Stores numeric-only data — no quest titles or objective text from remote players. |
+| `Core\GroupComposition.lua` | `SocialQuestGroupComposition` | Sole handler for group membership changes. Diffs `GROUP_ROSTER_UPDATE` against a membership snapshot to classify join/leave/subgroup-move events, then dispatches typed callbacks to Communications and GroupData. Owns the `GroupType` enum. Calls `BridgeRegistry:EnableAll()`/`DisableAll()` on join/leave. |
+| `Core\GroupData.lua` | `SocialQuestGroupData` | Owns `PlayerQuests` table. Populated from SQ AceComm messages and bridge modules. Stores numeric-only data — no quest titles or objective text from remote players. Each entry has a `dataProvider` field (`DataProviders.SocialQuest`, `DataProviders.Questie`, or `nil` for stubs). |
 | `Core\Communications.lua` | `SocialQuestComm` | All AceComm send/receive. Manages sync protocol, jitter timers, and per-sender cooldowns. |
 | `Core\Announcements.lua` | `SocialQuestAnnounce` | All chat announcements (outbound) and banner notifications (inbound). Drives throttle queue, Questie suppression, UIErrorsFrame hook. |
+| `Core\BridgeRegistry.lua` | `SocialQuestBridgeRegistry` | Thin lifecycle manager for data-provider bridges. Holds registered bridges; `EnableAll()` hydrates then enables each available bridge on group join; `DisableAll()` suspends processing on leave; `GetNameTag(provider)` returns the display icon for a provider. |
+| `Core\QuestieBridge.lua` | `QuestieBridge` | Questie bridge implementation. Hooks `QuestieComms:InsertQuestDataPacket` and `QuestieComms.data:RemoveQuestFromPlayer` via `hooksecurefunc`. `_active` flag gates processing; `_hookInstalled` prevents duplicate hooks. Registers itself with `BridgeRegistry` at load time. |
 
 ### UI Modules (`UI\`)
 
@@ -48,6 +50,22 @@
 
 - `Util\Colors.lua` — Color definitions.
 - `Locales\*.lua` — AceLocale locale files (enUS through jaJP).
+
+### Addon-Level Constants
+
+Declared on the addon object in `SocialQuest.lua` immediately after the addon is created (available to all sub-modules at file scope):
+
+```lua
+SocialQuest.DataProviders = { SocialQuest = "SocialQuest", Questie = "Questie" }
+
+SocialQuest.EventTypes = {
+    Accepted="accepted", Completed="completed", Abandoned="abandoned",
+    Failed="failed", Finished="finished", Tracked="tracked", Untracked="untracked",
+    ObjectiveComplete="objective_complete", ObjectiveProgress="objective_progress",
+}
+```
+
+Each consumer module that dispatches or compares event types declares `local ET = SocialQuest.EventTypes` at file scope.
 
 ---
 
@@ -137,8 +155,9 @@ GroupType = {
 ```lua
 -- Core/GroupData.lua
 PlayerQuests["Name-Realm"] = {
-    hasSocialQuest = true,
-    lastSync       = GetTime(),
+    hasSocialQuest  = true,
+    dataProvider    = "SocialQuest",   -- SocialQuest.DataProviders.* constant; nil for stubs
+    lastSync        = GetTime(),
     completedQuests = { [questID] = true, ... },
     quests = {
         [questID] = {
@@ -154,7 +173,8 @@ PlayerQuests["Name-Realm"] = {
         }
     }
 }
--- Players without SocialQuest: { hasSocialQuest=false, completedQuests={} }
+-- Players without SocialQuest (stub only):  { hasSocialQuest=false, completedQuests={} }
+-- Players with Questie bridge data:         { hasSocialQuest=false, dataProvider="Questie", quests={...}, ... }
 ```
 
 ---
@@ -179,6 +199,16 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 ---
 
 ## Version History
+
+### Version 2.8.0 (March 2026 — QuestieIntegration branch)
+- **Questie Bridge**: hooks Questie's `QuestieComms` layer to populate `PlayerQuests` for party members who have Questie but not SocialQuest. Fires `Accepted`, `Finished`, and objective banners for their quest events.
+- Added `SocialQuest.DataProviders` and `SocialQuest.EventTypes` constant tables on the addon object. All event-type string literals replaced with `ET.*` aliases across `SocialQuest.lua`, `GroupData.lua`, and `Announcements.lua`.
+- Added `dataProvider` field to all `PlayerQuests` entries (SQ entries get `DataProviders.SocialQuest`; bridge entries get `DataProviders.Questie`; stubs remain `nil`).
+- New modules: `Core/BridgeRegistry.lua` (`SocialQuestBridgeRegistry`) and `Core/QuestieBridge.lua` (`QuestieBridge`).
+- `RowFactory` appends the bridge's `nameTag` icon after the player name for non-SQ data sources.
+- `checkAllFinished` guard updated: suppresses only when a member has no data source at all (not merely `hasSocialQuest=false`).
+- Defense-in-depth: `OnRemoteQuestEvent` suppresses Completed/Abandoned/Failed banners for non-SQ providers.
+- Bug fix: `OnUnitQuestLogChanged` no longer clobbers bridge-populated `PlayerQuests` entries.
 
 ### Version 2.7.0 (March 2026 — Improvements branch)
 - Added `Core/WowAPI.lua` (`SocialQuestWowAPI`) and `Core/WowUI.lua` (`SocialQuestWowUI`) abstraction modules. All direct WoW game-state/data API calls now route through `SQWowAPI`; volatile WoW UI primitives route through `SQWowUI`. Quest and quest-log API calls replaced with AQL public API calls. Prepares SocialQuest to support multiple WoW interface versions without scattered direct WoW API usage.

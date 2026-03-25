@@ -2,7 +2,7 @@
 ## Title: SocialQuest
 ## Notes: Social quest coordination for WoW Burning Crusade Anniversary.
 ## Author: Thad Ryker
-## Version: 2.7.0
+## Version: 2.8.0
 ## Category: Quests
 ## IconTexture: Interface\AddOns\SocialQuest\Logo.png
 ## Dependencies: Ace3, AbsoluteQuestLog
@@ -39,6 +39,8 @@ Core\GroupComposition.lua
 Core\GroupData.lua
 Core\Communications.lua
 Core\Announcements.lua
+Core\BridgeRegistry.lua
+Core\QuestieBridge.lua
 
 # UI modules
 UI\TabUtils.lua
