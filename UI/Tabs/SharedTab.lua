@@ -295,7 +295,7 @@ function SharedTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTab
                     y = rowFactory.AddQuestRow(contentFrame, y, entry, QUEST_INDENT + 8, {})
                     local nameColumnWidth = 0
                     for _, player in ipairs(entry.players) do
-                        local w = SocialQuestRowFactory.MeasureNameWidth(SocialQuestRowFactory.GetDisplayName(player))
+                        local w = rowFactory.MeasureNameWidth(rowFactory.GetDisplayName(player))
                         if w > nameColumnWidth then nameColumnWidth = w end
                     end
                     for _, player in ipairs(entry.players) do
@@ -309,7 +309,7 @@ function SharedTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTab
                 y = rowFactory.AddQuestRow(contentFrame, y, entry, QUEST_INDENT, {})
                 local nameColumnWidth = 0
                 for _, player in ipairs(entry.players) do
-                    local w = SocialQuestRowFactory.MeasureNameWidth(SocialQuestRowFactory.GetDisplayName(player))
+                    local w = rowFactory.MeasureNameWidth(rowFactory.GetDisplayName(player))
                     if w > nameColumnWidth then nameColumnWidth = w end
                 end
                 for _, player in ipairs(entry.players) do
