@@ -157,6 +157,7 @@ function SocialQuest:OnEnable()
     self:RegisterEvent("AUTOFOLLOW_BEGIN",      "OnAutoFollowBegin")
     self:RegisterEvent("AUTOFOLLOW_END",        "OnAutoFollowEnd")
     self:RegisterEvent("TAXIMAP_OPENED",        "OnTaxiMapOpened")
+    self:RegisterEvent("ZONE_CHANGED_NEW_AREA", "OnZoneChangedNewArea")
 
     -- Register AQL callbacks.
     -- Dot-notation is required: AQL is the target in CallbackHandler, so
@@ -393,6 +394,15 @@ end
 function SocialQuest:OnPlayerEnteringWorld()
     self.zoneTransitionSuppressUntil = SQWowAPI.GetTime() + 3
     self:Debug("Zone", "Zone transition detected — suppressing AQL callbacks for 3 s")
+    SocialQuestWindowFilter:Reset()
+    SocialQuestGroupFrame:RequestRefresh()
+end
+
+-- ZONE_CHANGED_NEW_AREA fires on seamless overland zone-border crossings (e.g. riding
+-- from Elwynn Forest into Westfall). PLAYER_ENTERING_WORLD does NOT fire for these.
+-- Reset the filter so the new zone name is used and refresh the window.
+function SocialQuest:OnZoneChangedNewArea()
+    self:Debug("Zone", "Zone area changed — resetting window filter")
     SocialQuestWindowFilter:Reset()
     SocialQuestGroupFrame:RequestRefresh()
 end

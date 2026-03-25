@@ -18,7 +18,7 @@
 
 ### Entry Point
 
-`SocialQuest.lua` — Creates the Ace3 addon object, handles `OnInitialize` and `OnEnable`, registers WoW events and AQL callbacks, and delegates everything else to sub-modules. Registers these WoW events: `GROUP_ROSTER_UPDATE`, `PLAYER_LOGIN`, `PLAYER_ENTERING_WORLD`, `AUTOFOLLOW_BEGIN`, `AUTOFOLLOW_END`.
+`SocialQuest.lua` — Creates the Ace3 addon object, handles `OnInitialize` and `OnEnable`, registers WoW events and AQL callbacks, and delegates everything else to sub-modules. Registers these WoW events: `GROUP_ROSTER_UPDATE`, `PLAYER_LOGIN`, `PLAYER_ENTERING_WORLD`, `ZONE_CHANGED_NEW_AREA`, `AUTOFOLLOW_BEGIN`, `AUTOFOLLOW_END`.
 
 ### Core Modules (`Core\`)
 
@@ -199,6 +199,10 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 ---
 
 ## Version History
+
+### Version 2.10.2 (March 2026 — ProgressBars branch)
+- Filter label now prefixed with "Filter: " across all 12 locales (e.g. "Filter: Zone: Elwynn Forest"). Updated locale values for `L["Zone: %s"]` and `L["Instance: %s"]` in all locale files; enUS changed from `= true` to explicit strings.
+- Bug fix: zone filter was not updating when the player crossed an overland zone border (e.g. Elwynn Forest → Westfall). `ZONE_CHANGED_NEW_AREA` is now registered and calls `SocialQuestWindowFilter:Reset()` + `SocialQuestGroupFrame:RequestRefresh()`. `PLAYER_ENTERING_WORLD` only fires on full loading screens (portals, instances, `/reload`) — seamless zone transitions require this separate event.
 
 ### Version 2.10.1 (March 2026 — ProgressBars branch)
 - Progress Bar Polish: replaced flat colored-rectangle bars with WoW-native `StatusBar` widgets. Each bar now uses the standard `Interface\TargetingFrame\UI-StatusBar` fill texture (the same texture used by health and cast bars), colored at 85% opacity so the texture's built-in highlight stripe and bevel are visible. A `Interface\CastingBar\UI-CastingBar-Border` overlay provides the characteristic tapered border that suggests rounded ends. Objective text is forced white with a 1px drop shadow and has WoW color escape codes stripped, eliminating the yellow-on-yellow readability problem from the previous implementation. Colorblind mode uses sky-blue for completed objectives as before.
