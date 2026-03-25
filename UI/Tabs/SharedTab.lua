@@ -167,7 +167,7 @@ function SharedTab:BuildTree(filterTable)
                     end
                 end
 
-                -- Sort steps ascending.
+                -- Sort steps ascending. Inside the guard: zone.chains[chainID] only exists here.
                 table.sort(zone.chains[chainID].steps, function(a, b)
                     local aS = a.chainInfo and a.chainInfo.step or 0
                     local bS = b.chainInfo and b.chainInfo.step or 0
