@@ -48,6 +48,7 @@ UI\RowFactory.lua
 UI\Tabs\MineTab.lua
 UI\Tabs\PartyTab.lua
 UI\Tabs\SharedTab.lua
+UI\WindowFilter.lua
 UI\Options.lua
 UI\Tooltips.lua
 UI\GroupFrame.lua
