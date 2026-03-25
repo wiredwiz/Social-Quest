@@ -61,13 +61,29 @@ Bars only apply when the player has one or more objectives with `numFulfilled` a
 
 ## Colors
 
-| State | Fill color | Fill alpha | Notes |
-|---|---|---|---|
-| In progress | Yellow `#FFFF00` | 0.45 | Matches `C.active` |
-| Complete | Green `#00FF00` (or sky-blue `#56B4E9` in colorblind mode) | 0.45 | Uses `SocialQuestColors.GetUIColor("completed")` |
-| Background | Black | 0.35 | Behind the fill |
+Bar fill and background are set via `texture:SetColorTexture(r, g, b, a)`, which requires numeric RGB values. The existing `GetUIColor` returns inline escape strings (unusable for textures), so a new helper is added to `Colors.lua`.
 
-`GetUIColor("completed")` is called at render time, so colorblind mode is respected automatically.
+**New helper: `SocialQuestColors.GetUIColorRGB(key)`**
+
+Returns `{r, g, b}` for a UI color key, respecting colorblind mode. Same logic as `GetUIColor` but returns numbers instead of escape strings. Initial entries needed:
+
+```lua
+SocialQuestColors.uiRGB = {
+    completed = { r = 0,     g = 1,     b = 0     },  -- green  (#00FF00)
+    active    = { r = 1,     g = 1,     b = 0     },  -- yellow (#FFFF00)
+}
+SocialQuestColors.uiCBRGB = {
+    completed = { r = 0.337, g = 0.706, b = 0.914 },  -- sky-blue (#56B4E9)
+}
+```
+
+`GetUIColorRGB(key)` checks colorblind mode (same `isColorblindMode()` call as `GetUIColor`), returns `uiCBRGB[key]` if available and colorblind, else `uiRGB[key]`.
+
+| State | `GetUIColorRGB` key | Fill alpha |
+|---|---|---|
+| In progress | `"active"` → `{1, 1, 0}` | 0.45 |
+| Complete | `"completed"` → `{0, 1, 0}` or `{0.337, 0.706, 0.914}` (CB) | 0.45 |
+| Background | (hardcoded) `{0, 0, 0}` | 0.35 |
 
 The player name (left column) is always white (`C.white`), regardless of objective state.
 
@@ -81,15 +97,29 @@ Text on the bar is `GameFontNormalSmall` (white with black shadow). The shadow p
 
 | File | Change |
 |---|---|
-| `UI/RowFactory.lua` | Add `MeasureNameWidth`, modify `AddPlayerRow` |
+| `Util/Colors.lua` | Add `uiRGB`/`uiCBRGB` tables and `GetUIColorRGB(key)` helper |
+| `UI/RowFactory.lua` | Add `GetDisplayName`, `MeasureNameWidth`; modify `AddPlayerRow` |
 | `UI/Tabs/PartyTab.lua` | Add pre-pass to compute `nameColumnWidth` before player rows |
 | `UI/Tabs/SharedTab.lua` | Same as PartyTab |
 
 ### RowFactory.lua
 
+**New helper: `RowFactory.GetDisplayName(playerEntry)`**
+
+Extracts the fully-resolved display name from a player entry, applying the nameTag suffix from `SocialQuestBridgeRegistry` when a `dataProvider` is set. Centralizes the name resolution logic that currently exists inline in `AddPlayerRow`. Used by `MeasureNameWidth` pre-passes in tab Render methods and by `AddPlayerRow` itself (refactored to call this helper).
+
+```lua
+function RowFactory.GetDisplayName(playerEntry)
+    local name    = playerEntry.name or "Unknown"
+    local nameTag = playerEntry.dataProvider
+                 and SocialQuestBridgeRegistry:GetNameTag(playerEntry.dataProvider)
+    return nameTag and (name .. " " .. nameTag) or name
+end
+```
+
 **New helper: `RowFactory.MeasureNameWidth(displayName)`**
 
-Accepts the fully-resolved display name string (i.e., after nameTag suffix has been appended, matching what `AddPlayerRow` actually renders in the name column). Creates a temporary FontString on `UIParent` using `GameFontNormalSmall`, sets the text, calls `GetStringWidth()`, then releases the FontString (hides it). Returns the pixel width as a number. Used by tab Render methods before calling `AddPlayerRow`.
+Accepts the fully-resolved display name string (from `GetDisplayName`). Creates a temporary FontString on `UIParent` using `GameFontNormalSmall`, sets the text, calls `GetStringWidth()`, then hides the FontString (reuse a single module-level FontString to avoid per-call creation overhead). Returns the pixel width as a number. Used by tab Render methods before calling `AddPlayerRow`.
 
 **Modified: `AddPlayerRow(contentFrame, y, playerEntry, indent, nameColumnWidth)`**
 
@@ -99,13 +129,16 @@ New optional fifth parameter `nameColumnWidth`. Behavior:
 - When `nameColumnWidth` is provided and the player has in-progress objectives: renders the two-column bar layout for each objective.
 
 Bar construction per objective:
-1. Guard: if `obj.numRequired` is nil or `== 0`, fall back to the existing plain-text single-column rendering for that objective row (same as when `nameColumnWidth` is nil). This handles any objective that lacks numeric data.
-2. Create a `Frame` anchored at `(indent + nameColumnWidth + 4, -y)`.
-3. On the frame, create a background `Texture` (BACKGROUND layer): `SetColorTexture(0, 0, 0, 0.35)`, `SetAllPoints`.
-4. On the frame, create a fill `Texture` (ARTWORK layer): color from `GetUIColor("completed")` (complete) or yellow (in-progress), alpha 0.45. Anchor TOPLEFT to TOPLEFT. Width = `barWidth * (numFulfilled / numRequired)`. Height = `ROW_H`.
-5. On the frame, create a `FontString` (OVERLAY layer): `GameFontNormalSmall`, white, left-aligned, 4px left padding, objective text (`obj.text`).
-6. Create a separate name `FontString` at `(indent, -y)`, width = `nameColumnWidth`, white, `GameFontNormalSmall`, left-aligned.
-7. Advance `y` by `ROW_H + 2`.
+1. Guard: if `obj.numRequired` is nil or `== 0`, fall back to the existing plain-text single-column rendering for that objective row (same as when `nameColumnWidth` is nil). This handles event-type objectives (e.g., "Talk to NPC") that lack numeric data.
+2. Resolve `numFulfilled`: use `obj.numFulfilled or 0` (defensive default matching `BuildRemoteObjectives` behavior, in case a local AQL objective has a nil value).
+3. Compute `barWidth = math.max(CONTENT_WIDTH - indent - nameColumnWidth - 4 - 4, 0)` (right-edge margin of 4px; clamped to 0 to handle very narrow frames).
+4. Compute `fillWidth = math.floor(barWidth * ((obj.numFulfilled or 0) / obj.numRequired))`.
+5. Create a `Frame` on `contentFrame`, size `(barWidth, ROW_H)`, anchored TOPLEFT at `(indent + nameColumnWidth + 4, -y)`. Set `frame:SetClipsChildren(true)` so text cannot overflow.
+6. On the frame, create a background `Texture` (BACKGROUND layer): `SetColorTexture(0, 0, 0, 0.35)`, `SetAllPoints`.
+7. On the frame, create a fill `Texture` (ARTWORK layer): color from `SocialQuestColors.GetUIColorRGB(obj.isFinished and "completed" or "active")`, alpha 0.45. Anchor TOPLEFT to TOPLEFT. `SetSize(fillWidth, ROW_H)`. Skip if `fillWidth == 0`.
+8. On the frame, create a `FontString` (OVERLAY layer): `GameFontNormalSmall`, white, `SetMaxLines(1)`, left-aligned with `SetPoint("LEFT", frame, "LEFT", 4, 0)`. Text = `obj.text`.
+9. Create a separate name `FontString` directly on `contentFrame` at `(indent, -y)`, `SetSize(nameColumnWidth, ROW_H)`, white, `GameFontNormalSmall`, left-aligned, vertically middle.
+10. Advance `y` by `ROW_H + 2`.
 
 ### PartyTab.lua and SharedTab.lua
 
@@ -114,11 +147,7 @@ Before the player-row rendering loop for each quest, add a pre-pass:
 ```lua
 local nameColumnWidth = 0
 for _, playerEntry in ipairs(players) do
-    local name = playerEntry.name or "Unknown"
-    local nameTag = playerEntry.dataProvider
-                 and SocialQuestBridgeRegistry:GetNameTag(playerEntry.dataProvider)
-    local displayName = nameTag and (name .. " " .. nameTag) or name
-    local w = RowFactory.MeasureNameWidth(displayName)
+    local w = RowFactory.MeasureNameWidth(RowFactory.GetDisplayName(playerEntry))
     if w > nameColumnWidth then nameColumnWidth = w end
 end
 ```
