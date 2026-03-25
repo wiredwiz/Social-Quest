@@ -164,5 +164,5 @@ The pre-pass is scoped per-quest (not per-tab), since each quest can have a diff
 - No protocol changes.
 - No new config toggle — bars replace the plain text rendering directly.
 - No new files.
-- Colorblind mode respected via `GetUIColor("completed")`.
+- Colorblind mode respected via `SocialQuestColors.GetUIColorRGB("completed")`.
 - `MeasureNameWidth` must not leave persistent FontStrings — create, measure, hide/release.
