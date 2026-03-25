@@ -383,10 +383,9 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent, nameColum
         -- Plain text fallback: when nameColumnWidth is nil or numRequired is absent/zero.
         for _, obj in ipairs(objectives) do
             if nameColumnWidth and obj.numRequired and obj.numRequired > 0 then
-                -- Bar layout.
-                local barX      = x + nameColumnWidth + 4
-                local barWidth  = math.max(CONTENT_WIDTH - barX - 4, 0)
-                local fillWidth = math.floor(barWidth * ((obj.numFulfilled or 0) / obj.numRequired))
+                -- Bar layout (StatusBar widget).
+                local barX     = x + nameColumnWidth + 4
+                local barWidth = math.max(CONTENT_WIDTH - barX - 4, 0)
 
                 -- Name label (left column).
                 local nameFs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -396,37 +395,51 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent, nameColum
                 nameFs:SetJustifyV("MIDDLE")
                 nameFs:SetText(C.white .. displayName .. C.reset)
 
-                -- Bar container frame (clips children so fill/text stay within bounds).
-                local barFrame = CreateFrame("Frame", nil, contentFrame)
-                barFrame:SetSize(barWidth, ROW_H)
-                barFrame:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", barX, -y)
-                barFrame:SetClipsChildren(true)
-
-                -- Dark background texture.
-                local bg = barFrame:CreateTexture(nil, "BACKGROUND")
-                bg:SetColorTexture(0, 0, 0, 0.35)
-                bg:SetAllPoints(barFrame)
-
-                -- Colored fill texture (proportional to progress).
-                if fillWidth > 0 then
+                if barWidth > 0 then
+                    -- StatusBar widget — handles fill clipping natively via SetValue.
+                    -- Do NOT call SetClipsChildren; the border texture intentionally
+                    -- extends 2px outside the bar bounds on all sides.
+                    local statusBar = CreateFrame("StatusBar", nil, contentFrame)
+                    statusBar:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", barX, -y)
+                    statusBar:SetSize(barWidth, ROW_H)
+                    statusBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+                    statusBar:SetMinMaxValues(0, obj.numRequired)
+                    statusBar:SetValue(obj.numFulfilled or 0)
                     local fillClr = SocialQuestColors.GetUIColorRGB(
                         obj.isFinished and "completed" or "active")
-                    local fill = barFrame:CreateTexture(nil, "ARTWORK")
-                    fill:SetColorTexture(fillClr.r, fillClr.g, fillClr.b, 0.45)
-                    fill:SetPoint("TOPLEFT", barFrame, "TOPLEFT", 0, 0)
-                    fill:SetSize(fillWidth, ROW_H)
+                    statusBar:SetStatusBarColor(fillClr.r, fillClr.g, fillClr.b, 0.85)
+
+                    -- Dark background (BACKGROUND — renders behind the fill).
+                    local bg = statusBar:CreateTexture(nil, "BACKGROUND")
+                    bg:SetColorTexture(0, 0, 0, 0.5)
+                    bg:SetAllPoints(statusBar)
+
+                    -- Casting bar border (OVERLAY — transparent center, renders above fill).
+                    -- Creation order matters: border must be created before textFs so
+                    -- textFs renders on top of the border edges at the same OVERLAY layer.
+                    local borderTex = statusBar:CreateTexture(nil, "OVERLAY")
+                    borderTex:SetTexture("Interface\\CastingBar\\UI-CastingBar-Border")
+                    borderTex:SetBlendMode("BLEND")
+                    borderTex:SetPoint("TOPLEFT",     statusBar, "TOPLEFT",     -2,  2)
+                    borderTex:SetPoint("BOTTOMRIGHT", statusBar, "BOTTOMRIGHT",  2, -2)
+
+                    -- Objective text (OVERLAY, created after border — renders above border edges).
+                    -- Strip embedded WoW color codes so yellow text doesn't appear on yellow fill.
+                    local plainText = (obj.text or "")
+                        :gsub("|c%x%x%x%x%x%x%x%x(.-)|r", "%1")
+                        :gsub("|c%x%x%x%x%x%x%x%x([^|]*)", "%1")
+                    local textFs = statusBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+                    textFs:SetPoint("LEFT", statusBar, "LEFT", 4, 0)
+                    textFs:SetSize(barWidth - 8, ROW_H)
+                    textFs:SetJustifyH("LEFT")
+                    textFs:SetJustifyV("MIDDLE")
+                    textFs:SetMaxLines(1)
+                    textFs:SetShadowOffset(1, -1)
+                    textFs:SetShadowColor(0, 0, 0, 1)
+                    textFs:SetText(C.white .. plainText .. C.reset)
                 end
 
-                -- Objective text overlay (white, single line, 4px left padding).
-                local textFs = barFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-                textFs:SetPoint("LEFT", barFrame, "LEFT", 4, 0)
-                textFs:SetSize(barWidth - 8, ROW_H)
-                textFs:SetJustifyH("LEFT")
-                textFs:SetJustifyV("MIDDLE")
-                textFs:SetMaxLines(1)
-                textFs:SetText(obj.text or "")
-
-                y = y + ROW_H + 2
+                y = y + ROW_H + 6
             else
                 -- Plain text fallback (original behavior).
                 local clr = obj.isFinished and SocialQuestColors.GetUIColor("completed") or C.active
