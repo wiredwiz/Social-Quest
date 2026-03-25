@@ -11,11 +11,33 @@ local ROW_H         = 18     -- standard row height in pixels
 local INDENT_STEP   = 16     -- pixels per indent level
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 local SQWowAPI = SocialQuestWowAPI
+local _measureFs  -- cached FontString for MeasureNameWidth; created on first use
 
 -- Called by GroupFrame:Refresh() to set content width before rendering.
 -- Writes to the CONTENT_WIDTH upvalue so all row functions use the current frame width.
 function RowFactory.SetContentWidth(w)
     CONTENT_WIDTH = w
+end
+
+-- Returns the fully-resolved display name for a playerEntry.
+-- Appends the bridge nameTag suffix when dataProvider is set.
+-- Call this instead of building the name inline anywhere name display is needed.
+function RowFactory.GetDisplayName(playerEntry)
+    local name    = playerEntry.name or "Unknown"
+    local nameTag = playerEntry.dataProvider
+                 and SocialQuestBridgeRegistry:GetNameTag(playerEntry.dataProvider)
+    return nameTag and (name .. " " .. nameTag) or name
+end
+
+-- Returns the rendered pixel width of displayName at GameFontNormalSmall.
+-- Reuses a single cached FontString to avoid per-call frame allocation.
+function RowFactory.MeasureNameWidth(displayName)
+    if not _measureFs then
+        _measureFs = UIParent:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+        _measureFs:Hide()
+    end
+    _measureFs:SetText(displayName)
+    return _measureFs:GetStringWidth()
 end
 
 ------------------------------------------------------------------------
@@ -305,10 +327,7 @@ end
 function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent)
     local C    = SocialQuestColors
     local x    = indent or 0
-    local name        = playerEntry.name or "Unknown"
-    local nameTag     = playerEntry.dataProvider
-                     and SocialQuestBridgeRegistry:GetNameTag(playerEntry.dataProvider)
-    local displayName = nameTag and (name .. " " .. nameTag) or name
+    local displayName = RowFactory.GetDisplayName(playerEntry)
 
     if playerEntry.hasCompleted then
         local fs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
