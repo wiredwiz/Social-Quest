@@ -1,6 +1,30 @@
 SocialQuest Changelog
 =====================
 
+Version 2.8.2 (March 2026)
+- Bug fix: eliminated false "objective completed again" and false regression
+  announcements when splitting or merging bag stacks of quest collectible items.
+  Root fix in AQL (CursorHasItem() guard in handleQuestLogUpdate()) prevents
+  false REGRESSED/PROGRESSED/COMPLETED events from ever firing. Removed the
+  pendingRegressions AceTimer debounce from SocialQuest.lua — it was a workaround
+  for those now-suppressed events and is no longer needed.
+
+Version 2.8.1 (March 2026)
+- Bug fix: clicking a quest title in the SQ window when the quest log was open,
+  the quest selected, but its zone was collapsed caused the log to close instead
+  of expanding the zone. Fixed by gating the close-toggle on the quest being
+  visible (zone not collapsed) using AQL:GetQuestLogIndex().
+- Bug fix: regression banner still appeared when splitting a quest item stack.
+  Debounce window in OnObjectiveRegressed increased from 0.5 s to 2 s.
+
+Version 2.8.0 (March 2026)
+- Questie Bridge: hooks Questie's QuestieComms layer to populate PlayerQuests
+  for party members who have Questie but not SocialQuest.
+- Added SocialQuest.DataProviders and SocialQuest.EventTypes constant tables.
+- Added dataProvider field to all PlayerQuests entries.
+- New modules: Core/BridgeRegistry.lua and Core/QuestieBridge.lua.
+- RowFactory appends the bridge's name tag icon for non-SQ data sources.
+
 Version 2.7.0 (March 2026)
 - Added Core/WowAPI.lua and Core/WowUI.lua abstraction modules. All direct WoW
   game-state and data API calls (GetTime, IsInRaid, IsInGroup, IsInGuild, UnitName,

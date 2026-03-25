@@ -141,12 +141,6 @@ function SocialQuest:OnEnable()
     -- for every quest in the log; we must not re-announce or re-broadcast those.
     self.zoneTransitionSuppressUntil = 0
 
-    -- Pending regression timer handles, keyed by "questID_objIndex".
-    -- AQL_OBJECTIVE_REGRESSED is debounced: if AQL_OBJECTIVE_PROGRESSED arrives for
-    -- the same objective within 0.5 s, the regression is a BAG_UPDATE stack-split
-    -- artefact and is silently cancelled.
-    self.pendingRegressions = {}
-
     -- Initialize group composition tracker.
     SocialQuestGroupComposition:Initialize()
 
@@ -561,17 +555,6 @@ end
 function SocialQuest:OnObjectiveProgressed(event, questInfo, objective, delta)
     if SQWowAPI.GetTime() < self.zoneTransitionSuppressUntil then return end
 
-    -- Cancel any pending regression debounce for this objective.
-    -- When a BAG_UPDATE stack split causes a temporary count dip, AQL fires
-    -- REGRESSED then PROGRESSED in rapid succession. Cancelling here prevents
-    -- the false regression from being broadcast or announced.
-    local key = questInfo.questID .. "_" .. (objective.index or 0)
-    if self.pendingRegressions[key] then
-        self:Debug("Quest", "Regression debounce cancelled for questID=" .. questInfo.questID .. " obj=" .. (objective.index or 0))
-        self:CancelTimer(self.pendingRegressions[key])
-        self.pendingRegressions[key] = nil
-    end
-
     -- Always broadcast so remote PlayerQuests tables stay accurate.
     SocialQuestComm:BroadcastObjectiveUpdate(questInfo, objective)
 
@@ -586,13 +569,6 @@ end
 function SocialQuest:OnObjectiveCompleted(event, questInfo, objective)
     if SQWowAPI.GetTime() < self.zoneTransitionSuppressUntil then return end
 
-    -- Also cancel any pending regression debounce (objective completed = not regressed).
-    local key = questInfo.questID .. "_" .. (objective.index or 0)
-    if self.pendingRegressions[key] then
-        self:CancelTimer(self.pendingRegressions[key])
-        self.pendingRegressions[key] = nil
-    end
-
     self:Debug("Quest", "Objective complete " .. objective.numFulfilled .. "/" .. objective.numRequired .. ": " .. (objective.name or "") .. " for [" .. (questInfo.title or "?") .. "]")
     -- Comm already broadcast by OnObjectiveProgressed. Only announce here.
     SocialQuestAnnounce:OnObjectiveEvent("objective_complete", questInfo, objective, false)
@@ -602,20 +578,10 @@ end
 function SocialQuest:OnObjectiveRegressed(event, questInfo, objective, delta)
     if SQWowAPI.GetTime() < self.zoneTransitionSuppressUntil then return end
 
-    -- Debounce: delay by 0.5 s. If PROGRESSED or COMPLETED fires for the same
-    -- objective within that window, the timer is cancelled — indicating a transient
-    -- BAG_UPDATE stack-split artefact rather than a genuine regression.
-    local key = questInfo.questID .. "_" .. (objective.index or 0)
-    if self.pendingRegressions[key] then
-        self:CancelTimer(self.pendingRegressions[key])
-    end
-    self.pendingRegressions[key] = self:ScheduleTimer(function()
-        self.pendingRegressions[key] = nil
-        self:Debug("Quest", "Objective regression " .. objective.numFulfilled .. "/" .. objective.numRequired .. ": " .. (objective.name or "") .. " for [" .. (questInfo.title or "?") .. "]")
-        SocialQuestComm:BroadcastObjectiveUpdate(questInfo, objective)
-        SocialQuestAnnounce:OnObjectiveEvent("objective_progress", questInfo, objective, true)
-        SocialQuestGroupFrame:RequestRefresh()
-    end, 0.5)
+    self:Debug("Quest", "Objective regression " .. objective.numFulfilled .. "/" .. objective.numRequired .. ": " .. (objective.name or "") .. " for [" .. (questInfo.title or "?") .. "]")
+    SocialQuestComm:BroadcastObjectiveUpdate(questInfo, objective)
+    SocialQuestAnnounce:OnObjectiveEvent("objective_progress", questInfo, objective, true)
+    SocialQuestGroupFrame:RequestRefresh()
 end
 
 function SocialQuest:OnUnitQuestLogChanged(event, unit)
