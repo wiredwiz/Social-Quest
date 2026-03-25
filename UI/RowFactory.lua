@@ -411,7 +411,8 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent, nameColum
 
                     -- Dark background (BACKGROUND — renders behind the fill).
                     local bg = statusBar:CreateTexture(nil, "BACKGROUND")
-                    bg:SetColorTexture(0, 0, 0, 0.5)
+                    bg:SetTexture("Interface\\Buttons\\WHITE8X8")
+                    bg:SetVertexColor(0, 0, 0, 0.5)
                     bg:SetAllPoints(statusBar)
 
                     -- Casting bar border (OVERLAY — transparent center, renders above fill).
