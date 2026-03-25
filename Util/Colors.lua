@@ -68,3 +68,22 @@ function SocialQuestColors.GetUIColor(key)
     end
     return SocialQuestColors[key]
 end
+
+SocialQuestColors.uiRGB = {
+    completed = { r = 0,     g = 1,     b = 0     },  -- green  (#00FF00)
+    active    = { r = 1,     g = 1,     b = 0     },  -- yellow (#FFFF00)
+}
+
+SocialQuestColors.uiCBRGB = {
+    completed = { r = 0.337, g = 0.706, b = 0.914 },  -- sky-blue (#56B4E9)
+}
+
+-- Returns {r, g, b} for a UI color key, for use with texture:SetColorTexture().
+-- Respects colorblind mode. Falls back to uiRGB when no CB override exists.
+-- isColorblindMode() is accessible here as a local upvalue (defined earlier in this file).
+function SocialQuestColors.GetUIColorRGB(key)
+    if isColorblindMode() and SocialQuestColors.uiCBRGB[key] then
+        return SocialQuestColors.uiCBRGB[key]
+    end
+    return SocialQuestColors.uiRGB[key]
+end
