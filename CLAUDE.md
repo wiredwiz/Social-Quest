@@ -18,7 +18,7 @@
 
 ### Entry Point
 
-`SocialQuest.lua` — Creates the Ace3 addon object, handles `OnInitialize` and `OnEnable`, registers WoW events and AQL callbacks, and delegates everything else to sub-modules. Registers these WoW events: `GROUP_ROSTER_UPDATE`, `PLAYER_LOGIN`, `PLAYER_ENTERING_WORLD`, `ZONE_CHANGED_NEW_AREA`, `AUTOFOLLOW_BEGIN`, `AUTOFOLLOW_END`.
+`SocialQuest.lua` — Creates the Ace3 addon object, handles `OnInitialize` and `OnEnable`, registers WoW events and AQL callbacks, and delegates everything else to sub-modules. Registers these WoW events: `GROUP_ROSTER_UPDATE`, `PLAYER_LOGIN`, `PLAYER_ENTERING_WORLD`, `PLAYER_LEAVING_WORLD`, `ZONE_CHANGED_NEW_AREA`, `AUTOFOLLOW_BEGIN`, `AUTOFOLLOW_END`.
 
 ### Core Modules (`Core\`)
 
@@ -199,6 +199,9 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 ---
 
 ## Version History
+
+### Version 2.10.3 (March 2026 — ProgressBars branch)
+- Feature: the SQ window now reopens automatically after loading screens (hearthstone, portals, instance entry/exit, `/reload`) if it was open before the transition. `PLAYER_LEAVING_WORLD` snapshots the open state before WoW's `CloseAllWindows()` hides the frame; `PLAYER_ENTERING_WORLD` restores it. `OnHide` saves closed state only for user-initiated closes (X button, Escape), guarded by a `leavingWorld` flag so zone-transition hides do not overwrite the snapshot. `windowOpen` added to `char.frameState` AceDB defaults.
 
 ### Version 2.10.2 (March 2026 — ProgressBars branch)
 - Filter label now prefixed with "Filter: " across all 12 locales (e.g. "Filter: Zone: Elwynn Forest"). Updated locale values for `L["Zone: %s"]` and `L["Instance: %s"]` in all locale files; enUS changed from `= true` to explicit strings.

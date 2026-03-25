@@ -118,6 +118,7 @@ function SocialQuest:OnInitialize()
             collapsedZones     = { mine = {}, party = {}, shared = {} },
             tabScrollPositions = { mine = 0,  party = 0,  shared = 0  },
             tabContentHeights  = { mine = 0,  party = 0,  shared = 0  },
+            windowOpen         = false,
         }
         SocialQuestGroupFrame:ResetFrameState()
     end)
@@ -154,10 +155,11 @@ function SocialQuest:OnEnable()
     self:RegisterEvent("GROUP_ROSTER_UPDATE",   "OnGroupRosterUpdate")
     self:RegisterEvent("PLAYER_LOGIN",          "OnPlayerLogin")
     self:RegisterEvent("PLAYER_ENTERING_WORLD", "OnPlayerEnteringWorld")
-    self:RegisterEvent("AUTOFOLLOW_BEGIN",      "OnAutoFollowBegin")
-    self:RegisterEvent("AUTOFOLLOW_END",        "OnAutoFollowEnd")
-    self:RegisterEvent("TAXIMAP_OPENED",        "OnTaxiMapOpened")
-    self:RegisterEvent("ZONE_CHANGED_NEW_AREA", "OnZoneChangedNewArea")
+    self:RegisterEvent("AUTOFOLLOW_BEGIN",        "OnAutoFollowBegin")
+    self:RegisterEvent("AUTOFOLLOW_END",          "OnAutoFollowEnd")
+    self:RegisterEvent("TAXIMAP_OPENED",          "OnTaxiMapOpened")
+    self:RegisterEvent("ZONE_CHANGED_NEW_AREA",   "OnZoneChangedNewArea")
+    self:RegisterEvent("PLAYER_LEAVING_WORLD",    "OnPlayerLeavingWorld")
 
     -- Register AQL callbacks.
     -- Dot-notation is required: AQL is the target in CallbackHandler, so
@@ -366,6 +368,7 @@ function SocialQuest:GetDefaults()
                     party  = 0,
                     shared = 0,
                 },
+                windowOpen = false,
             },
             knownFlightNodes = {},  -- [nodeName] = true; persists across sessions
         },
@@ -385,6 +388,14 @@ function SocialQuest:OnPlayerLogin()
     SocialQuestGroupComposition:OnPlayerLogin()
 end
 
+-- PLAYER_LEAVING_WORLD fires before WoW calls CloseAllWindows() on a zone transition.
+-- Snapshot the SQ window open state now, while the frame is still shown, so we can
+-- restore it after the loading screen.
+function SocialQuest:OnPlayerLeavingWorld()
+    self:Debug("Zone", "Leaving world — snapshotting SQ window state")
+    SocialQuestGroupFrame:OnLeavingWorld()
+end
+
 -- PLAYER_ENTERING_WORLD fires on every zone transition (including hearthing and /reload).
 -- AQL rebuilds its quest snapshot immediately afterward and fires AQL_QUEST_ACCEPTED /
 -- AQL_QUEST_FINISHED / etc. for every quest already in the log.  Suppress announces and
@@ -395,7 +406,7 @@ function SocialQuest:OnPlayerEnteringWorld()
     self.zoneTransitionSuppressUntil = SQWowAPI.GetTime() + 3
     self:Debug("Zone", "Zone transition detected — suppressing AQL callbacks for 3 s")
     SocialQuestWindowFilter:Reset()
-    SocialQuestGroupFrame:RequestRefresh()
+    SocialQuestGroupFrame:RestoreAfterTransition()
 end
 
 -- ZONE_CHANGED_NEW_AREA fires on seamless overland zone-border crossings (e.g. riding
