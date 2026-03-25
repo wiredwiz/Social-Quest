@@ -34,7 +34,10 @@ Before pitching features, it helps to think about the real friction in group que
 
 **The gap:** The player row shows `Name: 3/8 Gnolls Slain` as text for every objective. When scanning 4 party members' objectives across several quests, this is readable but not *scannable*.
 
-**The idea:** Replace or augment the objective text with a small inline progress bar — a thin colored strip filling proportional to `numFulfilled/numRequired`. Use existing completed/active colors. A completed bar turns green instantly.
+**The idea:** Replace or augment the objective text with a small inline progress bar — a thin colored strip filling proportional to `numFulfilled/numRequired`. Use existing completed/active colors. A completed bar turns green instantly. Render the objective text within the progress bar if possible
+rather than taking up an extra line to display a progress bar along with the objective.  Keeping
+the text readable is very important though, so the text should display over top of the progress fill
+color and the text color should be chosen to contrast well so that it stays readable regardless.
 
 **Implementation notes:** No new protocol. Pure rendering enhancement on top of existing data in `RowFactory.AddPlayerRow`. Immediately makes the window more useful as an at-a-glance dashboard.
 
@@ -70,7 +73,7 @@ Before pitching features, it helps to think about the real friction in group que
 
 ---
 
-### 5. Dungeon quest auto-filter
+### 5. ~~Dungeon quest auto-filter~~ (*DONE*)
 
 **The gap:** When entering an instance, the SQ window shows all quests from all zones. Players scroll past Nagrand quests to find the two Ramparts quests everyone has.
 
@@ -127,6 +130,38 @@ Before pitching features, it helps to think about the real friction in group que
 **The idea:** Right-clicking a [Group] quest in the Mine or Party tab gives a "Ready Check" option. Broadcasts a ping to all party members: `"Thad wants to do [Wanted: Arazzius the Cruel] — are you ready?"`. Each recipient gets a banner with a [Yes]/[No] response. Responses show in SQ as a small status board next to the quest.
 
 **Implementation notes:** New comm prefixes `SQ_READY_CHECK` (broadcast, payload: questID) and `SQ_READY_RESP` (whisper back to initiator, payload: questID + ready=true/false). Store responses in a module-level table keyed by questID. Display in `RowFactory.AddQuestRow` as colored player dots (green = ready, grey = pending, red = declined). Expires after 60 seconds or on group change.
+
+### 11. Add a flyout settings panel for Quest Window
+
+**The gap:** Players may wish to toggle a number of various quest window display settings
+while they are questing, turning various filters on/off, changing display structure.  It
+would be nice if this were easily accessible to change on the fly as desired without being
+required to go into the main add-on config every time you want to adjust a small display behavior.
+
+**The idea:** Create an options panel that appears off the right of the main quest window frame.
+Ideally there is a gear icon configure toggle button on the main quest window panel that when clicked
+causes an options panel to slide out to the right or collapse back into the main window.  This
+options tab would provide a number of toggle options and filter range entry text boxes that a player
+could use to restructure or filter the quest listings in the tabs. Some of the filter option ideas are:
+
+ 1. A toggle to only show quests worth xp to the group
+ 2. A min/max range entry text box set to filter quests within a given recommended level
+ 3. A quest level delta entry box that when specified, filters the list to quests with a level
+     difference from the player of the delta value specified.
+ 4. An option to filter select party members out of the party tab.
+
+### 12. Add a search/filter bar to the top of every tab
+
+**The gap:** Sometimes tabs can get rather spammy, especially the party tab.  It would be nice
+if players could easily and quickly locate a quest they cared about without lots of scrolling and
+searching.
+
+**The idea:** Add a textbox input at the top of each tab (the filter label should be first if
+it is present).  If the player begins typing in the textbox, filter the displayed quest listings
+down to only quests where either the quest title or quest chain title contains the typed text.
+The text would not need to persist after the window is gone.  Ideally it would be nice if the box
+provided a little "x" button inside on the right edge that when clicked, would clear the text
+(as many modern UI's do), but that is not necessary.
 
 ---
 
