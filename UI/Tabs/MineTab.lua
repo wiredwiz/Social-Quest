@@ -17,7 +17,7 @@ end
 
 -- Builds the zone/chain/quest tree from local AQL data + GroupData chain peers.
 -- Returns: { zones = { [zoneName] = { name, order, chains, quests } } }
-function MineTab:BuildTree()
+function MineTab:BuildTree(filterTable)  -- filterTable accepted for API consistency; not applied
     local AQL = SocialQuest.AQL
     if not AQL then return { zones = {} } end
 
@@ -116,8 +116,8 @@ end
 -- Renders the Mine tree into contentFrame using RowFactory.
 -- tabCollapsedZones: the mine-tab subtable from SocialQuestDB.char.frameState.collapsedZones.
 -- Returns: total content height (number).
-function MineTab:Render(contentFrame, rowFactory, tabCollapsedZones)
-    local tree  = self:BuildTree()
+function MineTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTable, tabId)
+    local tree  = self:BuildTree(filterTable)
     local y     = 0
     local zones = tree.zones
 
