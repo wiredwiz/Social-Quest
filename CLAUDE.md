@@ -200,6 +200,9 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.10.0 (March 2026 — ProgressBars branch)
+- Progress Bars: objective rows in the Party and Shared tabs now render as inline progress bars. Each bar fills proportionally to `numFulfilled/numRequired`; objective text overlays the fill in white. Player names appear in a left-aligned column whose width matches the widest name in each quest, so all bars are column-aligned for at-a-glance comparison. Colorblind mode respected. Falls back to plain text for objectives without numeric data. New `GetDisplayName` helper in `RowFactory` centralizes nameTag resolution. New `GetUIColorRGB` helper in `Colors.lua` exposes numeric RGB tuples for texture coloring.
+
 ### Version 2.9.0 (March 2026 — ZoneFilter branch)
 - Zone & Instance Auto-Filter: Party and Shared tabs now optionally filter to the current dungeon/raid instance or open-world zone. New `UI/WindowFilter.lua` module (`SocialQuestWindowFilter`) owns all filter state. Each tab shows a dismissible grey filter label at the top. Two new toggles in `/sq config` → Social Quest Window: "Auto-filter to current instance" (default ON) and "Auto-filter to current zone" (default OFF). Filter resets on zone change, window close, or settings toggle. MineTab signature updated for future compatibility. New `GetRealZoneText` and `IsInInstance` wrappers added to `SocialQuestWowAPI`.
 
