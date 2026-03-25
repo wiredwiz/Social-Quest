@@ -396,12 +396,23 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent, nameColum
                 nameFs:SetText(C.white .. displayName .. C.reset)
 
                 if barWidth > 0 then
-                    -- StatusBar widget — handles fill clipping natively via SetValue.
-                    -- Do NOT call SetClipsChildren; the border texture intentionally
-                    -- extends 2px outside the bar bounds on all sides.
-                    local statusBar = CreateFrame("StatusBar", nil, contentFrame)
-                    statusBar:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", barX, -y)
-                    statusBar:SetSize(barWidth, ROW_H)
+                    -- Wrapper frame provides a 1px solid border by being 1px larger on each
+                    -- side than the StatusBar. The dark background of borderFrame shows around
+                    -- the edges of the inset StatusBar, creating the border appearance.
+                    local borderFrame = CreateFrame("Frame", nil, contentFrame)
+                    borderFrame:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", barX - 1, -y + 1)
+                    borderFrame:SetSize(barWidth + 2, ROW_H + 2)
+
+                    local borderBg = borderFrame:CreateTexture(nil, "BACKGROUND")
+                    borderBg:SetTexture("Interface\\Buttons\\WHITE8X8")
+                    borderBg:SetVertexColor(0.15, 0.15, 0.15, 0.9)
+                    borderBg:SetAllPoints(borderFrame)
+
+                    -- StatusBar inset 1px inside the border frame — fill, bg, and text are
+                    -- all inside the visible border.
+                    local statusBar = CreateFrame("StatusBar", nil, borderFrame)
+                    statusBar:SetPoint("TOPLEFT",     borderFrame, "TOPLEFT",      1, -1)
+                    statusBar:SetPoint("BOTTOMRIGHT", borderFrame, "BOTTOMRIGHT", -1,  1)
                     statusBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
                     statusBar:SetMinMaxValues(0, obj.numRequired)
                     statusBar:SetValue(obj.numFulfilled or 0)
@@ -415,16 +426,7 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent, nameColum
                     bg:SetVertexColor(0, 0, 0, 0.5)
                     bg:SetAllPoints(statusBar)
 
-                    -- Casting bar border (OVERLAY — transparent center, renders above fill).
-                    -- Creation order matters: border must be created before textFs so
-                    -- textFs renders on top of the border edges at the same OVERLAY layer.
-                    local borderTex = statusBar:CreateTexture(nil, "OVERLAY")
-                    borderTex:SetTexture("Interface\\CastingBar\\UI-CastingBar-Border")
-                    borderTex:SetBlendMode("BLEND")
-                    borderTex:SetPoint("TOPLEFT",     statusBar, "TOPLEFT",     -2,  2)
-                    borderTex:SetPoint("BOTTOMRIGHT", statusBar, "BOTTOMRIGHT",  2, -2)
-
-                    -- Objective text (OVERLAY, created after border — renders above border edges).
+                    -- Objective text (OVERLAY).
                     -- Strip embedded WoW color codes so yellow text doesn't appear on yellow fill.
                     local plainText = (obj.text or "")
                         :gsub("|c%x%x%x%x%x%x%x%x(.-)|r", "%1")
