@@ -16,7 +16,7 @@
 |------|--------|--------------|
 | `Core/WowAPI.lua` | Modify | Add `GetRealZoneText()` and `IsInInstance()` wrappers |
 | `SocialQuest.lua` | Modify | Add `window` defaults block; extend `OnPlayerEnteringWorld` |
-| `Locales/enUS.lua` … `Locales/jaJP.lua` (12 files) | Modify | Add 7 new locale keys |
+| `Locales/enUS.lua` … `Locales/jaJP.lua` (12 files) | Modify | Add 8 new locale keys |
 | `UI/WindowFilter.lua` | Create | `SocialQuestWindowFilter` module |
 | `SocialQuest.toc` | Modify | Add `UI/WindowFilter.lua` entry |
 | `UI/Options.lua` | Modify | Add `window` option group (order 9); debug moves to 10 |
@@ -376,6 +376,14 @@ function RowFactory.AddFilterHeader(contentFrame, y, label, onDismiss)
     dismissBtn:SetNormalFontObject("GameFontNormalSmall")
     dismissBtn:SetHighlightFontObject("GameFontHighlightSmall")
     if onDismiss then dismissBtn:SetScript("OnClick", onDismiss) end
+    dismissBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(L["Click to dismiss the active filter for this tab."], 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    dismissBtn:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
 
     return y + ROW_H + 4
 end
