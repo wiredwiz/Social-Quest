@@ -139,9 +139,9 @@ GroupType = {
 | `AQL_QUEST_COMPLETED` | `OnQuestCompleted` | Objectives met, not yet turned in |
 | `AQL_QUEST_FAILED` | `OnQuestFailed` | Broadcasts `SQ_UPDATE` |
 | `AQL_QUEST_TRACKED` / `AQL_QUEST_UNTRACKED` | `OnQuestTracked/Untracked` | Local only — not broadcast |
-| `AQL_OBJECTIVE_PROGRESSED` | `OnObjectiveProgressed` | Broadcasts `SQ_OBJECTIVE`; also cancels pending regression debounce |
-| `AQL_OBJECTIVE_REGRESSED` | `OnObjectiveRegressed` | 0.5 s debounce — cancelled by subsequent PROGRESSED/COMPLETED (suppresses BAG_UPDATE stack-split artefacts) |
-| `AQL_OBJECTIVE_COMPLETED` | `OnObjectiveCompleted` | Broadcasts `SQ_OBJECTIVE`; cancels pending regression debounce |
+| `AQL_OBJECTIVE_PROGRESSED` | `OnObjectiveProgressed` | Broadcasts `SQ_OBJECTIVE` |
+| `AQL_OBJECTIVE_REGRESSED` | `OnObjectiveRegressed` | Broadcasts objective update and announces regression |
+| `AQL_OBJECTIVE_COMPLETED` | `OnObjectiveCompleted` | Broadcasts `SQ_OBJECTIVE` |
 | `AQL_UNIT_QUEST_LOG_CHANGED` | `OnUnitQuestLogChanged` | Creates `hasSocialQuest=false` stub for non-SQ group members |
 
 ### Zone Transition Suppression
@@ -199,6 +199,13 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 ---
 
 ## Version History
+
+### Version 2.8.2 (March 2026 — QuestieIntegration branch)
+- Bug fix: eliminated false "objective completed again" and false regression announcements caused by bag operations (picking up or splitting item stacks for quest collectibles). Root fix in AQL (`CursorHasItem()` guard in `handleQuestLogUpdate()`) prevents the false events from ever firing. Removed the `pendingRegressions` AceTimer debounce from `SocialQuest.lua` (`OnEnable`, `OnObjectiveProgressed`, `OnObjectiveCompleted`, `OnObjectiveRegressed`) — it was a workaround for those now-suppressed events and is no longer needed.
+
+### Version 2.8.1 (March 2026 — QuestieIntegration branch)
+- Bug fix: clicking a quest title in the SQ window when the quest log was open, the quest selected, and its zone collapsed caused the log to close instead of expanding the zone. Fixed in `RowFactory.openQuestLogToQuest` by adding `AQL:GetQuestLogIndex(questID)` to the toggle condition — this method only searches visible entries, so it returns nil when the zone is collapsed, causing the close branch to be skipped and the expand+navigate path to run instead.
+- Bug fix: regression followed by progression banner when splitting an item stack. The debounce window in `OnObjectiveRegressed` was increased from 0.5 s to 2 s to cover cases where the player takes a moment to reposition the cursor before placing the split stack.
 
 ### Version 2.8.0 (March 2026 — QuestieIntegration branch)
 - **Questie Bridge**: hooks Questie's `QuestieComms` layer to populate `PlayerQuests` for party members who have Questie but not SocialQuest. Fires `Accepted`, `Finished`, and objective banners for their quest events.
