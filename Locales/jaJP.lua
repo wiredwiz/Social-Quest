@@ -202,8 +202,8 @@ L["Display a demo follow notification banner showing the 'started following you'
 -- UI/Options.lua — Social Quest Window option group
 -- UI/WindowFilter.lua — filter header labels
 L["Click to dismiss the active filter for this tab."] = "クリックしてこのタブのフィルターを閉じます。"
-L["Instance: %s"]                           = "インスタンス: %s"
-L["Zone: %s"]                               = "ゾーン: %s"
+L["Instance: %s"]                           = "フィルター: インスタンス: %s"
+L["Zone: %s"]                               = "フィルター: ゾーン: %s"
 L["Social Quest Window"]                    = "SocialQuest ウィンドウ"
 L["Auto-filter to current instance"]        = "現在のインスタンスで自動フィルター"
 L["When inside a dungeon or raid instance, the Party and Shared tabs show only quests for that instance."] = "ダンジョンやレイドにいる間、「パーティ」と「共有」タブは現在のインスタンスのクエストのみ表示します。"
