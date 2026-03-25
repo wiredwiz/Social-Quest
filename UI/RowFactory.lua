@@ -324,7 +324,10 @@ end
 --                  followed by objective rows.
 -- playerEntry fields: name, isMe, hasSocialQuest, hasCompleted, needsShare,
 --                     isComplete (optional), objectives, step (optional), chainLength (optional).
-function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent)
+-- nameColumnWidth (optional): pixel width of the name column. When provided,
+-- in-progress objectives render as two-column bar rows (name left, bar right).
+-- When nil, falls back to plain single-column text layout.
+function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent, nameColumnWidth)
     local C    = SocialQuestColors
     local x    = indent or 0
     local displayName = RowFactory.GetDisplayName(playerEntry)
@@ -374,15 +377,66 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent)
             return y + ROW_H + 2
         end
 
-        -- One row per objective, prefixed with player name.
+        -- One row per objective.
+        -- Bar layout: when nameColumnWidth is set and objective has numeric data,
+        -- render a two-column row (name label left, progress bar right).
+        -- Plain text fallback: when nameColumnWidth is nil or numRequired is absent/zero.
         for _, obj in ipairs(objectives) do
-            local clr = obj.isFinished and SocialQuestColors.GetUIColor("completed") or C.active
-            local fs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-            fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
-            fs:SetWidth(CONTENT_WIDTH - x - 4)
-            fs:SetJustifyH("LEFT")
-            fs:SetText(C.white .. displayName .. C.reset .. " " .. clr .. (obj.text or "") .. C.reset)
-            y = y + fs:GetStringHeight() + 2
+            if nameColumnWidth and obj.numRequired and obj.numRequired > 0 then
+                -- Bar layout.
+                local barX      = x + nameColumnWidth + 4
+                local barWidth  = math.max(CONTENT_WIDTH - barX - 4, 0)
+                local fillWidth = math.floor(barWidth * ((obj.numFulfilled or 0) / obj.numRequired))
+
+                -- Name label (left column).
+                local nameFs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+                nameFs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
+                nameFs:SetSize(nameColumnWidth, ROW_H)
+                nameFs:SetJustifyH("LEFT")
+                nameFs:SetJustifyV("MIDDLE")
+                nameFs:SetText(C.white .. displayName .. C.reset)
+
+                -- Bar container frame (clips children so fill/text stay within bounds).
+                local barFrame = CreateFrame("Frame", nil, contentFrame)
+                barFrame:SetSize(barWidth, ROW_H)
+                barFrame:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", barX, -y)
+                barFrame:SetClipsChildren(true)
+
+                -- Dark background texture.
+                local bg = barFrame:CreateTexture(nil, "BACKGROUND")
+                bg:SetColorTexture(0, 0, 0, 0.35)
+                bg:SetAllPoints(barFrame)
+
+                -- Colored fill texture (proportional to progress).
+                if fillWidth > 0 then
+                    local fillClr = SocialQuestColors.GetUIColorRGB(
+                        obj.isFinished and "completed" or "active")
+                    local fill = barFrame:CreateTexture(nil, "ARTWORK")
+                    fill:SetColorTexture(fillClr.r, fillClr.g, fillClr.b, 0.45)
+                    fill:SetPoint("TOPLEFT", barFrame, "TOPLEFT", 0, 0)
+                    fill:SetSize(fillWidth, ROW_H)
+                end
+
+                -- Objective text overlay (white, single line, 4px left padding).
+                local textFs = barFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+                textFs:SetPoint("LEFT", barFrame, "LEFT", 4, 0)
+                textFs:SetSize(barWidth - 8, ROW_H)
+                textFs:SetJustifyH("LEFT")
+                textFs:SetJustifyV("MIDDLE")
+                textFs:SetMaxLines(1)
+                textFs:SetText(obj.text or "")
+
+                y = y + ROW_H + 2
+            else
+                -- Plain text fallback (original behavior).
+                local clr = obj.isFinished and SocialQuestColors.GetUIColor("completed") or C.active
+                local fs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+                fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
+                fs:SetWidth(CONTENT_WIDTH - x - 4)
+                fs:SetJustifyH("LEFT")
+                fs:SetText(C.white .. displayName .. C.reset .. " " .. clr .. (obj.text or "") .. C.reset)
+                y = y + fs:GetStringHeight() + 2
+            end
         end
         return y
     end
