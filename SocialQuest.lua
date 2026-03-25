@@ -340,6 +340,10 @@ function SocialQuest:GetDefaults()
                 enabled         = true,   -- broadcast my discoveries to party
                 announceBanners = true,   -- display banners when party members discover paths
             },
+            window = {
+                autoFilterInstance = true,
+                autoFilterZone     = false,
+            },
             minimap = { hide = false },
             -- LibDBIcon writes minimapPos into this table automatically when dragged.
         },
