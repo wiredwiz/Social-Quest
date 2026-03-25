@@ -114,8 +114,8 @@ Options toggle changed (autoFilterInstance or autoFilterZone)
 
 GroupFrame:Refresh()
   → filterTable = WindowFilter:GetActiveFilter(activeID)
-  → provider:Render(contentFrame, rowFactory, tabCollapsed, filterTable)
-      → filterLabel = WindowFilter:GetFilterLabel(tabId)  [inside Render]
+  → provider:Render(contentFrame, rowFactory, tabCollapsed, filterTable, activeID)
+      → filterLabel = WindowFilter:GetFilterLabel(tabId)  [inside Render, tabId = activeID]
       → if filterLabel: rowFactory.AddFilterHeader(..., onDismiss)
       → self:BuildTree(filterTable)
           → skip quests whose zone ≠ filterTable.zone
@@ -193,43 +193,37 @@ end)
 
 ## Render Signature and Filter Label
 
-All three tab providers update their `Render` signature:
+All three tab providers update their `Render` signature to accept `tabId` as a new final parameter:
 
 ```lua
-function PartyTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTable)
-function SharedTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTable)
-function MineTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTable)
+function PartyTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTable, tabId)
+function SharedTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTable, tabId)
+function MineTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTable, tabId)
 ```
 
-Each tab provider fetches its own filter label using its known tab ID. GroupFrame does not call `GetFilterLabel` — that responsibility belongs to each Render implementation that uses it.
-
-In `PartyTab:Render()`:
+Tab ID values (`"party"`, `"shared"`, `"mine"`) are owned by GroupFrame's `providers` table — tab provider files do not hardcode their own IDs. GroupFrame passes `activeID` (already in scope at the call site) as the `tabId` argument:
 
 ```lua
-local filterLabel = SocialQuestWindowFilter:GetFilterLabel("party")
+-- GroupFrame:Refresh()
+local filterTable = SocialQuestWindowFilter:GetActiveFilter(activeID)
+local totalHeight = activeProvider.module:Render(frame.content, RowFactory, tabCollapsed, filterTable, activeID)
+```
+
+Each tab provider fetches its own filter label using the received `tabId`. GroupFrame does not call `GetFilterLabel`.
+
+In `PartyTab:Render()` and `SharedTab:Render()`:
+
+```lua
+local filterLabel = SocialQuestWindowFilter:GetFilterLabel(tabId)
 if filterLabel then
     y = rowFactory.AddFilterHeader(contentFrame, y, filterLabel, function()
-        SocialQuestWindowFilter:Dismiss("party")
+        SocialQuestWindowFilter:Dismiss(tabId)
         SocialQuestGroupFrame:Refresh()
     end)
 end
 ```
 
-In `SharedTab:Render()`:
-
-```lua
-local filterLabel = SocialQuestWindowFilter:GetFilterLabel("shared")
-if filterLabel then
-    y = rowFactory.AddFilterHeader(contentFrame, y, filterLabel, function()
-        SocialQuestWindowFilter:Dismiss("shared")
-        SocialQuestGroupFrame:Refresh()
-    end)
-end
-```
-
-`MineTab:Render()` does not call `GetFilterLabel` and does not render a filter header row.
-
-The tab ID strings `"party"` and `"shared"` match the `id` values in the `providers` table in `GroupFrame.lua`.
+`MineTab:Render()` accepts `tabId` in the signature but does not call `GetFilterLabel` and does not render a filter header row.
 
 ---
 
