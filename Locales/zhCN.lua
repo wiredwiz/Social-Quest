@@ -198,3 +198,14 @@ L["Display a demo flight path unlock banner using your character's starting city
 -- UI/Options.lua — follow notification test button
 L["Test Follow Notification"]   = "Test Follow Notification"
 L["Display a demo follow notification banner showing the 'started following you' message."] = "Display a demo follow notification banner showing the 'started following you' message."
+
+-- UI/Options.lua — Social Quest Window option group
+-- UI/WindowFilter.lua — filter header labels
+L["Click to dismiss the active filter for this tab."] = "点击以关闭此标签的当前筛选。"
+L["Instance: %s"]                           = "副本：%s"
+L["Zone: %s"]                               = "区域：%s"
+L["Social Quest Window"]                    = "SocialQuest 窗口"
+L["Auto-filter to current instance"]        = "自动过滤当前副本"
+L["When inside a dungeon or raid instance, the Party and Shared tabs show only quests for that instance."] = "在地下城或团队副本中，「小队」和「已分享」标签仅显示当前副本的任务。"
+L["Auto-filter to current zone"]            = "自动过滤当前区域"
+L["Outside of instances, the Party and Shared tabs show only quests for your current zone."] = "在副本外，「小队」和「已分享」标签仅显示当前区域的任务。"
