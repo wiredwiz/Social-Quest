@@ -393,6 +393,8 @@ end
 function SocialQuest:OnPlayerEnteringWorld()
     self.zoneTransitionSuppressUntil = SQWowAPI.GetTime() + 3
     self:Debug("Zone", "Zone transition detected — suppressing AQL callbacks for 3 s")
+    SocialQuestWindowFilter:Reset()
+    SocialQuestGroupFrame:RequestRefresh()
 end
 
 function SocialQuest:OnAutoFollowBegin(event, unit)

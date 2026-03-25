@@ -184,6 +184,10 @@ local function createFrame()
     -- matching standard WoW window behaviour. Requires the frame's global name.
     tinsert(UISpecialFrames, "SocialQuestGroupFramePanel")
 
+    f:SetScript("OnHide", function()
+        SocialQuestWindowFilter:Reset()
+    end)
+
     return f
 end
 
@@ -277,7 +281,8 @@ function SocialQuestGroupFrame:Refresh()
     local tabCollapsed   = collapsedZones[activeID] or {}
 
     -- Delegate rendering to the tab provider.
-    local totalHeight  = activeProvider.module:Render(frame.content, RowFactory, tabCollapsed)
+    local filterTable = SocialQuestWindowFilter:GetActiveFilter(activeID)
+    local totalHeight = activeProvider.module:Render(frame.content, RowFactory, tabCollapsed, filterTable, activeID)
     local effectiveH   = math.max(totalHeight, 10)
     frame.content:SetHeight(effectiveH)
 
