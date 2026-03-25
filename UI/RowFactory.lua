@@ -33,8 +33,10 @@ end
 local function openQuestLogToQuest(questID)
     local AQL = SocialQuest.AQL
     if not AQL then return end
-    -- Toggle: if the log is shown and this quest is already selected, close it.
-    if AQL:IsQuestLogShown() and AQL:GetSelectedQuestId() == questID then
+    -- Toggle: if the log is shown, the quest is visible (zone not collapsed), and already
+    -- selected, close it. GetQuestLogIndex returns nil when the quest's zone is collapsed,
+    -- which causes the condition to fail and fall through to the expand+navigate path.
+    if AQL:IsQuestLogShown() and AQL:GetQuestLogIndex(questID) and AQL:GetSelectedQuestId() == questID then
         AQL:HideQuestLog()
         return
     end
