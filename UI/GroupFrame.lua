@@ -232,12 +232,67 @@ local function createFrame()
     f.searchBox         = searchBox
     f.searchPlaceholder = searchPlaceholder
 
+    -- Expand/collapse all row: persistent strip immediately below the search bar.
+    -- [+] expand all          [-] collapse all
+    -- Handlers are re-wired on every Refresh() to target the current active tab.
+    local EC_H = 18   -- matches ROW_H in RowFactory
+    local expandCollapseFrame = CreateFrame("Frame", nil, f)
+    expandCollapseFrame:SetPoint("TOPLEFT",  searchBarFrame, "BOTTOMLEFT",  0, -2)
+    expandCollapseFrame:SetPoint("TOPRIGHT", searchBarFrame, "BOTTOMRIGHT", 0, -2)
+    expandCollapseFrame:SetHeight(EC_H)
+
+    local expandAllBtn = CreateFrame("Button", nil, expandCollapseFrame)
+    expandAllBtn:SetSize(22, EC_H)
+    expandAllBtn:SetPoint("TOPLEFT", expandCollapseFrame, "TOPLEFT", 0, 0)
+    expandAllBtn:SetText("[+]")
+    expandAllBtn:SetNormalFontObject("GameFontNormalSmall")
+    expandAllBtn:SetHighlightFontObject("GameFontHighlightSmall")
+    expandAllBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(L["expand all"], 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    expandAllBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    local expandLabel = expandCollapseFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    expandLabel:SetPoint("TOPLEFT", expandCollapseFrame, "TOPLEFT",  24, 0)
+    expandLabel:SetPoint("RIGHT",   expandCollapseFrame, "CENTER",    0, 0)
+    expandLabel:SetHeight(EC_H)
+    expandLabel:SetJustifyH("LEFT")
+    expandLabel:SetJustifyV("MIDDLE")
+    expandLabel:SetText(L["expand all"])
+
+    local collapseAllBtn = CreateFrame("Button", nil, expandCollapseFrame)
+    collapseAllBtn:SetSize(22, EC_H)
+    collapseAllBtn:SetPoint("LEFT", expandCollapseFrame, "CENTER", 0, 0)
+    collapseAllBtn:SetText("[-]")
+    collapseAllBtn:SetNormalFontObject("GameFontNormalSmall")
+    collapseAllBtn:SetHighlightFontObject("GameFontHighlightSmall")
+    collapseAllBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(L["collapse all"], 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    collapseAllBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    local collapseLabel = expandCollapseFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    collapseLabel:SetPoint("TOPLEFT", collapseAllBtn, "TOPRIGHT", 2,  0)
+    collapseLabel:SetPoint("RIGHT",   expandCollapseFrame, "RIGHT", 0, 0)
+    collapseLabel:SetHeight(EC_H)
+    collapseLabel:SetJustifyH("LEFT")
+    collapseLabel:SetJustifyV("MIDDLE")
+    collapseLabel:SetText(L["collapse all"])
+
+    f.expandCollapseFrame = expandCollapseFrame
+    f.expandAllBtn        = expandAllBtn
+    f.collapseAllBtn      = collapseAllBtn
+
     -- Filter label (zone/instance filter; shown only when a filter is active).
-    -- Positioned below the search bar; shown/hidden and re-wired on every Refresh().
+    -- Positioned below the expand/collapse row; shown/hidden and re-wired on every Refresh().
     local FILTER_LABEL_H = 18    -- matches ROW_H in RowFactory (18px)
     local filterLabelFrame = CreateFrame("Frame", nil, f)
-    filterLabelFrame:SetPoint("TOPLEFT",  searchBarFrame, "BOTTOMLEFT",  0, -2)
-    filterLabelFrame:SetPoint("TOPRIGHT", searchBarFrame, "BOTTOMRIGHT", 0, -2)
+    filterLabelFrame:SetPoint("TOPLEFT",  expandCollapseFrame, "BOTTOMLEFT",  0, -2)
+    filterLabelFrame:SetPoint("TOPRIGHT", expandCollapseFrame, "BOTTOMRIGHT", 0, -2)
     filterLabelFrame:SetHeight(FILTER_LABEL_H)
     filterLabelFrame:Hide()
 
@@ -272,10 +327,10 @@ local function createFrame()
     -- Without a name those functions silently no-op, leaving the scrollbar and
     -- scroll position desynced and causing WoW to fire deferred reconciliation
     -- callbacks that override SetVerticalScroll calls.
-    -- TOPLEFT initially anchored to searchBarFrame; Refresh() will ClearAllPoints and
+    -- TOPLEFT initially anchored to expandCollapseFrame; Refresh() will ClearAllPoints and
     -- re-anchor dynamically based on filter label visibility (wired in the Refresh step).
     f.scrollFrame = CreateFrame("ScrollFrame", "SocialQuestGroupScrollFrame", f, "UIPanelScrollFrameTemplate")
-    f.scrollFrame:SetPoint("TOPLEFT",     searchBarFrame, "BOTTOMLEFT",  0, -4)
+    f.scrollFrame:SetPoint("TOPLEFT",     expandCollapseFrame, "BOTTOMLEFT",  0, -4)
     f.scrollFrame:SetPoint("BOTTOMRIGHT", f,              "BOTTOMRIGHT", -28, 10)
 
     local initContentW = math.floor(f:GetWidth() - 40)
@@ -422,13 +477,34 @@ function SocialQuestGroupFrame:Refresh()
         frame.filterLabelFrame:Hide()
     end
 
+    -- Wire expand/collapse all buttons in the fixed header.
+    -- Re-wired on every Refresh() so handlers always target the current tab,
+    -- matching the same pattern used for filterDismissBtn.
+    if frame.expandAllBtn then
+        local capturedActiveID = activeID
+        frame.expandAllBtn:SetScript("OnClick", function()
+            SocialQuestGroupFrame:ExpandAll(capturedActiveID)
+        end)
+    end
+    if frame.collapseAllBtn then
+        local capturedActiveID = activeID
+        local capturedProvider = activeProvider
+        local capturedFilter   = filterTable
+        frame.collapseAllBtn:SetScript("OnClick", function()
+            local tree  = capturedProvider.module:BuildTree(capturedFilter)
+            local names = {}
+            for _, zone in pairs(tree.zones) do names[#names + 1] = zone.name end
+            SocialQuestGroupFrame:CollapseAll(capturedActiveID, names)
+        end)
+    end
+
     -- Re-anchor scroll frame: TOPLEFT moves dynamically based on filter label visibility.
     -- Both points are always set explicitly to prevent width collapsing.
     frame.scrollFrame:ClearAllPoints()
     if filterLabel then
-        frame.scrollFrame:SetPoint("TOPLEFT",  frame.filterLabelFrame, "BOTTOMLEFT",  0, -4)
+        frame.scrollFrame:SetPoint("TOPLEFT",  frame.filterLabelFrame,     "BOTTOMLEFT",  0, -4)
     else
-        frame.scrollFrame:SetPoint("TOPLEFT",  frame.searchBarFrame,   "BOTTOMLEFT",  0, -4)
+        frame.scrollFrame:SetPoint("TOPLEFT",  frame.expandCollapseFrame,  "BOTTOMLEFT",  0, -4)
     end
     frame.scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -28, 10)
 
