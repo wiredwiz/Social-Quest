@@ -163,7 +163,17 @@ The text would not need to persist after the window is gone.  Ideally it would b
 provided a little "x" button inside on the right edge that when clicked, would clear the text
 (as many modern UI's do), but that is not necessary.
 
-### 15. Quest log hover tooltip enhancement
+### 13. Do-Not-Disturb toggle
+
+**The gap:** Sometimes a player wants to focus — during a difficult pull, a boss fight, or just a stretch of solo grinding — and SQ banner notifications become noise rather than signal. There is currently no way to silence them without diving into the config panel and disabling individual event toggles.
+
+**The idea:** A Do-Not-Disturb toggle in the General section of `/sq config`. When enabled, all incoming SQ banner announcements are silently suppressed — no frames are shown, no sounds play. Chat announcements are unaffected (banners only). The toggle is a single checkbox, easy to flip on and off mid-session. No state persists beyond the session (DND resets to off on login/reload).
+
+**Implementation notes:** Add a `doNotDisturb` boolean to the AceDB profile defaults (default `false`). In `Announcements.lua`, add an early-return guard at the top of the banner display path that checks `SocialQuest.db.profile.doNotDisturb` and returns without showing the frame if true. No changes to the communication layer — events are still received and processed; only the display is suppressed. Add the checkbox to `Options.lua` in the General group.
+
+---
+
+### 14. Quest log hover tooltip enhancement
 
 **The gap:** Hovering a quest link in chat already shows group progress via `ItemRefTooltip` (the existing `Tooltips.lua` hook). But hovering a quest entry directly in the quest log does nothing — the player must open the SQ window and find the quest there to see who has it and where they stand.
 
@@ -173,23 +183,13 @@ provided a little "x" button inside on the right edge that when clicked, would c
 
 ---
 
-### 14. `/sq sync` slash command
+### 15. `/sq sync` slash command
 
 **The gap:** The Force Resync button lives inside `/sq config` → Resync tab. A player who notices stale data mid-session has to open the config panel, navigate to the right tab, and click the button — several steps for a one-shot operation that should be instant.
 
 **The idea:** Add a `/sq sync` slash command that triggers the exact same logic as the Force Resync button: calls `SocialQuestComm:SendResyncRequest()`, enforces the same 30-second cooldown, and re-enables after the cooldown expires. If the command is run while the cooldown is still active, print an error to chat showing how many seconds remain: *"Force Resync is on cooldown. Please wait N more seconds."* Fires a debug message when issued and when rejected by the cooldown.
 
 **Implementation notes:** The 30-second cooldown constant is currently a magic number (`30`) repeated in `Options.lua` — it appears in both the `disabled` guard and the `AceTimer` re-enable call. Centralize it as a module-level constant (e.g. `local RESYNC_COOLDOWN = 30`) in `Communications.lua` alongside `SendResyncRequest`, and reference it from `Options.lua`. The slash command handler in `SocialQuest.lua` checks `SQWowAPI.GetTime() - lastResyncTime < RESYNC_COOLDOWN`; if blocked, prints the remaining seconds via `SocialQuest:Print`; if allowed, sets `lastResyncTime`, calls `SendResyncRequest`, and schedules the `AceConfigRegistry:NotifyChange` re-enable timer. The `lastResyncTime` variable must also move from `Options.lua` to a shared location (or be exposed as a getter/setter on `SocialQuestComm`) so both the button and the slash command share the same state and the cooldown is respected regardless of which path triggered the sync.
-
----
-
-### 13. Do-Not-Disturb toggle
-
-**The gap:** Sometimes a player wants to focus — during a difficult pull, a boss fight, or just a stretch of solo grinding — and SQ banner notifications become noise rather than signal. There is currently no way to silence them without diving into the config panel and disabling individual event toggles.
-
-**The idea:** A Do-Not-Disturb toggle in the General section of `/sq config`. When enabled, all incoming SQ banner announcements are silently suppressed — no frames are shown, no sounds play. Chat announcements are unaffected (banners only). The toggle is a single checkbox, easy to flip on and off mid-session. No state persists beyond the session (DND resets to off on login/reload).
-
-**Implementation notes:** Add a `doNotDisturb` boolean to the AceDB profile defaults (default `false`). In `Announcements.lua`, add an early-return guard at the top of the banner display path that checks `SocialQuest.db.profile.doNotDisturb` and returns without showing the frame if true. No changes to the communication layer — events are still received and processed; only the display is suppressed. Add the checkbox to `Options.lua` in the General group.
 
 ---
 
@@ -210,10 +210,10 @@ provided a little "x" button inside on the right edge that when clicked, would c
 | 11 | Flyout settings panel | Medium | Medium | No |
 | 12 | ~~Search/filter bar~~ | — | — | *DONE* |
 | 13 | Do-Not-Disturb toggle | Very low | Medium | No |
-| 14 | `/sq sync` slash command | Very low | Medium | No |
-| 15 | Quest log hover tooltip | Very low | Medium | No |
+| 14 | Quest log hover tooltip | Very low | Medium | No |
+| 15 | `/sq sync` slash command | Very low | Medium | No |
 
-**Quick wins (start here):** #2 (almost-done highlight), #6 (one-click share), #3 (chain what's-next notification), #8 (objective countdown), #13 (do-not-disturb), #14 (/sq sync), #15 (quest log tooltip) — all low/very-low complexity, no protocol changes.
+**Quick wins (start here):** #2 (almost-done highlight), #6 (one-click share), #3 (chain what's-next notification), #8 (objective countdown), #13 (do-not-disturb), #14 (quest log tooltip), #15 (/sq sync) — all low/very-low complexity, no protocol changes.
 
 **High-value medium lifts:** #9 (zone divergence), #11 (flyout settings).
 
