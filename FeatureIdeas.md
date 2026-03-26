@@ -150,7 +150,7 @@ could use to restructure or filter the quest listings in the tabs. Some of the f
      difference from the player of the delta value specified.
  4. An option to filter select party members out of the party tab.
 
-### 12. Add a search/filter bar to the top of every tab
+### 12. ~~Add a search/filter bar to the top of every tab~~ (*DONE*)
 
 **The gap:** Sometimes tabs can get rather spammy, especially the party tab.  It would be nice
 if players could easily and quickly locate a quest they cared about without lots of scrolling and
@@ -188,11 +188,11 @@ provided a little "x" button inside on the right edge that when clicked, would c
 | 9 | Party zone divergence | Medium | High | Yes (SQ_ZONE) |
 | 10 | ~~Group quest ready-check~~ | — | — | No plans to implement |
 | 11 | Flyout settings panel | Medium | Medium | No |
-| 12 | Search/filter bar | Low | Medium | No |
+| 12 | ~~Search/filter bar~~ | — | — | *DONE* |
 | 13 | Do-Not-Disturb toggle | Very low | Medium | No |
 
 **Quick wins (start here):** #2 (almost-done highlight), #6 (one-click share), #3 (chain what's-next notification), #8 (objective countdown), #13 (do-not-disturb) — all low/very-low complexity, no protocol changes.
 
-**High-value medium lifts:** #9 (zone divergence), #11 (flyout settings), #12 (search bar).
+**High-value medium lifts:** #9 (zone divergence), #11 (flyout settings).
 
 **Biggest feature:** #4 (zone quest summary) — most planning effort required but highest pre-session value for organized groups.
