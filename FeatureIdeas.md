@@ -199,6 +199,70 @@ provided a little "x" button inside on the right edge that when clicked, would c
 
 **Implementation notes:** `questInfo.timerSeconds ~= nil` reliably identifies a timed quest; when a timed quest fails it is almost certainly due to timer expiry, so append `L["time limit expired"]` in that case. Escort-quest detection is less reliable in the TBC API — `GetQuestTagInfo(questID)` returns a tag type that may include escort quests; verify at implementation time whether this is available via AQL or WoW API and only append the escort reason if a confirmed check exists, otherwise omit it. The failure reason is appended in `Announcements.lua` inside `OnQuestEvent` (for chat) and `OnOwnQuestEvent` (for own banner) before `appendChainStep`. For the remote case, `questInfo.timerSeconds` is already serialized in `SQ_UPDATE` payloads and available at `OnRemoteQuestEvent`. New locale keys: `L["time limit expired"]` and optionally `L["escort target died"]`. New debug test entry in `Options.lua` alongside the existing `failed` test button.
 
+### 17. Font size setting for the SQ window
+
+**The gap:** Players with small monitors, high-DPI displays, or accessibility needs can't adjust how much content fits in the SQ window. The only option today is to resize the window itself — which changes the *amount* of visible space, not the *density* of information within it. A player who wants to see twice as many quest rows without scrolling has no path forward.
+
+**The idea:** A "Window font size" selector in `/sq config` → Social Quest Window (or the flyout panel from #11). Five named presets — Very Small (70%), Small (85%), Normal (100%, default), Large (115%), Very Large (130%) — stored as a numeric scale factor in the AceDB profile. When changed, all text in the SQ window redraws at the scaled size and all row heights adjust proportionally, so the window never has gaps or overflow. Progress bar heights and indent widths scale with the row height.
+
+**Implementation notes:** Store `windowFontScale` (default `1.0`) in AceDB profile. `RowFactory` exposes a `GetScaledRowHeight()` helper (`math.floor(ROW_H * scale)`) and a `GetScaledFont(baseFontObject)` helper that calls `fontString:SetFont(face, baseSize * scale, flags)` after reading the face/size/flags from the base font object with `fontString:GetFont()`. The module-level `ROW_H` constant becomes the *base* height; the effective height at render time is always fetched through the helper. `SetContentWidth` already runs before every render, so a companion `SetFontScale(scale)` call from `GroupFrame:Refresh()` propagates the current profile value before the tab provider renders. No protocol changes; no locale changes needed (labels use existing keys).
+
+---
+
+### 18. Advanced filter language for the search bar
+
+**The gap:** The search bar filters only by title substring. Players who want to see "all group quests in Hellfire Peninsula" or "all quests between level 60 and 65 that Bob needs" must combine the zone auto-filter, the Party tab, and their own memory. There is no way to compound multiple criteria or filter on any field other than title without the unbuilt flyout settings panel (#11).
+
+**The idea:** Extend the search bar to accept an optional structured filter expression alongside plain text. The moment the user presses Enter, the input is evaluated: if it matches the filter syntax, a dismissible filter label is created from it, the search bar clears, and the structured criteria are applied to all tabs. Plain freeform text (no `=`) continues to work as an immediate, real-time title substring match with no Enter required — the Enter path is only triggered when the expression parses as a valid filter string. Typed filter labels compound with previous ones: a second `zone=` definition replaces the first; a new `level=` definition adds to the active criteria.
+
+**Filter syntax:**
+
+```
+key=value
+key="value with spaces"
+key=value1|value2          -- OR: zone=Elwynn|Deadmines
+key="value 1"|"value 2"    -- OR with quoted values
+key=N&M                    -- AND / range: level=60&65 means 60–65
+```
+
+Quotes are optional; required only when the value contains spaces, `|`, `&`, or `=`. Escaped quotes inside a quoted value: `\"`. Keys are case-insensitive. Leading/trailing whitespace around `=`, `|`, and `&` is stripped.
+
+**Supported keys:**
+
+| Key | Alias | Meaning |
+|-----|-------|---------|
+| `zone` | `z` | Zone name substring match (OR of multiple values) |
+| `title` | `t` | Quest title substring match — same as plain text |
+| `chain` | `c` | Chain title substring match |
+| `level` | `lvl`, `l` | Recommended quest level; exact (`level=60`) or range (`level=60&65`) |
+| `group` | `g` | Group quest filter: `group=yes` shows only [Group] quests; `group=no` hides them; `group=2`–`group=5` matches a specific group size |
+| `type` | — | Quest type: `chain`, `group`, `solo`, `timed` |
+| `player` | `p` | Show only quests where the named party member is listed (Party/Shared tabs) |
+| `status` | — | `complete`, `incomplete`, `failed` — filters by local completion state |
+| `tracked` | — | `tracked=yes` / `tracked=no` — filters to watched/unwatched quests (Mine tab) |
+| `step` | `s` | Chain step number; exact or range |
+
+Additional keys to consider at implementation time: `instance` (match instance name), `shared` (show only quests the local player can still share), `missing` (show quests the local player lacks that others have).
+
+**Parser design (fail-fast):** The parser runs only on Enter, not on every keystroke. Step 1: if the trimmed string contains no `=` character, immediately return `nil` — treat as plain text, no label created. Step 2: attempt to match the first token as `(\w+)\s*=` — if the token is not in the recognised key table, return `nil` immediately. Step 3: parse values (handle quotes, escape sequences, `|`/`&` operators). Any parse error returns `nil` and the search bar retains its text unchanged. On success, return a structured filter descriptor compatible with (and extending) the existing `filterTable` passed to `BuildTree`. The entire parser can be a pure function with no side effects and no allocations on the fast-fail paths.
+
+**Filter table extension:** The existing `filterTable = { zone = "...", search = "..." }` is extended to carry richer field types while remaining backward-compatible with the existing tab `BuildTree` methods until they are updated:
+
+```lua
+filterTable = {
+    search  = "plain text",            -- existing: substring on title (real-time, not from parser)
+    zone    = { "Elwynn", "Deadmines" }, -- OR list; string kept as single-element table internally
+    level   = { min = 60, max = 65 },
+    group   = "yes",
+    player  = "Thad",
+    status  = "incomplete",
+}
+```
+
+**Filter label tooltip:** Every filter label's tooltip (`GameTooltip` on `OnEnter`) displays the complete original filter expression string so that a truncated label never hides what the filter actually says. Example: hovering `zone: Elwynn | Deadmines` shows `"zone=Elwynn|Deadmines"` in the tooltip.
+
+**Implementation notes:** The parser lives in a new `UI/FilterParser.lua` module (`SocialQuestFilterParser`) — a pure library with no WoW frame dependencies, making it independently testable. `GroupFrame.lua` calls `SocialQuestFilterParser:Parse(text)` in the `OnKeyDown` / `OnEnter` handler of the search box; `BuildTree` in each tab is updated to interpret the extended filter table fields. The `WindowFilter` module stores an ordered list of active filter descriptors (one per key) keyed by filter key, so a second `zone=` parse result replaces the first `zone` entry. Filter labels are rendered from this list each `Refresh()` — multiple labels stack vertically in the fixed header, each with its own `[x]` dismiss button and full-text tooltip. No protocol changes.
+
 ---
 
 ## Summary
@@ -221,9 +285,11 @@ provided a little "x" button inside on the right edge that when clicked, would c
 | 14 | Quest log hover tooltip | Very low | Medium | No |
 | 15 | `/sq sync` slash command | Very low | Medium | No |
 | 16 | Quest failure reason | Very low | Medium | No |
+| 17 | Font size setting | Low | Medium | No |
+| 18 | Advanced filter language | Medium | High | No |
 
-**Quick wins (start here):** #2 (almost-done highlight), #6 (one-click share), #3 (chain what's-next notification), #8 (objective countdown), #13 (do-not-disturb), #14 (quest log tooltip), #15 (/sq sync), #16 (failure reason) — all low/very-low complexity, no protocol changes.
+**Quick wins (start here):** #2 (almost-done highlight), #6 (one-click share), #3 (chain what's-next notification), #8 (objective countdown), #13 (do-not-disturb), #14 (quest log tooltip), #15 (/sq sync), #16 (failure reason), #17 (font size) — all low/very-low complexity, no protocol changes.
 
-**High-value medium lifts:** #9 (zone divergence), #11 (flyout settings).
+**High-value medium lifts:** #9 (zone divergence), #11 (flyout settings), #18 (advanced filter language).
 
 **Biggest feature:** #4 (zone quest summary) — most planning effort required but highest pre-session value for organized groups.

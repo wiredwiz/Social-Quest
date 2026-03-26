@@ -200,6 +200,9 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.11.1 (March 2026 — FilterTextbox branch)
+- Expand/collapse all buttons moved from scrollable content to fixed header. The `[+]` and `[-]` buttons are now permanently visible in the search bar row (right side, left of the `[x]` clear button) regardless of scroll position. Handlers are re-wired on every `Refresh()` to target the current active tab. `RowFactory.AddExpandCollapseHeader` removed; the per-tab calls in `MineTab`, `PartyTab`, and `SharedTab` `Render()` methods removed. Hovering shows "expand all" / "collapse all" tooltips.
+
 ### Version 2.11.0 (March 2026 — FilterTextbox branch)
 - Search bar: a persistent search box appears in a fixed header strip below the tab
   separator, above the scrollable quest list. Typing filters all three tabs by quest
