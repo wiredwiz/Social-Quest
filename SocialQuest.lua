@@ -159,6 +159,7 @@ function SocialQuest:OnEnable()
     self:RegisterEvent("AUTOFOLLOW_END",          "OnAutoFollowEnd")
     self:RegisterEvent("TAXIMAP_OPENED",          "OnTaxiMapOpened")
     self:RegisterEvent("ZONE_CHANGED_NEW_AREA",   "OnZoneChangedNewArea")
+    self:RegisterEvent("PLAYER_CONTROL_GAINED",   "OnPlayerControlGained")
     self:RegisterEvent("PLAYER_LEAVING_WORLD",    "OnPlayerLeavingWorld")
 
     -- Register AQL callbacks.
@@ -414,6 +415,16 @@ end
 -- Reset the filter so the new zone name is used and refresh the window.
 function SocialQuest:OnZoneChangedNewArea()
     self:Debug("Zone", "Zone area changed — resetting window filter")
+    SocialQuestWindowFilter:Reset()
+    SocialQuestGroupFrame:RequestRefresh()
+end
+
+-- PLAYER_CONTROL_GAINED fires when the taxi system releases the player at the end of a
+-- flight path. ZONE_CHANGED_NEW_AREA may have fired mid-flight for intermediate zone
+-- crossings, but the player's actual destination zone may not have triggered a new event.
+-- Reset and refresh here so the filter reflects wherever the player actually landed.
+function SocialQuest:OnPlayerControlGained()
+    self:Debug("Zone", "Player control gained — resetting window filter")
     SocialQuestWindowFilter:Reset()
     SocialQuestGroupFrame:RequestRefresh()
 end
