@@ -211,3 +211,4 @@ L["Outside of instances, the Party and Shared tabs show only quests for your cur
 
 -- UI/GroupFrame.lua — search bar
 L["Search..."]                               = "Pesquisar..."
+L["Clear search"]                            = "Limpar pesquisa"

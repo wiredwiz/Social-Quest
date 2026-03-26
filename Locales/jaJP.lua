@@ -212,3 +212,4 @@ L["Outside of instances, the Party and Shared tabs show only quests for your cur
 
 -- UI/GroupFrame.lua — search bar
 L["Search..."]                               = "検索..."
+L["Clear search"]                            = "検索をクリア"
