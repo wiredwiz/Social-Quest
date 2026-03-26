@@ -262,14 +262,6 @@ function PartyTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTabl
     local tree = self:BuildTree(filterTable)
     local y    = 0
 
-    local filterLabel = SocialQuestWindowFilter:GetFilterLabel(tabId)
-    if filterLabel then
-        y = rowFactory.AddFilterHeader(contentFrame, y, filterLabel, function()
-            SocialQuestWindowFilter:Dismiss(tabId)
-            SocialQuestGroupFrame:Refresh()
-        end)
-    end
-
     local sortedZones = {}
     for _, zone in pairs(tree.zones) do
         table.insert(sortedZones, zone)

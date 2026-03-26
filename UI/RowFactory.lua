@@ -151,39 +151,6 @@ function RowFactory.AddZoneHeader(contentFrame, y, zoneName, isCollapsed, onTogg
     return y + ROW_H + 4
 end
 
--- Filter-active indicator row with a [x] dismiss button.
--- Shown at the top of Party and Shared tab content when a zone/instance filter is active.
--- label: string describing the active filter, e.g. "Instance: Hellfire Ramparts"
--- onDismiss: called with no arguments when [x] is clicked
-function RowFactory.AddFilterHeader(contentFrame, y, label, onDismiss)
-    local C = SocialQuestColors
-
-    local labelStr = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    labelStr:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", 4, -y)
-    labelStr:SetSize(CONTENT_WIDTH - 30, ROW_H)
-    labelStr:SetJustifyH("LEFT")
-    labelStr:SetJustifyV("MIDDLE")
-    labelStr:SetText(C.unknown .. label .. C.reset)
-
-    local dismissBtn = CreateFrame("Button", nil, contentFrame)
-    dismissBtn:SetSize(22, ROW_H)
-    dismissBtn:SetPoint("TOPRIGHT", contentFrame, "TOPRIGHT", -4, -y)
-    dismissBtn:SetText("[x]")
-    dismissBtn:SetNormalFontObject("GameFontNormalSmall")
-    dismissBtn:SetHighlightFontObject("GameFontHighlightSmall")
-    if onDismiss then dismissBtn:SetScript("OnClick", onDismiss) end
-    dismissBtn:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText(L["Click to dismiss the active filter for this tab."], 1, 1, 1)
-        GameTooltip:Show()
-    end)
-    dismissBtn:SetScript("OnLeave", function()
-        GameTooltip:Hide()
-    end)
-
-    return y + ROW_H + 4
-end
-
 -- Chain group label row (indented, cyan).
 function RowFactory.AddChainHeader(contentFrame, y, chainTitle, indent)
     local C = SocialQuestColors
