@@ -249,3 +249,6 @@ L["Auto-filter to current instance"]        = true
 L["When inside a dungeon or raid instance, the Party and Shared tabs show only quests for that instance."] = true
 L["Auto-filter to current zone"]            = true
 L["Outside of instances, the Party and Shared tabs show only quests for your current zone."] = true
+
+-- UI/GroupFrame.lua — search bar
+L["Search..."]                               = true
