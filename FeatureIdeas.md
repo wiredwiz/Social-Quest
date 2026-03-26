@@ -191,6 +191,14 @@ provided a little "x" button inside on the right edge that when clicked, would c
 
 **Implementation notes:** The 30-second cooldown constant is currently a magic number (`30`) repeated in `Options.lua` — it appears in both the `disabled` guard and the `AceTimer` re-enable call. Centralize it as a module-level constant (e.g. `local RESYNC_COOLDOWN = 30`) in `Communications.lua` alongside `SendResyncRequest`, and reference it from `Options.lua`. The slash command handler in `SocialQuest.lua` checks `SQWowAPI.GetTime() - lastResyncTime < RESYNC_COOLDOWN`; if blocked, prints the remaining seconds via `SocialQuest:Print`; if allowed, sets `lastResyncTime`, calls `SendResyncRequest`, and schedules the `AceConfigRegistry:NotifyChange` re-enable timer. The `lastResyncTime` variable must also move from `Options.lua` to a shared location (or be exposed as a getter/setter on `SocialQuestComm`) so both the button and the slash command share the same state and the cooldown is respected regardless of which path triggered the sync.
 
+### 16. Quest failure reason in failed-quest announcements
+
+**The gap:** When a quest is failed, SQ already broadcasts a banner and chat message (e.g. *"You failed: [The Mana Cells]"*), but gives no indication of *why* it failed. The two most common causes in TBC — timer expiry on timed quests, and escort NPC death on escort quests — are often surprising to the player and always relevant to the party.
+
+**The idea:** Append a failure reason to the existing failed-quest banner and chat message where it can be determined. Examples: *"You failed: [The Mana Cells] — time limit expired"* or *"You failed: [Escort the Prisoner] — escort target died"*. When no reason can be determined, the message is unchanged. The same reason is included when a party member's failure is announced remotely. A new **Test Quest Failed (Timed)** debug button demonstrates the timed-failure variant alongside the existing generic Test Quest Failed button.
+
+**Implementation notes:** `questInfo.timerSeconds ~= nil` reliably identifies a timed quest; when a timed quest fails it is almost certainly due to timer expiry, so append `L["time limit expired"]` in that case. Escort-quest detection is less reliable in the TBC API — `GetQuestTagInfo(questID)` returns a tag type that may include escort quests; verify at implementation time whether this is available via AQL or WoW API and only append the escort reason if a confirmed check exists, otherwise omit it. The failure reason is appended in `Announcements.lua` inside `OnQuestEvent` (for chat) and `OnOwnQuestEvent` (for own banner) before `appendChainStep`. For the remote case, `questInfo.timerSeconds` is already serialized in `SQ_UPDATE` payloads and available at `OnRemoteQuestEvent`. New locale keys: `L["time limit expired"]` and optionally `L["escort target died"]`. New debug test entry in `Options.lua` alongside the existing `failed` test button.
+
 ---
 
 ## Summary
@@ -212,8 +220,9 @@ provided a little "x" button inside on the right edge that when clicked, would c
 | 13 | Do-Not-Disturb toggle | Very low | Medium | No |
 | 14 | Quest log hover tooltip | Very low | Medium | No |
 | 15 | `/sq sync` slash command | Very low | Medium | No |
+| 16 | Quest failure reason | Very low | Medium | No |
 
-**Quick wins (start here):** #2 (almost-done highlight), #6 (one-click share), #3 (chain what's-next notification), #8 (objective countdown), #13 (do-not-disturb), #14 (quest log tooltip), #15 (/sq sync) — all low/very-low complexity, no protocol changes.
+**Quick wins (start here):** #2 (almost-done highlight), #6 (one-click share), #3 (chain what's-next notification), #8 (objective countdown), #13 (do-not-disturb), #14 (quest log tooltip), #15 (/sq sync), #16 (failure reason) — all low/very-low complexity, no protocol changes.
 
 **High-value medium lifts:** #9 (zone divergence), #11 (flyout settings).
 
