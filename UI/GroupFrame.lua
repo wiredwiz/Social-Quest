@@ -8,8 +8,10 @@ SocialQuestGroupFrame = {}
 local frame          = nil
 local refreshPending = false
 local urlPopup       = nil
-local lastRenderedTab     = nil -- set to activeID after each render; nil on first run / reload
-local scrollRestoreSeq    = 0   -- incremented each Refresh(); deferred scroll callback checks for staleness
+local lastRenderedTab     = nil  -- set to activeID after each render; nil on first run / reload
+local scrollRestoreSeq    = 0    -- incremented each Refresh(); deferred scroll callback checks for staleness
+local leavingWorld        = false -- true while a loading-screen transition is in progress;
+                                  -- prevents OnHide from clearing the persisted open state
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 local SQWowAPI = SocialQuestWowAPI
 local SQWowUI  = SocialQuestWowUI
@@ -186,6 +188,12 @@ local function createFrame()
 
     f:SetScript("OnHide", function()
         SocialQuestWindowFilter:Reset()
+        -- Save closed state for user-initiated hides (X button, Escape).
+        -- Skip during loading-screen transitions: CloseAllWindows() hides us then, but
+        -- OnLeavingWorld already snapshotted the true open state before it happened.
+        if not leavingWorld then
+            SocialQuest.db.char.frameState.windowOpen = false
+        end
     end)
 
     return f
@@ -367,5 +375,25 @@ end
 function SocialQuestGroupFrame:ResetFrameState()
     lastRenderedTab = nil
     self:RequestRefresh()
+end
+
+-- Called from OnPlayerLeavingWorld (before CloseAllWindows hides the frame).
+-- Snapshots the current open state and sets the guard flag so the OnHide
+-- script does not overwrite the snapshot when WoW closes the window.
+function SocialQuestGroupFrame:OnLeavingWorld()
+    leavingWorld = true
+    SocialQuest.db.char.frameState.windowOpen = frame ~= nil and frame:IsShown()
+end
+
+-- Called from OnPlayerEnteringWorld (after the loading screen).
+-- Resets the guard flag and reopens the window if it was open before the transition.
+function SocialQuestGroupFrame:RestoreAfterTransition()
+    leavingWorld = false
+    if SocialQuest.db.char.frameState.windowOpen then
+        if not frame then frame = createFrame() end
+        frame:Show()
+        self:Refresh()
+        frame:Raise()
+    end
 end
 

@@ -18,7 +18,7 @@
 
 ### Entry Point
 
-`SocialQuest.lua` — Creates the Ace3 addon object, handles `OnInitialize` and `OnEnable`, registers WoW events and AQL callbacks, and delegates everything else to sub-modules. Registers these WoW events: `GROUP_ROSTER_UPDATE`, `PLAYER_LOGIN`, `PLAYER_ENTERING_WORLD`, `AUTOFOLLOW_BEGIN`, `AUTOFOLLOW_END`.
+`SocialQuest.lua` — Creates the Ace3 addon object, handles `OnInitialize` and `OnEnable`, registers WoW events and AQL callbacks, and delegates everything else to sub-modules. Registers these WoW events: `GROUP_ROSTER_UPDATE`, `PLAYER_LOGIN`, `PLAYER_ENTERING_WORLD`, `PLAYER_LEAVING_WORLD`, `ZONE_CHANGED_NEW_AREA`, `PLAYER_CONTROL_GAINED`, `AUTOFOLLOW_BEGIN`, `AUTOFOLLOW_END`.
 
 ### Core Modules (`Core\`)
 
@@ -199,6 +199,22 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 ---
 
 ## Version History
+
+### Version 2.10.4 (March 2026 — ProgressBars branch)
+- Bug fix: zone/instance filter did not update when a flight path (gryphon/wyvern) ended in a different zone. `ZONE_CHANGED_NEW_AREA` fires for seamless overland crossings (walking/riding) but does not fire during taxi flights — the taxi system handles zone transitions internally without raising that event. Added `PLAYER_CONTROL_GAINED` handler which fires when the taxi system releases the player at the destination; resets the window filter and refreshes the window.
+
+### Version 2.10.3 (March 2026 — ProgressBars branch)
+- Feature: the SQ window now reopens automatically after loading screens (hearthstone, portals, instance entry/exit, `/reload`) if it was open before the transition. `PLAYER_LEAVING_WORLD` snapshots the open state before WoW's `CloseAllWindows()` hides the frame; `PLAYER_ENTERING_WORLD` restores it. `OnHide` saves closed state only for user-initiated closes (X button, Escape), guarded by a `leavingWorld` flag so zone-transition hides do not overwrite the snapshot. `windowOpen` added to `char.frameState` AceDB defaults.
+
+### Version 2.10.2 (March 2026 — ProgressBars branch)
+- Filter label now prefixed with "Filter: " across all 12 locales (e.g. "Filter: Zone: Elwynn Forest"). Updated locale values for `L["Zone: %s"]` and `L["Instance: %s"]` in all locale files; enUS changed from `= true` to explicit strings.
+- Bug fix: zone filter was not updating when the player crossed an overland zone border (e.g. Elwynn Forest → Westfall). `ZONE_CHANGED_NEW_AREA` is now registered and calls `SocialQuestWindowFilter:Reset()` + `SocialQuestGroupFrame:RequestRefresh()`. `PLAYER_ENTERING_WORLD` only fires on full loading screens (portals, instances, `/reload`) — seamless zone transitions require this separate event.
+
+### Version 2.10.1 (March 2026 — ProgressBars branch)
+- Progress Bar Polish: replaced flat colored-rectangle bars with WoW-native `StatusBar` widgets. Each bar now uses the standard `Interface\TargetingFrame\UI-StatusBar` fill texture (the same texture used by health and cast bars), colored at 85% opacity so the texture's built-in highlight stripe and bevel are visible. A `Interface\CastingBar\UI-CastingBar-Border` overlay provides the characteristic tapered border that suggests rounded ends. Objective text is forced white with a 1px drop shadow and has WoW color escape codes stripped, eliminating the yellow-on-yellow readability problem from the previous implementation. Colorblind mode uses sky-blue for completed objectives as before.
+
+### Version 2.10.0 (March 2026 — ProgressBars branch)
+- Progress Bars: objective rows in the Party and Shared tabs now render as inline progress bars. Each bar fills proportionally to `numFulfilled/numRequired`; objective text overlays the fill in white. Player names appear in a left-aligned column whose width matches the widest name in each quest, so all bars are column-aligned for at-a-glance comparison. Colorblind mode respected. Falls back to plain text for objectives without numeric data. New `GetDisplayName` helper in `RowFactory` centralizes nameTag resolution. New `GetUIColorRGB` helper in `Colors.lua` exposes numeric RGB tuples for texture coloring.
 
 ### Version 2.9.0 (March 2026 — ZoneFilter branch)
 - Zone & Instance Auto-Filter: Party and Shared tabs now optionally filter to the current dungeon/raid instance or open-world zone. New `UI/WindowFilter.lua` module (`SocialQuestWindowFilter`) owns all filter state. Each tab shows a dismissible grey filter label at the top. Two new toggles in `/sq config` → Social Quest Window: "Auto-filter to current instance" (default ON) and "Auto-filter to current zone" (default OFF). Filter resets on zone change, window close, or settings toggle. MineTab signature updated for future compatibility. New `GetRealZoneText` and `IsInInstance` wrappers added to `SocialQuestWowAPI`.

@@ -293,18 +293,28 @@ function SharedTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTab
                 y = rowFactory.AddChainHeader(contentFrame, y, chain.title, QUEST_INDENT)
                 for _, entry in ipairs(chain.steps) do
                     y = rowFactory.AddQuestRow(contentFrame, y, entry, QUEST_INDENT + 8, {})
+                    local nameColumnWidth = 0
+                    for _, player in ipairs(entry.players) do
+                        local w = rowFactory.MeasureNameWidth(rowFactory.GetDisplayName(player))
+                        if w > nameColumnWidth then nameColumnWidth = w end
+                    end
                     for _, player in ipairs(entry.players) do
                         -- AddPlayerRow renders objectives internally; do not loop here.
-                        y = rowFactory.AddPlayerRow(contentFrame, y, player, PLAYER_INDENT + 8)
+                        y = rowFactory.AddPlayerRow(contentFrame, y, player, PLAYER_INDENT + 8, nameColumnWidth)
                     end
                 end
             end
 
             for _, entry in ipairs(zone.quests) do
                 y = rowFactory.AddQuestRow(contentFrame, y, entry, QUEST_INDENT, {})
+                local nameColumnWidth = 0
+                for _, player in ipairs(entry.players) do
+                    local w = rowFactory.MeasureNameWidth(rowFactory.GetDisplayName(player))
+                    if w > nameColumnWidth then nameColumnWidth = w end
+                end
                 for _, player in ipairs(entry.players) do
                     -- AddPlayerRow renders objectives internally; do not loop here.
-                    y = rowFactory.AddPlayerRow(contentFrame, y, player, PLAYER_INDENT)
+                    y = rowFactory.AddPlayerRow(contentFrame, y, player, PLAYER_INDENT, nameColumnWidth)
                 end
             end
         end

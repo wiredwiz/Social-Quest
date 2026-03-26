@@ -30,7 +30,7 @@ Before pitching features, it helps to think about the real friction in group que
 
 ---
 
-### 1. Progress bars in the group frame
+### 1. ~~Progress bars in the group frame~~ (*DONE*)
 
 **The gap:** The player row shows `Name: 3/8 Gnolls Slain` as text for every objective. When scanning 4 party members' objectives across several quests, this is readable but not *scannable*.
 
@@ -123,7 +123,7 @@ color and the text color should be chosen to contrast well so that it stays read
 
 ---
 
-### 10. Group quest ready-check
+### ~~10. Group quest ready-check~~ (*No plans to implement*)
 
 **The gap:** Group/elite quests ([Group] badge in SQ) require everyone physically present and ready. Coordinating this verbally in chat is clumsy.
 
@@ -163,6 +163,14 @@ The text would not need to persist after the window is gone.  Ideally it would b
 provided a little "x" button inside on the right edge that when clicked, would clear the text
 (as many modern UI's do), but that is not necessary.
 
+### 13. Do-Not-Disturb toggle
+
+**The gap:** Sometimes a player wants to focus — during a difficult pull, a boss fight, or just a stretch of solo grinding — and SQ banner notifications become noise rather than signal. There is currently no way to silence them without diving into the config panel and disabling individual event toggles.
+
+**The idea:** A Do-Not-Disturb toggle in the General section of `/sq config`. When enabled, all incoming SQ banner announcements are silently suppressed — no frames are shown, no sounds play. Chat announcements are unaffected (banners only). The toggle is a single checkbox, easy to flip on and off mid-session. No state persists beyond the session (DND resets to off on login/reload).
+
+**Implementation notes:** Add a `doNotDisturb` boolean to the AceDB profile defaults (default `false`). In `Announcements.lua`, add an early-return guard at the top of the banner display path that checks `SocialQuest.db.profile.doNotDisturb` and returns without showing the frame if true. No changes to the communication layer — events are still received and processed; only the display is suppressed. Add the checkbox to `Options.lua` in the General group.
+
 ---
 
 ## Summary
@@ -178,10 +186,13 @@ provided a little "x" button inside on the right edge that when clicked, would c
 | 7 | Session stats | Low | Medium | No |
 | 8 | Objective countdown mode | Very low | Medium | No |
 | 9 | Party zone divergence | Medium | High | Yes (SQ_ZONE) |
-| 10 | Group quest ready-check | Medium | High | Yes (SQ_READY_CHECK / SQ_READY_RESP) |
+| 10 | ~~Group quest ready-check~~ | — | — | No plans to implement |
+| 11 | Flyout settings panel | Medium | Medium | No |
+| 12 | Search/filter bar | Low | Medium | No |
+| 13 | Do-Not-Disturb toggle | Very low | Medium | No |
 
-**Quick wins (start here):** #2 (almost-done highlight), #6 (one-click share), #3 (chain what's-next notification), #8 (objective countdown) — all low complexity, directly address real friction, no protocol changes.
+**Quick wins (start here):** #2 (almost-done highlight), #6 (one-click share), #3 (chain what's-next notification), #8 (objective countdown), #13 (do-not-disturb) — all low/very-low complexity, no protocol changes.
 
-**High-value medium lifts:** #1 (progress bars), #9 (zone divergence), #10 (group quest ready-check).
+**High-value medium lifts:** #9 (zone divergence), #11 (flyout settings), #12 (search bar).
 
 **Biggest feature:** #4 (zone quest summary) — most planning effort required but highest pre-session value for organized groups.
