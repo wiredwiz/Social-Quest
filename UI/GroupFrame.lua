@@ -394,7 +394,44 @@ function SocialQuestGroupFrame:Refresh()
     local tabCollapsed   = collapsedZones[activeID] or {}
 
     -- Delegate rendering to the tab provider.
-    local filterTable = SocialQuestWindowFilter:GetActiveFilter(activeID)
+    -- Assemble composite filterTable: zone filter (from WindowFilter) + search text.
+    -- The existing GetActiveFilter line is fully replaced by this block.
+    local zoneFilter  = SocialQuestWindowFilter:GetActiveFilter(activeID)
+    local filterTable = nil
+    if zoneFilter or (searchText ~= "") then
+        filterTable = {
+            zone   = zoneFilter and zoneFilter.zone or nil,
+            search = searchText ~= "" and searchText or nil,
+        }
+    end
+
+    -- Update filter label in fixed header.
+    -- GetFilterLabel is called separately (same computeFilterState() path as GetActiveFilter).
+    -- The dismiss button OnClick is reassigned here so it always captures the current activeID.
+    -- Note: dismiss now calls RequestRefresh() (deferred one frame) instead of Refresh()
+    -- directly — intentional, consistent with the rest of the debounce pattern.
+    local filterLabel = SocialQuestWindowFilter:GetFilterLabel(activeID)
+    if filterLabel then
+        frame.filterLabelText:SetText(filterLabel)
+        frame.filterLabelFrame:Show()
+        frame.filterDismissBtn:SetScript("OnClick", function()
+            SocialQuestWindowFilter:Dismiss(activeID)
+            SocialQuestGroupFrame:RequestRefresh()
+        end)
+    else
+        frame.filterLabelFrame:Hide()
+    end
+
+    -- Re-anchor scroll frame: TOPLEFT moves dynamically based on filter label visibility.
+    -- Both points are always set explicitly to prevent width collapsing.
+    frame.scrollFrame:ClearAllPoints()
+    if filterLabel then
+        frame.scrollFrame:SetPoint("TOPLEFT",  frame.filterLabelFrame, "BOTTOMLEFT",  0, -4)
+    else
+        frame.scrollFrame:SetPoint("TOPLEFT",  frame.searchBarFrame,   "BOTTOMLEFT",  0, -4)
+    end
+    frame.scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -28, 10)
+
     local totalHeight = activeProvider.module:Render(frame.content, RowFactory, tabCollapsed, filterTable, activeID)
     local effectiveH   = math.max(totalHeight, 10)
     frame.content:SetHeight(effectiveH)
