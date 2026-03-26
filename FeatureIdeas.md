@@ -30,7 +30,7 @@ Before pitching features, it helps to think about the real friction in group que
 
 ---
 
-### 1. Progress bars in the group frame
+### 1. ~~Progress bars in the group frame~~ (*DONE*)
 
 **The gap:** The player row shows `Name: 3/8 Gnolls Slain` as text for every objective. When scanning 4 party members' objectives across several quests, this is readable but not *scannable*.
 
