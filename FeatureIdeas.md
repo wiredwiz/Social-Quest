@@ -163,6 +163,16 @@ The text would not need to persist after the window is gone.  Ideally it would b
 provided a little "x" button inside on the right edge that when clicked, would clear the text
 (as many modern UI's do), but that is not necessary.
 
+### 15. Quest log hover tooltip enhancement
+
+**The gap:** Hovering a quest link in chat already shows group progress via `ItemRefTooltip` (the existing `Tooltips.lua` hook). But hovering a quest entry directly in the quest log does nothing — the player must open the SQ window and find the quest there to see who has it and where they stand.
+
+**The idea:** Hook `GameTooltip:SetQuestLogItem` (or the equivalent quest-log tooltip entry point in TBC) so that when the player mouses over a quest title in the quest log, the same "Group Progress" block appended by the chat-link tooltip appears: a header line, then one `AddDoubleLine` row per party member who has the quest, showing their objective fractions or completion state. Reuses `addGroupProgressToTooltip` from `Tooltips.lua` — no duplication of display logic.
+
+**Implementation notes:** In TBC the quest log tooltip is populated by the default UI calling `GameTooltip:SetQuestLogItem(index)` (via `QuestLog_UpdateQuestDetails` and related functions). Hook `hooksecurefunc(GameTooltip, "SetQuestLogItem", ...)` in `Tooltips.lua:Initialize`. Extract the questID from `AQL:GetQuestLogIndex` reverse lookup or from `GetQuestLogTitle(index)` → `AQL:FindQuestByTitle`. The cleanest path: `hooksecurefunc("QuestLog_SetSelection", ...)` fires when the player clicks a quest and updates the detail pane — the selected log index is available via `GetQuestLogSelection()` at that point. Alternatively, hook `GameTooltip`'s `OnTooltipSetItem`/`SetQuestLogItem` script directly. Either way, resolve the questID, then call the existing `addGroupProgressToTooltip(GameTooltip, questID)`. No protocol changes; no new data structures.
+
+---
+
 ### 14. `/sq sync` slash command
 
 **The gap:** The Force Resync button lives inside `/sq config` → Resync tab. A player who notices stale data mid-session has to open the config panel, navigate to the right tab, and click the button — several steps for a one-shot operation that should be instant.
@@ -201,8 +211,9 @@ provided a little "x" button inside on the right edge that when clicked, would c
 | 12 | ~~Search/filter bar~~ | — | — | *DONE* |
 | 13 | Do-Not-Disturb toggle | Very low | Medium | No |
 | 14 | `/sq sync` slash command | Very low | Medium | No |
+| 15 | Quest log hover tooltip | Very low | Medium | No |
 
-**Quick wins (start here):** #2 (almost-done highlight), #6 (one-click share), #3 (chain what's-next notification), #8 (objective countdown), #13 (do-not-disturb), #14 (/sq sync) — all low/very-low complexity, no protocol changes.
+**Quick wins (start here):** #2 (almost-done highlight), #6 (one-click share), #3 (chain what's-next notification), #8 (objective countdown), #13 (do-not-disturb), #14 (/sq sync), #15 (quest log tooltip) — all low/very-low complexity, no protocol changes.
 
 **High-value medium lifts:** #9 (zone divergence), #11 (flyout settings).
 
