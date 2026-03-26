@@ -239,6 +239,37 @@ function SharedTab:BuildTree(filterTable)
         end
     end
 
+    -- Search text filter: case-insensitive substring match on quest/chain titles.
+    -- Applied independently from the zone filter; both must pass for a quest to appear.
+    local searchText = filterTable and filterTable.search
+    if searchText then
+        local lower = string.lower(searchText)
+        local function matches(title)
+            return string.find(string.lower(title or ""), lower, 1, true) ~= nil
+        end
+        for zoneName, zone in pairs(tree.zones) do
+            for chainID, chain in pairs(zone.chains) do
+                if not matches(chain.title) then
+                    local kept = {}
+                    for _, step in ipairs(chain.steps) do
+                        if matches(step.title) then kept[#kept + 1] = step end
+                    end
+                    chain.steps = kept
+                end
+                if #chain.steps == 0 then zone.chains[chainID] = nil end
+            end
+            local kept = {}
+            for _, quest in ipairs(zone.quests) do
+                if matches(quest.title) then kept[#kept + 1] = quest end
+            end
+            zone.quests = kept
+            local empty = true
+            for _ in pairs(zone.chains) do empty = false; break end
+            if empty then empty = (#zone.quests == 0) end
+            if empty then tree.zones[zoneName] = nil end
+        end
+    end
+
     return tree
 end
 
