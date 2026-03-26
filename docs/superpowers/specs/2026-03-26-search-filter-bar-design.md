@@ -128,7 +128,7 @@ The `leavingWorld` guard already exists in `OnHide` for the `windowOpen` state; 
 | `UI/Tabs/PartyTab.lua` | Add `filterTable.search` check in `BuildTree`; remove `GetFilterLabel` + `AddFilterHeader` calls from `Render` |
 | `UI/Tabs/SharedTab.lua` | Same as PartyTab |
 | `UI/RowFactory.lua` | Remove `AddFilterHeader` |
-| `Locales/enUS.lua` | Add `["Search..."] = "Search..."` |
+| `Locales/enUS.lua` | Add `["Search..."] = true` (AceLocale convention; key string is the display value) |
 | `Locales/deDE.lua` … `Locales/jaJP.lua` | Add `["Search..."]` translation in all 11 remaining locale files |
 
 No new files. No protocol changes. No new config toggles.
