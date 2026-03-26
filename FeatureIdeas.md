@@ -177,11 +177,11 @@ provided a little "x" button inside on the right edge that when clicked, would c
 
 | # | Feature | Complexity | Impact | Protocol change? |
 |---|---------|-----------|--------|-----------------|
-| 1 | Progress bars | Low | High | No |
+| 1 | ~~Progress bars~~ | — | — | *DONE* |
 | 2 | Almost-done highlighting | Very low | Medium | No |
 | 3 | Chain "what's next" notification | Low | High | No |
 | 4 | Zone quest summary | Medium | High | No |
-| 5 | Dungeon quest auto-filter | Low | Medium | No |
+| 5 | ~~Dungeon quest auto-filter~~ | — | — | *DONE* |
 | 6 | One-click share button | Low | High | No |
 | 7 | Session stats | Low | Medium | No |
 | 8 | Objective countdown mode | Very low | Medium | No |
