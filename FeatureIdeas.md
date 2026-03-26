@@ -163,6 +163,16 @@ The text would not need to persist after the window is gone.  Ideally it would b
 provided a little "x" button inside on the right edge that when clicked, would clear the text
 (as many modern UI's do), but that is not necessary.
 
+### 14. `/sq sync` slash command
+
+**The gap:** The Force Resync button lives inside `/sq config` → Resync tab. A player who notices stale data mid-session has to open the config panel, navigate to the right tab, and click the button — several steps for a one-shot operation that should be instant.
+
+**The idea:** Add a `/sq sync` slash command that triggers the exact same logic as the Force Resync button: calls `SocialQuestComm:SendResyncRequest()`, enforces the same 30-second cooldown, and re-enables after the cooldown expires. If the command is run while the cooldown is still active, print an error to chat showing how many seconds remain: *"Force Resync is on cooldown. Please wait N more seconds."* Fires a debug message when issued and when rejected by the cooldown.
+
+**Implementation notes:** The 30-second cooldown constant is currently a magic number (`30`) repeated in `Options.lua` — it appears in both the `disabled` guard and the `AceTimer` re-enable call. Centralize it as a module-level constant (e.g. `local RESYNC_COOLDOWN = 30`) in `Communications.lua` alongside `SendResyncRequest`, and reference it from `Options.lua`. The slash command handler in `SocialQuest.lua` checks `SQWowAPI.GetTime() - lastResyncTime < RESYNC_COOLDOWN`; if blocked, prints the remaining seconds via `SocialQuest:Print`; if allowed, sets `lastResyncTime`, calls `SendResyncRequest`, and schedules the `AceConfigRegistry:NotifyChange` re-enable timer. The `lastResyncTime` variable must also move from `Options.lua` to a shared location (or be exposed as a getter/setter on `SocialQuestComm`) so both the button and the slash command share the same state and the cooldown is respected regardless of which path triggered the sync.
+
+---
+
 ### 13. Do-Not-Disturb toggle
 
 **The gap:** Sometimes a player wants to focus — during a difficult pull, a boss fight, or just a stretch of solo grinding — and SQ banner notifications become noise rather than signal. There is currently no way to silence them without diving into the config panel and disabling individual event toggles.
@@ -190,8 +200,9 @@ provided a little "x" button inside on the right edge that when clicked, would c
 | 11 | Flyout settings panel | Medium | Medium | No |
 | 12 | ~~Search/filter bar~~ | — | — | *DONE* |
 | 13 | Do-Not-Disturb toggle | Very low | Medium | No |
+| 14 | `/sq sync` slash command | Very low | Medium | No |
 
-**Quick wins (start here):** #2 (almost-done highlight), #6 (one-click share), #3 (chain what's-next notification), #8 (objective countdown), #13 (do-not-disturb) — all low/very-low complexity, no protocol changes.
+**Quick wins (start here):** #2 (almost-done highlight), #6 (one-click share), #3 (chain what's-next notification), #8 (objective countdown), #13 (do-not-disturb), #14 (/sq sync) — all low/very-low complexity, no protocol changes.
 
 **High-value medium lifts:** #9 (zone divergence), #11 (flyout settings).
 
