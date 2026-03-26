@@ -209,3 +209,7 @@ L["Auto-filter to current instance"]        = "自动过滤当前副本"
 L["When inside a dungeon or raid instance, the Party and Shared tabs show only quests for that instance."] = "在地下城或团队副本中，「小队」和「已分享」标签仅显示当前副本的任务。"
 L["Auto-filter to current zone"]            = "自动过滤当前区域"
 L["Outside of instances, the Party and Shared tabs show only quests for your current zone."] = "在副本外，「小队」和「已分享」标签仅显示当前区域的任务。"
+
+-- UI/GroupFrame.lua — search bar
+L["Search..."]                               = "搜索..."
+L["Clear search"]                            = "清除搜索"

@@ -12,6 +12,7 @@ local lastRenderedTab     = nil  -- set to activeID after each render; nil on fi
 local scrollRestoreSeq    = 0    -- incremented each Refresh(); deferred scroll callback checks for staleness
 local leavingWorld        = false -- true while a loading-screen transition is in progress;
                                   -- prevents OnHide from clearing the persisted open state
+local searchText          = ""   -- current search bar text; shared across all tabs
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 local SQWowAPI = SocialQuestWowAPI
 local SQWowUI  = SocialQuestWowUI
@@ -166,6 +167,104 @@ local function createFrame()
     sepTex:SetTexture("Interface\\Buttons\\WHITE8x8")
     sepTex:SetVertexColor(0.4, 0.35, 0.25, 1)
 
+    -- Search bar (persistent; lives on f, survives every Refresh()).
+    local SEARCH_H = 24
+    local searchBarFrame = CreateFrame("Frame", nil, f)
+    searchBarFrame:SetPoint("TOPLEFT",  f, "TOPLEFT",   10, SCROLL_TOP)
+    searchBarFrame:SetPoint("TOPRIGHT", f, "TOPRIGHT", -28, SCROLL_TOP)
+    searchBarFrame:SetHeight(SEARCH_H)
+
+    local searchBg = searchBarFrame:CreateTexture(nil, "BACKGROUND")
+    searchBg:SetAllPoints(searchBarFrame)
+    searchBg:SetTexture("Interface\\ChatFrame\\ChatFrameBackground")
+    searchBg:SetVertexColor(0, 0, 0, 0.5)
+
+    local searchBorder = CreateFrame("Frame", nil, searchBarFrame, "BackdropTemplate")
+    searchBorder:SetAllPoints(searchBarFrame)
+    searchBorder:SetBackdrop({
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        edgeSize = 8,
+        insets   = { left = 2, right = 2, top = 2, bottom = 2 },
+    })
+    searchBorder:SetBackdropBorderColor(0.4, 0.4, 0.4, 0.8)
+
+    local searchBox = CreateFrame("EditBox", nil, searchBarFrame)
+    searchBox:SetPoint("LEFT",  searchBarFrame, "LEFT",   6, 0)
+    searchBox:SetPoint("RIGHT", searchBarFrame, "RIGHT", -26, 0)
+    searchBox:SetHeight(SEARCH_H)
+    searchBox:SetFontObject("GameFontNormalSmall")
+    searchBox:SetAutoFocus(false)
+    searchBox:SetMaxLetters(64)
+
+    local searchPlaceholder = searchBarFrame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    searchPlaceholder:SetPoint("LEFT", searchBox, "LEFT", 2, 0)
+    searchPlaceholder:SetText(L["Search..."])
+
+    searchBox:SetScript("OnTextChanged", function(self)
+        local text = self:GetText()
+        searchPlaceholder:SetShown(text == "")
+        searchText = text
+        SocialQuestGroupFrame:RequestRefresh()
+    end)
+    searchBox:SetScript("OnEscapePressed", function(self)
+        self:SetText("")
+        self:ClearFocus()
+    end)
+
+    local searchClearBtn = CreateFrame("Button", nil, searchBarFrame)
+    searchClearBtn:SetSize(20, SEARCH_H)
+    searchClearBtn:SetPoint("RIGHT", searchBarFrame, "RIGHT", -2, 0)
+    searchClearBtn:SetText("x")
+    searchClearBtn:SetNormalFontObject("GameFontNormalSmall")
+    searchClearBtn:SetHighlightFontObject("GameFontHighlightSmall")
+    searchClearBtn:SetScript("OnClick", function()
+        searchBox:SetText("")
+        searchBox:ClearFocus()
+    end)
+    searchClearBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(L["Clear search"], 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    searchClearBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    f.searchBarFrame    = searchBarFrame
+    f.searchBox         = searchBox
+    f.searchPlaceholder = searchPlaceholder
+
+    -- Filter label (zone/instance filter; shown only when a filter is active).
+    -- Positioned below the search bar; shown/hidden and re-wired on every Refresh().
+    local FILTER_LABEL_H = 18    -- matches ROW_H in RowFactory (18px)
+    local filterLabelFrame = CreateFrame("Frame", nil, f)
+    filterLabelFrame:SetPoint("TOPLEFT",  searchBarFrame, "BOTTOMLEFT",  0, -2)
+    filterLabelFrame:SetPoint("TOPRIGHT", searchBarFrame, "BOTTOMRIGHT", 0, -2)
+    filterLabelFrame:SetHeight(FILTER_LABEL_H)
+    filterLabelFrame:Hide()
+
+    local filterLabelText = filterLabelFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    filterLabelText:SetPoint("TOPLEFT",     filterLabelFrame, "TOPLEFT",     4,  0)
+    filterLabelText:SetPoint("BOTTOMRIGHT", filterLabelFrame, "BOTTOMRIGHT", -28, 0)
+    filterLabelText:SetJustifyH("LEFT")
+    filterLabelText:SetJustifyV("MIDDLE")
+
+    local filterDismissBtn = CreateFrame("Button", nil, filterLabelFrame)
+    filterDismissBtn:SetSize(22, FILTER_LABEL_H)
+    filterDismissBtn:SetPoint("TOPRIGHT", filterLabelFrame, "TOPRIGHT", -4, 0)
+    filterDismissBtn:SetText("[x]")
+    filterDismissBtn:SetNormalFontObject("GameFontNormalSmall")
+    filterDismissBtn:SetHighlightFontObject("GameFontHighlightSmall")
+    filterDismissBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(L["Click to dismiss the active filter for this tab."], 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    filterDismissBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    -- OnClick is assigned in Refresh() so it captures the current activeID.
+
+    f.filterLabelFrame  = filterLabelFrame
+    f.filterLabelText   = filterLabelText
+    f.filterDismissBtn  = filterDismissBtn
+
     -- Scroll area.
     -- Named so that UIPanelScrollFrameTemplate helper functions
     -- (ScrollFrame_OnScrollRangeChanged / UIPanelScrollFrame_OnVerticalScroll)
@@ -173,9 +272,11 @@ local function createFrame()
     -- Without a name those functions silently no-op, leaving the scrollbar and
     -- scroll position desynced and causing WoW to fire deferred reconciliation
     -- callbacks that override SetVerticalScroll calls.
+    -- TOPLEFT initially anchored to searchBarFrame; Refresh() will ClearAllPoints and
+    -- re-anchor dynamically based on filter label visibility (wired in the Refresh step).
     f.scrollFrame = CreateFrame("ScrollFrame", "SocialQuestGroupScrollFrame", f, "UIPanelScrollFrameTemplate")
-    f.scrollFrame:SetPoint("TOPLEFT",     f, "TOPLEFT",     10, SCROLL_TOP)
-    f.scrollFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -28, 10)
+    f.scrollFrame:SetPoint("TOPLEFT",     searchBarFrame, "BOTTOMLEFT",  0, -4)
+    f.scrollFrame:SetPoint("BOTTOMRIGHT", f,              "BOTTOMRIGHT", -28, 10)
 
     local initContentW = math.floor(f:GetWidth() - 40)
     f.content = CreateFrame("Frame", nil, f.scrollFrame)
@@ -193,6 +294,10 @@ local function createFrame()
         -- OnLeavingWorld already snapshotted the true open state before it happened.
         if not leavingWorld then
             SocialQuest.db.char.frameState.windowOpen = false
+            -- Clear search text on user close. Preserved across loading-screen transitions
+            -- (leavingWorld == true) so the filter survives hearths and instance entry.
+            searchText = ""
+            if f.searchBox then f.searchBox:SetText("") end
         end
     end)
 
@@ -289,7 +394,44 @@ function SocialQuestGroupFrame:Refresh()
     local tabCollapsed   = collapsedZones[activeID] or {}
 
     -- Delegate rendering to the tab provider.
-    local filterTable = SocialQuestWindowFilter:GetActiveFilter(activeID)
+    -- Assemble composite filterTable: zone filter (from WindowFilter) + search text.
+    -- The existing GetActiveFilter line is fully replaced by this block.
+    local zoneFilter  = SocialQuestWindowFilter:GetActiveFilter(activeID)
+    local filterTable = nil
+    if zoneFilter or (searchText ~= "") then
+        filterTable = {
+            zone   = zoneFilter and zoneFilter.zone or nil,
+            search = searchText ~= "" and searchText or nil,
+        }
+    end
+
+    -- Update filter label in fixed header.
+    -- GetFilterLabel is called separately (same computeFilterState() path as GetActiveFilter).
+    -- The dismiss button OnClick is reassigned here so it always captures the current activeID.
+    -- Note: dismiss now calls RequestRefresh() (deferred one frame) instead of Refresh()
+    -- directly — intentional, consistent with the rest of the debounce pattern.
+    local filterLabel = SocialQuestWindowFilter:GetFilterLabel(activeID)
+    if filterLabel then
+        frame.filterLabelText:SetText(filterLabel)
+        frame.filterLabelFrame:Show()
+        frame.filterDismissBtn:SetScript("OnClick", function()
+            SocialQuestWindowFilter:Dismiss(activeID)
+            SocialQuestGroupFrame:RequestRefresh()
+        end)
+    else
+        frame.filterLabelFrame:Hide()
+    end
+
+    -- Re-anchor scroll frame: TOPLEFT moves dynamically based on filter label visibility.
+    -- Both points are always set explicitly to prevent width collapsing.
+    frame.scrollFrame:ClearAllPoints()
+    if filterLabel then
+        frame.scrollFrame:SetPoint("TOPLEFT",  frame.filterLabelFrame, "BOTTOMLEFT",  0, -4)
+    else
+        frame.scrollFrame:SetPoint("TOPLEFT",  frame.searchBarFrame,   "BOTTOMLEFT",  0, -4)
+    end
+    frame.scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -28, 10)
+
     local totalHeight = activeProvider.module:Render(frame.content, RowFactory, tabCollapsed, filterTable, activeID)
     local effectiveH   = math.max(totalHeight, 10)
     frame.content:SetHeight(effectiveH)
@@ -391,6 +533,12 @@ function SocialQuestGroupFrame:RestoreAfterTransition()
     leavingWorld = false
     if SocialQuest.db.char.frameState.windowOpen then
         if not frame then frame = createFrame() end
+        -- Repopulate the search EditBox from the preserved upvalue.
+        -- OnTextChanged fires on SetText(), which updates the placeholder and calls
+        -- RequestRefresh() — the subsequent Refresh() below is the effective rebuild.
+        if frame.searchBox and searchText ~= "" then
+            frame.searchBox:SetText(searchText)
+        end
         frame:Show()
         self:Refresh()
         frame:Raise()

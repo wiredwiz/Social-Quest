@@ -209,3 +209,7 @@ L["Auto-filter to current instance"]        = "現在のインスタンスで自
 L["When inside a dungeon or raid instance, the Party and Shared tabs show only quests for that instance."] = "ダンジョンやレイドにいる間、「パーティ」と「共有」タブは現在のインスタンスのクエストのみ表示します。"
 L["Auto-filter to current zone"]            = "現在のゾーンで自動フィルター"
 L["Outside of instances, the Party and Shared tabs show only quests for your current zone."] = "インスタンス外では、「パーティ」と「共有」タブは現在のゾーンのクエストのみ表示します。"
+
+-- UI/GroupFrame.lua — search bar
+L["Search..."]                               = "検索..."
+L["Clear search"]                            = "検索をクリア"

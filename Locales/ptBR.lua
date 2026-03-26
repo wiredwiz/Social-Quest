@@ -208,3 +208,7 @@ L["Auto-filter to current instance"]        = "Filtrar automaticamente pela inst
 L["When inside a dungeon or raid instance, the Party and Shared tabs show only quests for that instance."] = "Dentro de uma masmorra ou raid, as abas 'Grupo' e 'Compartilhadas' mostram apenas missões da instância atual."
 L["Auto-filter to current zone"]            = "Filtrar automaticamente pela zona atual"
 L["Outside of instances, the Party and Shared tabs show only quests for your current zone."] = "Fora de instâncias, as abas 'Grupo' e 'Compartilhadas' mostram apenas missões da sua zona atual."
+
+-- UI/GroupFrame.lua — search bar
+L["Search..."]                               = "Pesquisar..."
+L["Clear search"]                            = "Limpar pesquisa"

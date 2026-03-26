@@ -200,6 +200,17 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.11.0 (March 2026 — FilterTextbox branch)
+- Search bar: a persistent search box appears in a fixed header strip below the tab
+  separator, above the scrollable quest list. Typing filters all three tabs by quest
+  title or chain title (case-insensitive substring match). The search text is shared
+  across tabs; switching tabs re-filters against the same text. Cleared on user-initiated
+  window close; preserved across loading screen transitions (`leavingWorld` guard).
+- Filter label migration: the zone/instance filter label is moved from the scrollable
+  content area (RowFactory.AddFilterHeader) into the same fixed header strip below the
+  search bar. GroupFrame:Refresh() now manages the label visibility and the dismiss
+  button directly. RowFactory.AddFilterHeader removed.
+
 ### Version 2.10.4 (March 2026 — ProgressBars branch)
 - Bug fix: zone/instance filter did not update when a flight path (gryphon/wyvern) ended in a different zone. `ZONE_CHANGED_NEW_AREA` fires for seamless overland crossings (walking/riding) but does not fire during taxi flights — the taxi system handles zone transitions internally without raising that event. Added `PLAYER_CONTROL_GAINED` handler which fires when the taxi system releases the player at the destination; resets the window filter and refreshes the window.
 

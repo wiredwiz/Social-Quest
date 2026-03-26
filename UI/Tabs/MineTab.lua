@@ -17,7 +17,7 @@ end
 
 -- Builds the zone/chain/quest tree from local AQL data + GroupData chain peers.
 -- Returns: { zones = { [zoneName] = { name, order, chains, quests } } }
-function MineTab:BuildTree(filterTable)  -- filterTable accepted for API consistency; not applied
+function MineTab:BuildTree(filterTable)  -- filterTable.search applied; filterTable.zone intentionally ignored
     local AQL = SocialQuest.AQL
     if not AQL then return { zones = {} } end
 
@@ -107,6 +107,37 @@ function MineTab:BuildTree(filterTable)  -- filterTable accepted for API consist
                 local bStep = b.chainInfo and b.chainInfo.step or 0
                 return aStep < bStep
             end)
+        end
+    end
+
+    -- Search text filter: case-insensitive substring match on quest/chain titles.
+    -- filterTable.zone is intentionally not applied in MineTab.
+    local searchText = filterTable and filterTable.search
+    if searchText then
+        local lower = string.lower(searchText)
+        local function matches(title)
+            return string.find(string.lower(title or ""), lower, 1, true) ~= nil
+        end
+        for zoneName, zone in pairs(tree.zones) do
+            for chainID, chain in pairs(zone.chains) do
+                if not matches(chain.title) then
+                    local kept = {}
+                    for _, step in ipairs(chain.steps) do
+                        if matches(step.title) then kept[#kept + 1] = step end
+                    end
+                    chain.steps = kept
+                end
+                if #chain.steps == 0 then zone.chains[chainID] = nil end
+            end
+            local kept = {}
+            for _, quest in ipairs(zone.quests) do
+                if matches(quest.title) then kept[#kept + 1] = quest end
+            end
+            zone.quests = kept
+            local empty = true
+            for _ in pairs(zone.chains) do empty = false; break end
+            if empty then empty = (#zone.quests == 0) end
+            if empty then tree.zones[zoneName] = nil end
         end
     end
 

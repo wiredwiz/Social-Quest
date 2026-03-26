@@ -208,3 +208,7 @@ L["Auto-filter to current instance"]        = "Filtra automaticamente per istanz
 L["When inside a dungeon or raid instance, the Party and Shared tabs show only quests for that instance."] = "All'interno di un dungeon o raid, le schede 'Gruppo' e 'Condivise' mostrano solo le quest dell'istanza corrente."
 L["Auto-filter to current zone"]            = "Filtra automaticamente per zona corrente"
 L["Outside of instances, the Party and Shared tabs show only quests for your current zone."] = "Al di fuori delle istanze, le schede 'Gruppo' e 'Condivise' mostrano solo le quest della tua zona corrente."
+
+-- UI/GroupFrame.lua — search bar
+L["Search..."]                               = "Cerca..."
+L["Clear search"]                            = "Cancella ricerca"
