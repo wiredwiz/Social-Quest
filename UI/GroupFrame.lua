@@ -13,6 +13,8 @@ local scrollRestoreSeq    = 0    -- incremented each Refresh(); deferred scroll 
 local leavingWorld        = false -- true while a loading-screen transition is in progress;
                                   -- prevents OnHide from clearing the persisted open state
 local searchText          = ""   -- current search bar text; shared across all tabs
+local _keyDefs = {}     -- stored for help window content; set by buildKeyDefs()
+local helpFrame = nil   -- lazy-created filter syntax help window
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 local SQWowAPI = SocialQuestWowAPI
 local SQWowUI  = SocialQuestWowUI
@@ -90,6 +92,178 @@ end
 ------------------------------------------------------------------------
 -- Frame construction
 ------------------------------------------------------------------------
+
+local function buildKeyDefs()
+    local defs = {
+        { canonical="zone",   names={L["filter.key.zone"],   L["filter.key.zone.z"]},
+          type="string",  descKey="filter.key.zone.desc" },
+        { canonical="title",  names={L["filter.key.title"],  L["filter.key.title.t"]},
+          type="string",  descKey="filter.key.title.desc" },
+        { canonical="chain",  names={L["filter.key.chain"],  L["filter.key.chain.c"]},
+          type="string",  descKey="filter.key.chain.desc" },
+        { canonical="player", names={L["filter.key.player"], L["filter.key.player.p"]},
+          type="string",  descKey="filter.key.player.desc" },
+        { canonical="level",  names={L["filter.key.level"],  L["filter.key.level.lvl"], L["filter.key.level.l"]},
+          type="numeric", descKey="filter.key.level.desc" },
+        { canonical="step",   names={L["filter.key.step"],   L["filter.key.step.s"]},
+          type="numeric", descKey="filter.key.step.desc" },
+        { canonical="group",  names={L["filter.key.group"],  L["filter.key.group.g"]},
+          type="enum",
+          enumMap={ [L["filter.val.yes"]]="yes", [L["filter.val.no"]]="no",
+                    ["2"]="2", ["3"]="3", ["4"]="4", ["5"]="5" },
+          descKey="filter.key.group.desc" },
+        { canonical="type",   names={L["filter.key.type"]},
+          type="enum",
+          enumMap={
+            [L["filter.val.chain"]]   ="chain",    [L["filter.val.group"]]   ="group",
+            [L["filter.val.solo"]]    ="solo",     [L["filter.val.timed"]]   ="timed",
+            [L["filter.val.escort"]]  ="escort",   [L["filter.val.dungeon"]] ="dungeon",
+            [L["filter.val.raid"]]    ="raid",     [L["filter.val.elite"]]   ="elite",
+            [L["filter.val.daily"]]   ="daily",    [L["filter.val.pvp"]]     ="pvp",
+            [L["filter.val.kill"]]    ="kill",     [L["filter.val.gather"]]  ="gather",
+            [L["filter.val.interact"]]="interact",
+          },
+          descKey="filter.key.type.desc" },
+        { canonical="status", names={L["filter.key.status"]},
+          type="enum",
+          enumMap={ [L["filter.val.complete"]]="complete",
+                    [L["filter.val.incomplete"]]="incomplete",
+                    [L["filter.val.failed"]]="failed" },
+          descKey="filter.key.status.desc" },
+        { canonical="tracked",names={L["filter.key.tracked"]},
+          type="enum",
+          enumMap={ [L["filter.val.yes"]]="yes", [L["filter.val.no"]]="no" },
+          descKey="filter.key.tracked.desc" },
+    }
+    _keyDefs = defs
+    return defs
+end
+
+-- Positions helpFrame relative to the SQ main frame.
+-- Two-step: anchor TOPLEFT to the right side of the SQ frame, then check the
+-- actual rendered GetRight() value.  Both GetRight() calls are in WoW's absolute
+-- screen coordinate space, so no scale arithmetic is needed.  If the right edge
+-- is off-screen we flip to TOPRIGHT anchored to the left side of the SQ frame.
+-- Also restores a valid saved drag position (stored by OnDragStop) when present.
+local function positionHelpFrame()
+    if not helpFrame then return end
+    local savedPos = SocialQuest.db.char.frameState.helpWindowPos
+    helpFrame:ClearAllPoints()
+    if savedPos then
+        local sw = UIParent:GetRight()
+        local sh = UIParent:GetTop()
+        local hw = helpFrame:GetWidth()  / 2
+        local hh = helpFrame:GetHeight() / 2
+        if savedPos.x >= hw and savedPos.x <= sw - hw
+        and savedPos.y >= hh and savedPos.y <= sh - hh then
+            helpFrame:SetPoint("CENTER", UIParent, "BOTTOMLEFT", savedPos.x, savedPos.y)
+            return
+        end
+        SocialQuest.db.char.frameState.helpWindowPos = nil
+    end
+    if not frame then
+        helpFrame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+        return
+    end
+    -- Step 1: try the right side.
+    helpFrame:SetPoint("TOPLEFT", frame, "TOPRIGHT", 4, 0)
+    -- Step 2: check the actual rendered right edge against the screen right edge.
+    if helpFrame:GetRight() > UIParent:GetRight() then
+        helpFrame:ClearAllPoints()
+        helpFrame:SetPoint("TOPRIGHT", frame, "TOPLEFT", -4, 0)
+    end
+end
+
+local function createHelpFrame()
+    local hf = CreateFrame("Frame", "SocialQuestFilterHelpFrame", UIParent, "BasicFrameTemplate")
+    hf:SetSize(420, 500)
+    hf:SetFrameStrata("DIALOG")
+    hf:SetMovable(true)
+    hf:EnableMouse(true)
+    hf:RegisterForDrag("LeftButton")
+    hf:SetScript("OnMouseDown", function(self) self:Raise() end)
+    hf:SetScript("OnDragStart", function(self) self:StartMoving(); self:Raise() end)
+    hf:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        local x, y = self:GetCenter()
+        -- Store raw screen coordinates (same space as GetRight()/UIParent:GetRight()).
+        SocialQuest.db.char.frameState.helpWindowPos = { x = x, y = y }
+    end)
+    -- NOTE: Do NOT wire OnShow/OnHide to write helpWindowOpen — the SQ window lifecycle
+    -- code owns that field. Writing it here would race with the lifecycle snapshot.
+    tinsert(UISpecialFrames, "SocialQuestFilterHelpFrame")
+
+    -- Default anchor; overridden by positionHelpFrame() on every Show().
+    hf:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+
+    hf.TitleText:SetText(L["filter.help.title"])
+
+    local scrollFrame = CreateFrame("ScrollFrame", nil, hf, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT",     hf, "TOPLEFT",     10, -30)
+    scrollFrame:SetPoint("BOTTOMRIGHT", hf, "BOTTOMRIGHT", -28, 10)
+
+    local content = CreateFrame("Frame", nil, scrollFrame)
+    content:SetWidth(380)
+    scrollFrame:SetScrollChild(content)
+
+    local y = 0
+    local function addLine(text, font, r, g, b, indent)
+        local fs = content:CreateFontString(nil, "OVERLAY", font or "GameFontNormal")
+        fs:SetPoint("TOPLEFT",  content, "TOPLEFT",  (indent or 0) + 4, -y)
+        fs:SetPoint("TOPRIGHT", content, "TOPRIGHT", -4, -y)
+        fs:SetJustifyH("LEFT")
+        fs:SetTextColor(r or 1, g or 1, b or 1)
+        fs:SetText(text)
+        fs:SetWordWrap(true)
+        y = y + math.max(fs:GetStringHeight(), 14) + 4
+    end
+
+    addLine(L["filter.help.intro"], "GameFontNormalSmall", 0.9, 0.9, 0.9)
+    y = y + 8
+
+    addLine(L["filter.help.section.syntax"], "GameFontNormal", 1, 0.82, 0)
+    for _, line in ipairs({
+        "key=value",  'key="value with spaces"',
+        "key!=value  (or ~=)",  "key=val1|val2",
+        "key<N  key>N  key<=N  key>=N",  "key=N..M",
+    }) do
+        addLine(line, "GameFontNormalSmall", 0.7, 0.9, 1, 8)
+    end
+    y = y + 8
+
+    addLine(L["filter.help.section.keys"], "GameFontNormal", 1, 0.82, 0)
+    for _, def in ipairs(_keyDefs) do
+        local aliases = {}
+        for i = 2, #def.names do aliases[#aliases+1] = def.names[i] end
+        local aliasStr = #aliases > 0 and " (" .. table.concat(aliases, ", ") .. ")" or ""
+        local desc = def.descKey and L[def.descKey] or ""
+        addLine(def.names[1] .. aliasStr .. " — " .. desc, "GameFontNormalSmall", 0.9, 0.9, 0.9, 8)
+    end
+    y = y + 4
+    addLine(L["filter.help.type.note"], "GameFontNormalSmall", 1, 0.82, 0.2, 8)
+    y = y + 8
+
+    addLine(L["filter.help.section.examples"], "GameFontNormal", 1, 0.82, 0)
+    local i = 1
+    while true do
+        local exKey   = "filter.help.example." .. i
+        local noteKey = exKey .. ".note"
+        -- rawget bypasses AceLocale's strict __index so missing keys return nil
+        -- instead of throwing an error, allowing the loop to terminate cleanly.
+        local expr = rawget(L, exKey)
+        if not expr then break end
+        local note = rawget(L, noteKey)
+        local line = note and (expr .. " — " .. note) or expr
+        addLine(line, "GameFontNormalSmall", 0.7, 0.9, 1, 8)
+        i = i + 1
+    end
+
+    content:SetHeight(math.max(y, 10))
+    -- WoW creates frames visible by default (inheriting parent show state). Hide
+    -- explicitly so OnClick's IsShown() check works correctly on the first press.
+    hf:Hide()
+    return hf
+end
 
 local function createFrame()
     local f = CreateFrame("Frame", "SocialQuestGroupFramePanel", UIParent,
@@ -198,7 +372,7 @@ local function createFrame()
 
     local searchBox = CreateFrame("EditBox", nil, searchBarFrame)
     searchBox:SetPoint("LEFT",  searchBarFrame, "LEFT",   6, 0)
-    searchBox:SetPoint("RIGHT", searchBarFrame, "RIGHT", -26, 0)
+    searchBox:SetPoint("RIGHT", searchBarFrame, "RIGHT", -48, 0)
     searchBox:SetHeight(SEARCH_H)
     searchBox:SetFontObject("GameFontNormalSmall")
     searchBox:SetAutoFocus(false)
@@ -208,11 +382,39 @@ local function createFrame()
     searchPlaceholder:SetPoint("LEFT", searchBox, "LEFT", 2, 0)
     searchPlaceholder:SetText(L["Search..."])
 
-    searchBox:SetScript("OnTextChanged", function(self)
+    searchBox:SetScript("OnTextChanged", function(self, userInput)
+        f.errorLabel:Hide()   -- any keystroke clears the error label
         local text = self:GetText()
         searchPlaceholder:SetShown(text == "")
         searchText = text
         SocialQuestGroupFrame:RequestRefresh()
+    end)
+    searchBox:SetScript("OnEnterPressed", function(self)
+        local text = self:GetText()
+        if not text:find("[=<>!~]") then return end  -- plain text; Enter is no-op
+
+        local result = SocialQuestFilterParser:Parse(text)
+        if not result then return end
+
+        if result.filter then
+            local tabId = SocialQuest.db.char.frameState.activeTab or "mine"
+            SocialQuestFilterState:Apply(tabId, result)
+            self:SetText("")
+            searchText = ""
+            f.errorLabel:Hide()
+            SocialQuestGroupFrame:RequestRefresh()
+        else
+            -- Translate error code to locale string
+            local template = L["filter.err." .. result.code] or result.code
+            local msg = string.format(template, unpack(result.args or {}))
+            local fullMsg = string.format(L["filter.err.label"], msg)
+            f.errorLabel:SetContent(fullMsg, nil, function()
+                f.errorLabel:Hide()
+                SocialQuestGroupFrame:RequestRefresh()
+            end)
+            f.errorLabel:Show()
+            SocialQuestGroupFrame:RequestRefresh()
+        end
     end)
     searchBox:SetScript("OnEscapePressed", function(self)
         self:SetText("")
@@ -236,6 +438,37 @@ local function createFrame()
     end)
     searchClearBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
+    -- [?] help button: opens the filter syntax help window.
+    local helpBtn = CreateFrame("Button", nil, searchBarFrame)
+    helpBtn:SetSize(22, 22)
+    helpBtn:SetPoint("RIGHT", searchBarFrame, "RIGHT", -24, 0)
+    helpBtn:SetNormalFontObject("GameFontNormalSmall")
+    helpBtn:SetText("?")
+    helpBtn:GetFontString():SetTextColor(0.8, 0.8, 0.2)
+    helpBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
+        GameTooltip:SetText(L["filter.help.title"], 1, 1, 1, nil, true)
+        GameTooltip:Show()
+    end)
+    helpBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    helpBtn:SetScript("OnClick", function()
+        if not helpFrame then helpFrame = createHelpFrame() end
+        if helpFrame:IsShown() then
+            helpFrame:Hide()
+        else
+            positionHelpFrame()
+            helpFrame:Show()
+            helpFrame:Raise()
+        end
+    end)
+    f.helpBtn = helpBtn
+
+    -- Error label: shown on parse error, hidden on any keystroke or [x] dismiss.
+    local errorLabel = SocialQuestHeaderLabel.New(f, { height=18, r=1.0, g=0.4, b=0.4 })
+    errorLabel:GetFrame():SetPoint("TOPLEFT",  searchBarFrame, "BOTTOMLEFT",  0, -2)
+    errorLabel:GetFrame():SetPoint("TOPRIGHT", searchBarFrame, "BOTTOMRIGHT", 0, -2)
+    f.errorLabel = errorLabel
+
     f.searchBarFrame    = searchBarFrame
     f.searchBox         = searchBox
     f.searchPlaceholder = searchPlaceholder
@@ -245,8 +478,6 @@ local function createFrame()
     -- Handlers are re-wired on every Refresh() to target the current active tab.
     local EC_H = 18   -- matches ROW_H in RowFactory
     local expandCollapseFrame = CreateFrame("Frame", nil, f)
-    expandCollapseFrame:SetPoint("TOPLEFT",  searchBarFrame, "BOTTOMLEFT",  0, -2)
-    expandCollapseFrame:SetPoint("TOPRIGHT", searchBarFrame, "BOTTOMRIGHT", 0, -2)
     expandCollapseFrame:SetHeight(EC_H)
 
     local expandAllBtn = CreateFrame("Button", nil, expandCollapseFrame)
@@ -295,38 +526,12 @@ local function createFrame()
     f.expandAllBtn        = expandAllBtn
     f.collapseAllBtn      = collapseAllBtn
 
-    -- Filter label (zone/instance filter; shown only when a filter is active).
-    -- Positioned below the expand/collapse row; shown/hidden and re-wired on every Refresh().
-    local FILTER_LABEL_H = 18    -- matches ROW_H in RowFactory (18px)
-    local filterLabelFrame = CreateFrame("Frame", nil, f)
-    filterLabelFrame:SetPoint("TOPLEFT",  expandCollapseFrame, "BOTTOMLEFT",  0, -2)
-    filterLabelFrame:SetPoint("TOPRIGHT", expandCollapseFrame, "BOTTOMRIGHT", 0, -2)
-    filterLabelFrame:SetHeight(FILTER_LABEL_H)
-    filterLabelFrame:Hide()
+    -- Auto-zone label (replaces filterLabelFrame). Anchored dynamically in Refresh().
+    local autoZoneLabel = SocialQuestHeaderLabel.New(f, { height = 18 })
+    f.autoZoneLabel = autoZoneLabel
 
-    local filterLabelText = filterLabelFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    filterLabelText:SetPoint("TOPLEFT",     filterLabelFrame, "TOPLEFT",     4,  0)
-    filterLabelText:SetPoint("BOTTOMRIGHT", filterLabelFrame, "BOTTOMRIGHT", -28, 0)
-    filterLabelText:SetJustifyH("LEFT")
-    filterLabelText:SetJustifyV("MIDDLE")
-
-    local filterDismissBtn = CreateFrame("Button", nil, filterLabelFrame)
-    filterDismissBtn:SetSize(22, FILTER_LABEL_H)
-    filterDismissBtn:SetPoint("TOPRIGHT", filterLabelFrame, "TOPRIGHT", -4, 0)
-    filterDismissBtn:SetText("[x]")
-    filterDismissBtn:SetNormalFontObject("GameFontNormalSmall")
-    filterDismissBtn:SetHighlightFontObject("GameFontHighlightSmall")
-    filterDismissBtn:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText(L["Click to dismiss the active filter for this tab."], 1, 1, 1)
-        GameTooltip:Show()
-    end)
-    filterDismissBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    -- OnClick is assigned in Refresh() so it captures the current activeID.
-
-    f.filterLabelFrame  = filterLabelFrame
-    f.filterLabelText   = filterLabelText
-    f.filterDismissBtn  = filterDismissBtn
+    -- User-typed filter label slots (lazy-created in Refresh, one per canonical key).
+    f.filterLabels = {}
 
     -- Scroll area.
     -- Named so that UIPanelScrollFrameTemplate helper functions
@@ -335,11 +540,8 @@ local function createFrame()
     -- Without a name those functions silently no-op, leaving the scrollbar and
     -- scroll position desynced and causing WoW to fire deferred reconciliation
     -- callbacks that override SetVerticalScroll calls.
-    -- TOPLEFT initially anchored to expandCollapseFrame; Refresh() will ClearAllPoints and
-    -- re-anchor dynamically based on filter label visibility (wired in the Refresh step).
+    -- Anchoring is fully deferred to Refresh() via the lastHeader cursor chain.
     f.scrollFrame = CreateFrame("ScrollFrame", "SocialQuestGroupScrollFrame", f, "UIPanelScrollFrameTemplate")
-    f.scrollFrame:SetPoint("TOPLEFT",     expandCollapseFrame, "BOTTOMLEFT",  0, -4)
-    f.scrollFrame:SetPoint("BOTTOMRIGHT", f,              "BOTTOMRIGHT", -28, 10)
 
     local initContentW = math.floor(f:GetWidth() - 40)
     f.content = CreateFrame("Frame", nil, f.scrollFrame)
@@ -357,6 +559,9 @@ local function createFrame()
         -- OnLeavingWorld already snapshotted the true open state before it happened.
         if not leavingWorld then
             SocialQuest.db.char.frameState.windowOpen = false
+            -- Snapshot and hide help window companion on user-initiated SQ close.
+            SocialQuest.db.char.frameState.helpWindowOpen = helpFrame ~= nil and helpFrame:IsShown()
+            if helpFrame then helpFrame:Hide() end
             -- Clear search text on user close. Preserved across loading-screen transitions
             -- (leavingWorld == true) so the filter survives hearths and instance entry.
             searchText = ""
@@ -406,6 +611,13 @@ function SocialQuestGroupFrame:Toggle()
         end
         self:Refresh()
         frame:Raise()
+        -- Restore help window companion if it was open when the SQ window last closed.
+        if SocialQuest.db.char.frameState.helpWindowOpen then
+            if not helpFrame then helpFrame = createHelpFrame() end
+            positionHelpFrame()
+            helpFrame:Show()
+            helpFrame:Raise()
+        end
     end
 end
 
@@ -476,37 +688,107 @@ function SocialQuestGroupFrame:Refresh()
     local tabCollapsed   = collapsedZones[activeID] or {}
 
     -- Delegate rendering to the tab provider.
-    -- Assemble composite filterTable: zone filter (from WindowFilter) + search text.
-    -- The existing GetActiveFilter line is fully replaced by this block.
-    local zoneFilter  = SocialQuestWindowFilter:GetActiveFilter(activeID)
-    local filterTable = nil
-    if zoneFilter or (searchText ~= "") then
-        filterTable = {
-            zone   = zoneFilter and zoneFilter.zone or nil,
-            search = searchText ~= "" and searchText or nil,
-        }
+    -- Assemble composite filterTable from three sources:
+    -- Source 1: auto-zone exact match (WindowFilter — key renamed autoZone to avoid
+    --           collision with new structured zone descriptor from FilterState)
+    local ft = nil
+    local zoneFilter = SocialQuestWindowFilter:GetActiveFilter(activeID)
+    if zoneFilter then
+        ft = ft or {}
+        ft.autoZone = zoneFilter.zone
+    end
+    -- Source 2: user-typed structured filters (AceDB-persisted, per-tab)
+    if not SocialQuestFilterState:IsEmpty(activeID) then
+        ft = ft or {}
+        for canonical, entry in pairs(SocialQuestFilterState:GetAll(activeID)) do
+            ft[canonical] = entry.descriptor
+        end
+    end
+    -- Source 3: real-time search text
+    if searchText ~= "" then
+        ft = ft or {}
+        ft.search = searchText
+    end
+    local filterTable = ft
+
+    -- ── Dynamic header anchor chain ────────────────────────────────────
+    local lastHeader = frame.searchBarFrame
+
+    -- Error label: re-anchor below search bar; visibility managed by OnEnterPressed/OnTextChanged.
+    if frame.errorLabel:IsShown() then
+        frame.errorLabel:GetFrame():ClearAllPoints()
+        frame.errorLabel:GetFrame():SetPoint("TOPLEFT",  lastHeader, "BOTTOMLEFT",  0, -2)
+        frame.errorLabel:GetFrame():SetPoint("TOPRIGHT", lastHeader, "BOTTOMRIGHT", 0, -2)
+        lastHeader = frame.errorLabel:GetFrame()
     end
 
-    -- Update filter label in fixed header.
-    -- GetFilterLabel is called separately (same computeFilterState() path as GetActiveFilter).
-    -- The dismiss button OnClick is reassigned here so it always captures the current activeID.
-    -- Note: dismiss now calls RequestRefresh() (deferred one frame) instead of Refresh()
-    -- directly — intentional, consistent with the rest of the debounce pattern.
+    -- Expand/collapse row: re-anchored every Refresh.
+    frame.expandCollapseFrame:ClearAllPoints()
+    frame.expandCollapseFrame:SetPoint("TOPLEFT",  lastHeader, "BOTTOMLEFT",  0, -2)
+    frame.expandCollapseFrame:SetPoint("TOPRIGHT", lastHeader, "BOTTOMRIGHT", 0, -2)
+    lastHeader = frame.expandCollapseFrame
+
+    -- Auto-zone label (WindowFilter).
     local filterLabel = SocialQuestWindowFilter:GetFilterLabel(activeID)
     if filterLabel then
-        frame.filterLabelText:SetText(filterLabel)
-        frame.filterLabelFrame:Show()
-        frame.filterDismissBtn:SetScript("OnClick", function()
+        frame.autoZoneLabel:SetContent(filterLabel, filterLabel, function()
             SocialQuestWindowFilter:Dismiss(activeID)
             SocialQuestGroupFrame:RequestRefresh()
         end)
+        frame.autoZoneLabel:GetFrame():ClearAllPoints()
+        frame.autoZoneLabel:GetFrame():SetPoint("TOPLEFT",  lastHeader, "BOTTOMLEFT",  0, -2)
+        frame.autoZoneLabel:GetFrame():SetPoint("TOPRIGHT", lastHeader, "BOTTOMRIGHT", 0, -2)
+        frame.autoZoneLabel:Show()
+        lastHeader = frame.autoZoneLabel:GetFrame()
     else
-        frame.filterLabelFrame:Hide()
+        frame.autoZoneLabel:Hide()
     end
 
+    -- User-typed filter labels (one per canonical key; lazy-created).
+    local usedCanonicals = {}
+    for canonical, entry in pairs(SocialQuestFilterState:GetAll(activeID)) do
+        usedCanonicals[canonical] = true
+        if not frame.filterLabels[canonical] then
+            frame.filterLabels[canonical] = SocialQuestHeaderLabel.New(frame, { height = 18 })
+        end
+        local lbl = frame.filterLabels[canonical]
+        local desc = entry.descriptor
+        local valStr
+        if desc.values then
+            valStr = (desc.op == "!=" and "!=" or "") .. table.concat(desc.values, "||")
+        elseif desc.op == "range" then
+            valStr = tostring(desc.min) .. ".." .. tostring(desc.max)
+        elseif desc.val ~= nil then
+            valStr = (desc.op == "=" and "" or desc.op) .. tostring(desc.val)
+        else
+            valStr = (desc.op == "!=" and "!=" or "") .. (desc.value or "")
+        end
+        local keyDisplay  = canonical:sub(1,1):upper() .. canonical:sub(2)
+        local displayText = "Filter: " .. keyDisplay .. ": " .. valStr
+        local capturedTab = activeID
+        local capturedCanonical = canonical
+        lbl:SetContent(displayText, displayText, function()
+            SocialQuestFilterState:Dismiss(capturedTab, capturedCanonical)
+            SocialQuestGroupFrame:RequestRefresh()
+        end)
+        lbl:GetFrame():ClearAllPoints()
+        lbl:GetFrame():SetPoint("TOPLEFT",  lastHeader, "BOTTOMLEFT",  0, -2)
+        lbl:GetFrame():SetPoint("TOPRIGHT", lastHeader, "BOTTOMRIGHT", 0, -2)
+        lbl:Show()
+        lastHeader = lbl:GetFrame()
+    end
+    for canonical, lbl in pairs(frame.filterLabels) do
+        if not usedCanonicals[canonical] then lbl:Hide() end
+    end
+
+    -- Scroll frame always anchored below the last visible header.
+    frame.scrollFrame:ClearAllPoints()
+    frame.scrollFrame:SetPoint("TOPLEFT",     lastHeader, "BOTTOMLEFT",  0, -4)
+    frame.scrollFrame:SetPoint("BOTTOMRIGHT", frame,      "BOTTOMRIGHT", -28, 10)
+    -- ── End of dynamic header anchor chain ────────────────────────────
+
     -- Wire expand/collapse all buttons in the fixed header.
-    -- Re-wired on every Refresh() so handlers always target the current tab,
-    -- matching the same pattern used for filterDismissBtn.
+    -- Re-wired on every Refresh() so handlers always target the current tab.
     if frame.expandAllBtn then
         local capturedActiveID = activeID
         frame.expandAllBtn:SetScript("OnClick", function()
@@ -524,16 +806,6 @@ function SocialQuestGroupFrame:Refresh()
             SocialQuestGroupFrame:CollapseAll(capturedActiveID, names)
         end)
     end
-
-    -- Re-anchor scroll frame: TOPLEFT moves dynamically based on filter label visibility.
-    -- Both points are always set explicitly to prevent width collapsing.
-    frame.scrollFrame:ClearAllPoints()
-    if filterLabel then
-        frame.scrollFrame:SetPoint("TOPLEFT",  frame.filterLabelFrame,     "BOTTOMLEFT",  0, -4)
-    else
-        frame.scrollFrame:SetPoint("TOPLEFT",  frame.expandCollapseFrame,  "BOTTOMLEFT",  0, -4)
-    end
-    frame.scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -28, 10)
 
     local totalHeight = activeProvider.module:Render(frame.content, RowFactory, tabCollapsed, filterTable, activeID)
     local effectiveH   = math.max(totalHeight, 10)
@@ -628,6 +900,8 @@ end
 function SocialQuestGroupFrame:OnLeavingWorld()
     leavingWorld = true
     SocialQuest.db.char.frameState.windowOpen = frame ~= nil and frame:IsShown()
+    SocialQuest.db.char.frameState.helpWindowOpen = helpFrame ~= nil and helpFrame:IsShown()
+    if helpFrame then helpFrame:Hide() end
 end
 
 -- Called from OnPlayerEnteringWorld (after the loading screen).
@@ -648,6 +922,15 @@ function SocialQuestGroupFrame:RestoreAfterTransition()
         frame:Show()
         self:Refresh()
         frame:Raise()
+        if SocialQuest.db.char.frameState.helpWindowOpen then
+            if not helpFrame then helpFrame = createHelpFrame() end
+            positionHelpFrame()
+            helpFrame:Show()
+            helpFrame:Raise()
+        end
     end
 end
 
+-- Initialize FilterParser with localized key definitions.
+-- Locale files are loaded before GroupFrame.lua in the TOC, so L is ready.
+SocialQuestFilterParser:Initialize(buildKeyDefs())
