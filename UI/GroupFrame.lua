@@ -401,11 +401,8 @@ local function createFrame()
     -- Without a name those functions silently no-op, leaving the scrollbar and
     -- scroll position desynced and causing WoW to fire deferred reconciliation
     -- callbacks that override SetVerticalScroll calls.
-    -- TOPLEFT initially anchored to expandCollapseFrame; Refresh() will ClearAllPoints and
-    -- re-anchor dynamically based on filter label visibility (wired in the Refresh step).
+    -- Anchoring is fully deferred to Refresh() via the lastHeader cursor chain.
     f.scrollFrame = CreateFrame("ScrollFrame", "SocialQuestGroupScrollFrame", f, "UIPanelScrollFrameTemplate")
-    f.scrollFrame:SetPoint("TOPLEFT",     expandCollapseFrame, "BOTTOMLEFT",  0, -4)
-    f.scrollFrame:SetPoint("BOTTOMRIGHT", f,              "BOTTOMRIGHT", -28, 10)
 
     local initContentW = math.floor(f:GetWidth() - 40)
     f.content = CreateFrame("Frame", nil, f.scrollFrame)
