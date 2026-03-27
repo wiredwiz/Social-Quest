@@ -137,3 +137,51 @@ function SocialQuestTabUtils.MatchesEnumFilter(value, descriptor)
     local matches = (value == descriptor.value)
     return descriptor.op == "=" and matches or not matches
 end
+
+-- Type filter: each value is an independent boolean predicate.
+-- descriptor = { op = "=" | "!=", value = canonicalString }
+-- entry must have: questID, suggestedGroup, timerSeconds, chainInfo (all set by each tab's BuildTree).
+-- AQL:GetQuestInfo() is called only for AQL-based and objective-type predicates.
+function SocialQuestTabUtils.MatchesTypeFilter(entry, descriptor)
+    if not descriptor then return true end
+    local value = descriptor.value
+    local matched
+
+    -- group/timed/solo/chain: read from entry fields directly (no AQL call needed).
+    -- suggestedGroup and timerSeconds are denormalized onto every entry by each tab's
+    -- BuildTree; chainInfo is populated from GetChainInfoForQuestID by each tab.
+    if value == "group" then
+        matched = (entry.suggestedGroup or 0) >= 2
+    elseif value == "solo" then
+        matched = (entry.suggestedGroup or 0) <= 1
+    elseif value == "timed" then
+        matched = (entry.timerSeconds or 0) > 0
+    elseif value == "chain" then
+        matched = entry.chainInfo ~= nil
+            and entry.chainInfo.knownStatus == SocialQuest.AQL.ChainStatus.Known
+    else
+        -- AQL-based and objective predicates: one GetQuestInfo call per quest.
+        local info = SocialQuest.AQL and SocialQuest.AQL:GetQuestInfo(entry.questID)
+        if not info then
+            matched = false
+        elseif value == "escort" or value == "dungeon" or value == "raid"
+            or value == "elite"  or value == "daily"   or value == "pvp" then
+            matched = (info.type == value)
+        elseif value == "kill" or value == "gather" or value == "interact" then
+            local objType = value == "kill" and "monster"
+                         or value == "gather" and "item"
+                         or "object"
+            matched = false
+            if info.objectives then
+                for _, obj in ipairs(info.objectives) do
+                    if obj.type == objType then matched = true; break end
+                end
+            end
+        else
+            matched = false  -- unknown value
+        end
+    end
+
+    -- Explicit if/else avoids the Lua `a and false or c` pitfall.
+    if descriptor.op == "=" then return matched else return not matched end
+end
