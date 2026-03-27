@@ -157,9 +157,9 @@ local function createHelpFrame()
         hf:SetPoint("CENTER", UIParent, "BOTTOMLEFT", savedPos.x / scale, savedPos.y / scale)
     elseif frame then
         -- Prefer right side; fall back to left if the right side would go off screen.
-        local sqRight  = frame:GetRight()  or 0
-        local sqLeft   = frame:GetLeft()   or 0
-        local screenRight = UIParent:GetRight() or GetScreenWidth()
+        -- frame:GetRight() is in UI units; convert screen width to the same space.
+        local sqRight     = frame:GetRight() or 0
+        local screenRight = GetScreenWidth() / UIParent:GetEffectiveScale()
         if sqRight + 424 <= screenRight then
             hf:SetPoint("TOPLEFT",  frame, "TOPRIGHT",  4, 0)
         else
