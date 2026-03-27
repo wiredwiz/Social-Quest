@@ -197,3 +197,18 @@ L["Display a demo flight path unlock banner using your character's starting city
 -- UI/Options.lua — follow notification test button
 L["Test Follow Notification"]   = "Test Follow Notification"
 L["Display a demo follow notification banner showing the 'started following you' message."] = "Display a demo follow notification banner showing the 'started following you' message."
+
+-- UI/Options.lua — Social Quest Window option group
+-- UI/WindowFilter.lua — filter header labels
+L["Click to dismiss the active filter for this tab."] = "Clique para dispensar o filtro ativo desta aba."
+L["Instance: %s"]                           = "Filtro: Instância: %s"
+L["Zone: %s"]                               = "Filtro: Zona: %s"
+L["Social Quest Window"]                    = "Janela do SocialQuest"
+L["Auto-filter to current instance"]        = "Filtrar automaticamente pela instância atual"
+L["When inside a dungeon or raid instance, the Party and Shared tabs show only quests for that instance."] = "Dentro de uma masmorra ou raid, as abas 'Grupo' e 'Compartilhadas' mostram apenas missões da instância atual."
+L["Auto-filter to current zone"]            = "Filtrar automaticamente pela zona atual"
+L["Outside of instances, the Party and Shared tabs show only quests for your current zone."] = "Fora de instâncias, as abas 'Grupo' e 'Compartilhadas' mostram apenas missões da sua zona atual."
+
+-- UI/GroupFrame.lua — search bar
+L["Search..."]                               = "Pesquisar..."
+L["Clear search"]                            = "Limpar pesquisa"

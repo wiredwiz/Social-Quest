@@ -11,11 +11,33 @@ local ROW_H         = 18     -- standard row height in pixels
 local INDENT_STEP   = 16     -- pixels per indent level
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 local SQWowAPI = SocialQuestWowAPI
+local _measureFs  -- cached FontString for MeasureNameWidth; created on first use
 
 -- Called by GroupFrame:Refresh() to set content width before rendering.
 -- Writes to the CONTENT_WIDTH upvalue so all row functions use the current frame width.
 function RowFactory.SetContentWidth(w)
     CONTENT_WIDTH = w
+end
+
+-- Returns the fully-resolved display name for a playerEntry.
+-- Appends the bridge nameTag suffix when dataProvider is set.
+-- Call this instead of building the name inline anywhere name display is needed.
+function RowFactory.GetDisplayName(playerEntry)
+    local name    = playerEntry.name or "Unknown"
+    local nameTag = playerEntry.dataProvider
+                 and SocialQuestBridgeRegistry:GetNameTag(playerEntry.dataProvider)
+    return nameTag and (name .. " " .. nameTag) or name
+end
+
+-- Returns the rendered pixel width of displayName at GameFontNormalSmall.
+-- Reuses a single cached FontString to avoid per-call frame allocation.
+function RowFactory.MeasureNameWidth(displayName)
+    if not _measureFs then
+        _measureFs = UIParent:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+        _measureFs:Hide()
+    end
+    _measureFs:SetText(displayName)
+    return _measureFs:GetStringWidth()
 end
 
 ------------------------------------------------------------------------
@@ -64,45 +86,6 @@ end
 ------------------------------------------------------------------------
 -- Public API
 ------------------------------------------------------------------------
-
--- Expand-all / collapse-all control row rendered at the top of each tab.
--- onExpand() and onCollapse() are called with no arguments on button click.
-function RowFactory.AddExpandCollapseHeader(contentFrame, y, onExpand, onCollapse)
-    local C   = SocialQuestColors
-    local mid = math.floor(CONTENT_WIDTH / 2)
-
-    local expandBtn = CreateFrame("Button", nil, contentFrame)
-    expandBtn:SetSize(22, ROW_H)
-    expandBtn:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", 0, -y)
-    expandBtn:SetText("[+]")
-    expandBtn:SetNormalFontObject("GameFontNormalSmall")
-    expandBtn:SetHighlightFontObject("GameFontHighlightSmall")
-    if onExpand then expandBtn:SetScript("OnClick", onExpand) end
-
-    local expandLabel = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    expandLabel:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", 24, -y)
-    expandLabel:SetSize(mid - 24, ROW_H)
-    expandLabel:SetJustifyH("LEFT")
-    expandLabel:SetJustifyV("MIDDLE")
-    expandLabel:SetText(C.white .. L["expand all"] .. C.reset)
-
-    local collapseBtn = CreateFrame("Button", nil, contentFrame)
-    collapseBtn:SetSize(22, ROW_H)
-    collapseBtn:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", mid, -y)
-    collapseBtn:SetText("[-]")
-    collapseBtn:SetNormalFontObject("GameFontNormalSmall")
-    collapseBtn:SetHighlightFontObject("GameFontHighlightSmall")
-    if onCollapse then collapseBtn:SetScript("OnClick", onCollapse) end
-
-    local collapseLabel = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    collapseLabel:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", mid + 24, -y)
-    collapseLabel:SetSize(CONTENT_WIDTH - mid - 24, ROW_H)
-    collapseLabel:SetJustifyH("LEFT")
-    collapseLabel:SetJustifyV("MIDDLE")
-    collapseLabel:SetText(C.white .. L["collapse all"] .. C.reset)
-
-    return y + ROW_H + 4
-end
 
 -- Zone/category header row with [+]/[-] collapse toggle.
 -- onToggle() is called on button click (no arguments).
@@ -269,13 +252,13 @@ end
 --                  followed by objective rows.
 -- playerEntry fields: name, isMe, hasSocialQuest, hasCompleted, needsShare,
 --                     isComplete (optional), objectives, step (optional), chainLength (optional).
-function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent)
+-- nameColumnWidth (optional): pixel width of the name column. When provided,
+-- in-progress objectives render as two-column bar rows (name left, bar right).
+-- When nil, falls back to plain single-column text layout.
+function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent, nameColumnWidth)
     local C    = SocialQuestColors
     local x    = indent or 0
-    local name        = playerEntry.name or "Unknown"
-    local nameTag     = playerEntry.dataProvider
-                     and SocialQuestBridgeRegistry:GetNameTag(playerEntry.dataProvider)
-    local displayName = nameTag and (name .. " " .. nameTag) or name
+    local displayName = RowFactory.GetDisplayName(playerEntry)
 
     if playerEntry.hasCompleted then
         local fs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -322,15 +305,82 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent)
             return y + ROW_H + 2
         end
 
-        -- One row per objective, prefixed with player name.
+        -- One row per objective.
+        -- Bar layout: when nameColumnWidth is set and objective has numeric data,
+        -- render a two-column row (name label left, progress bar right).
+        -- Plain text fallback: when nameColumnWidth is nil or numRequired is absent/zero.
         for _, obj in ipairs(objectives) do
-            local clr = obj.isFinished and SocialQuestColors.GetUIColor("completed") or C.active
-            local fs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-            fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
-            fs:SetWidth(CONTENT_WIDTH - x - 4)
-            fs:SetJustifyH("LEFT")
-            fs:SetText(C.white .. displayName .. C.reset .. " " .. clr .. (obj.text or "") .. C.reset)
-            y = y + fs:GetStringHeight() + 2
+            if nameColumnWidth and obj.numRequired and obj.numRequired > 0 then
+                -- Bar layout (StatusBar widget).
+                local barX     = x + nameColumnWidth + 4
+                local barWidth = math.max(CONTENT_WIDTH - barX - 4, 0)
+
+                -- Name label (left column).
+                local nameFs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+                nameFs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
+                nameFs:SetSize(nameColumnWidth, ROW_H)
+                nameFs:SetJustifyH("LEFT")
+                nameFs:SetJustifyV("MIDDLE")
+                nameFs:SetText(C.white .. displayName .. C.reset)
+
+                if barWidth > 0 then
+                    -- Wrapper frame provides a 1px solid border by being 1px larger on each
+                    -- side than the StatusBar. The dark background of borderFrame shows around
+                    -- the edges of the inset StatusBar, creating the border appearance.
+                    local borderFrame = CreateFrame("Frame", nil, contentFrame)
+                    borderFrame:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", barX - 1, -y + 1)
+                    borderFrame:SetSize(barWidth + 2, ROW_H + 2)
+
+                    local borderBg = borderFrame:CreateTexture(nil, "BACKGROUND")
+                    borderBg:SetTexture("Interface\\Buttons\\WHITE8X8")
+                    borderBg:SetVertexColor(0.15, 0.15, 0.15, 0.9)
+                    borderBg:SetAllPoints(borderFrame)
+
+                    -- StatusBar inset 1px inside the border frame — fill, bg, and text are
+                    -- all inside the visible border.
+                    local statusBar = CreateFrame("StatusBar", nil, borderFrame)
+                    statusBar:SetPoint("TOPLEFT",     borderFrame, "TOPLEFT",      1, -1)
+                    statusBar:SetPoint("BOTTOMRIGHT", borderFrame, "BOTTOMRIGHT", -1,  1)
+                    statusBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+                    statusBar:SetMinMaxValues(0, obj.numRequired)
+                    statusBar:SetValue(obj.numFulfilled or 0)
+                    local fillClr = SocialQuestColors.GetUIColorRGB(
+                        obj.isFinished and "completed" or "active")
+                    statusBar:SetStatusBarColor(fillClr.r, fillClr.g, fillClr.b, 0.85)
+
+                    -- Dark background (BACKGROUND — renders behind the fill).
+                    local bg = statusBar:CreateTexture(nil, "BACKGROUND")
+                    bg:SetTexture("Interface\\Buttons\\WHITE8X8")
+                    bg:SetVertexColor(0, 0, 0, 0.5)
+                    bg:SetAllPoints(statusBar)
+
+                    -- Objective text (OVERLAY).
+                    -- Strip embedded WoW color codes so yellow text doesn't appear on yellow fill.
+                    local plainText = (obj.text or "")
+                        :gsub("|c%x%x%x%x%x%x%x%x(.-)|r", "%1")
+                        :gsub("|c%x%x%x%x%x%x%x%x([^|]*)", "%1")
+                    local textFs = statusBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+                    textFs:SetPoint("LEFT", statusBar, "LEFT", 4, 0)
+                    textFs:SetSize(barWidth - 8, ROW_H)
+                    textFs:SetJustifyH("LEFT")
+                    textFs:SetJustifyV("MIDDLE")
+                    textFs:SetMaxLines(1)
+                    textFs:SetShadowOffset(1, -1)
+                    textFs:SetShadowColor(0, 0, 0, 1)
+                    textFs:SetText(C.white .. plainText .. C.reset)
+                end
+
+                y = y + ROW_H + 6
+            else
+                -- Plain text fallback (original behavior).
+                local clr = obj.isFinished and SocialQuestColors.GetUIColor("completed") or C.active
+                local fs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+                fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
+                fs:SetWidth(CONTENT_WIDTH - x - 4)
+                fs:SetJustifyH("LEFT")
+                fs:SetText(C.white .. displayName .. C.reset .. " " .. clr .. (obj.text or "") .. C.reset)
+                y = y + fs:GetStringHeight() + 2
+            end
         end
         return y
     end

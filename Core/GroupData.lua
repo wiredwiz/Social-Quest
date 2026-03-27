@@ -31,6 +31,7 @@ function SocialQuestGroupData:OnMemberJoined(fullName, groupType)
         self.PlayerQuests[fullName] = { hasSocialQuest = false, completedQuests = {} }
         SocialQuest:Debug("Group", "Stub created for " .. fullName)
     end
+    SocialQuestGroupFrame:RequestRefresh()
 end
 
 -- Called by GroupComposition immediately when a player leaves the group.
@@ -40,6 +41,7 @@ function SocialQuestGroupData:PurgePlayer(fullName)
     if self.PlayerQuests[fullName] then
         self.PlayerQuests[fullName] = nil
         SocialQuest:Debug("Group", "Purged data for " .. fullName)
+        SocialQuestGroupFrame:RequestRefresh()
     end
 end
 
@@ -48,6 +50,7 @@ end
 function SocialQuestGroupData:OnSelfLeftGroup()
     self.PlayerQuests = {}
     SocialQuest:Debug("Group", "PlayerQuests cleared (self left group)")
+    SocialQuestGroupFrame:RequestRefresh()
 end
 
 -- Called when a full SQ_INIT message arrives from a player.

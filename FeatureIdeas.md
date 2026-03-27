@@ -1,0 +1,295 @@
+# SocialQuest — Feature Ideas
+
+*Generated from codebase analysis and player questing friction points. March 2026.*
+
+---
+
+## Context: What SocialQuest already does well
+
+The existing feature set covers the **reactive social layer** of questing thoroughly: it broadcasts every state change (accept, progress, finish, turn-in, abandon, fail), renders them as banners, annotates party tooltips, groups quests by zone and chain, surfaces who needs a share, tracks chain step relationships, handles the Questie user case, and syncs completed history.
+
+---
+
+## Player friction points while questing together
+
+Before pitching features, it helps to think about the real friction in group questing:
+
+**Coordination friction:** Players constantly make micro-decisions — "Should I grab this quest? Do you already have it? Can you share it? Are we on the same step?" SQ shows state passively; it doesn't help players act on it quickly.
+
+**Visibility friction:** The objective fraction "3/8" communicates progress, but at a glance when scanning 4 party members it's cognitively expensive. Players want to know "who needs help" and "are we close" without reading every number.
+
+**Planning friction:** Players want to know *before moving to a new zone* whether their party is aligned on quests there. SQ is entirely reactive — it shows what's happening, never what *could* happen.
+
+**Chain momentum friction:** TBC has deep quest chains. A player finishing a chain step often triggers the next one immediately, and the party needs to know "Bob just unlocked step 3 — we can move now." That signal doesn't exist today.
+
+**Group quest friction:** Group/elite quests require the whole party ready simultaneously. Players currently use verbal coordination. SQ could formalize this.
+
+---
+
+## Feature Ideas
+
+---
+
+### 1. ~~Progress bars in the group frame~~ (*DONE*)
+
+**The gap:** The player row shows `Name: 3/8 Gnolls Slain` as text for every objective. When scanning 4 party members' objectives across several quests, this is readable but not *scannable*.
+
+**The idea:** Replace or augment the objective text with a small inline progress bar — a thin colored strip filling proportional to `numFulfilled/numRequired`. Use existing completed/active colors. A completed bar turns green instantly. Render the objective text within the progress bar if possible
+rather than taking up an extra line to display a progress bar along with the objective.  Keeping
+the text readable is very important though, so the text should display over top of the progress fill
+color and the text color should be chosen to contrast well so that it stays readable regardless.
+
+**Implementation notes:** No new protocol. Pure rendering enhancement on top of existing data in `RowFactory.AddPlayerRow`. Immediately makes the window more useful as an at-a-glance dashboard.
+
+---
+
+### 2. "Almost done" highlighting on objectives
+
+**The gap:** When a party member has 7/8 Gnolls, SQ treats that identically to 1/8. No visual urgency signal.
+
+**The idea:** When `numFulfilled / numRequired >= 0.75` (configurable threshold), colorize that objective row differently — a warmer amber rather than the default active yellow. If *all* objectives are at ≥75%, the player's name row gets a subtle "almost done" indicator. Makes it trivial to see who needs a few more kills.
+
+**Implementation notes:** Zero protocol changes. Pure rendering decision inside `RowFactory.AddPlayerRow`. Single threshold constant, optionally exposed in config.
+
+---
+
+### 3. Chain "what's next" notification
+
+**The gap:** When a player turns in a chain quest, SQ announces "Bob turned in: [Lost in Battle]" — but the party has no idea what that unlocks. The next step may require regrouping elsewhere immediately.
+
+**The idea:** When an `SQ_UPDATE` arrives with `eventType = "completed"` for a quest that AQL chain data shows has a next step, display an additional banner: `"Bob can now start [Chapter 2: The Fallen King] (Step 3)"`. Synthesized locally from AQL chain data — no protocol changes.
+
+**Implementation notes:** AQL already carries chain info. Data to synthesize this message is available on the receiving end in `Announcements:OnRemoteQuestEvent`. Check `chainInfo.steps[chainInfo.step + 1]` for the next questID, resolve its title via `AQL:GetQuestInfo`.
+
+---
+
+### 4. Zone quest summary — "Before we go" view
+
+**The gap:** When the party is about to move to a new zone, there's no way to see "what's waiting for us there?" SQ only shows quests players *currently have active*.
+
+**The idea:** A "Zone Preview" panel or command (`/sq zone Hellfire Peninsula`) that scans all party members' active and completed quests for a zone and summarizes: how many quests each person has, which ones are shareable, who is missing which chain prerequisites. Synthesizes data from existing `PlayerQuests` tables plus AQL's local quest data.
+
+**Implementation notes:** No new protocol. Requires a new UI panel or slash command output. Could also appear as a 4th tab in the group frame. Most ambitious idea here but highest pre-session value.
+
+---
+
+### 5. ~~Dungeon quest auto-filter~~ (*DONE*)
+
+**The gap:** When entering an instance, the SQ window shows all quests from all zones. Players scroll past Nagrand quests to find the two Ramparts quests everyone has.
+
+**The idea:** When `PLAYER_ENTERING_WORLD` fires inside an instance, automatically switch the Party tab to show only quests whose zone matches the current instance. A small "Instance: Hellfire Ramparts" label at the top makes the filter obvious. Filter drops on exit.
+
+**Implementation notes:** Instance zone name available via `GetRealZoneText()` / AQL zone data. Filtering is a rendering change to `PartyTab:BuildTree` — skip entries where `zoneName ~= currentInstance`. No protocol changes.
+
+---
+
+### 6. One-click quest share button
+
+**The gap:** The "Needs it Shared" row tells you a party member needs the quest, but you must manually open the quest log, find the quest, and right-click to share — 4-6 clicks across two windows.
+
+**The idea:** When a quest row has any "Needs it Shared" players below it, show a small `[Share]` button next to the quest title (Mine tab only). Clicking calls `QuestLogPushQuest(logIndex)` directly. Blizzard's native sharing system handles party communication.
+
+**Implementation notes:** `logIndex` and `isEligibleForShare` data already exist. The `[Share]` button is only rendered when `localHasIt == true` and at least one player row has `needsShare == true`. Add to `RowFactory.AddQuestRow` via a new `callbacks.onShare` field (same pattern as `onTitleShiftClick`).
+
+---
+
+### 7. Session quest statistics summary
+
+**The gap:** At the end of a long session, players have no idea how much they accomplished together. "We did a lot of quests tonight" is vague.
+
+**The idea:** Track a session-scoped counter: `{ accepted=N, completed=N, abandoned=N, failed=N }`. On `/sq stats`, display this alongside how many quests the party collectively completed. Example: *"This session: 12 quests completed · 1 abandoned · 0 failed · 4 chain quests finished"*.
+
+**Implementation notes:** Counters increment in the existing AQL callback handlers (`OnQuestAccepted`, etc.) into a `SocialQuest.sessionStats` table. Reset on `OnSelfLeftGroup` or `/sq stats reset`. Display via `SocialQuest:Print` or a small popup. No protocol changes.
+
+---
+
+### 8. Objective countdown mode ("3 more kills")
+
+**The gap:** "3/8 Gnolls Slain" is useful but passive. "5 more Gnolls" is more immediately actionable — it answers the question players actually ask during grinding.
+
+**The idea:** Config option to display objective progress as remaining-count rather than fraction. For kill objectives: `numRequired - numFulfilled` remaining. For item collection or other types, keep the fraction. Label changes from "3/8 Gnolls Slain" to "5 more · Gnolls Slain".
+
+**Implementation notes:** String formatting change in `RowFactory.AddPlayerRow` and `formatObjectiveBannerMsg` in `Announcements.lua`. Config toggle in the general settings panel. Detection of "kill" vs "collect" objective type requires AQL objective type field (verify availability).
+
+---
+
+### 9. Party zone divergence indicator
+
+**The gap:** SQ knows everything about quests but nothing about where party members physically are. When half the party is in Thrallmar turning in quests and the other half is still killing, there's no signal in the SQ window.
+
+**The idea:** Track each party member's current zone via a new `SQ_ZONE` broadcast on `PLAYER_ENTERING_WORLD`. The Party tab shows a small zone label next to each player's name, or a divergence badge when players are in different zones.
+
+**Implementation notes:** New comm prefix `SQ_ZONE` with payload `{ zone = GetRealZoneText() }`. Stored as `currentZone` in each `PlayerQuests` entry. `PLAYER_ENTERING_WORLD` already hooks in `SocialQuest.lua` — broadcast fires after the zone transition suppression window so it doesn't race with quest callbacks. The 3-second suppression delay means the zone broadcast should be deferred similarly.
+
+---
+
+### ~~10. Group quest ready-check~~ (*No plans to implement*)
+
+**The gap:** Group/elite quests ([Group] badge in SQ) require everyone physically present and ready. Coordinating this verbally in chat is clumsy.
+
+**The idea:** Right-clicking a [Group] quest in the Mine or Party tab gives a "Ready Check" option. Broadcasts a ping to all party members: `"Thad wants to do [Wanted: Arazzius the Cruel] — are you ready?"`. Each recipient gets a banner with a [Yes]/[No] response. Responses show in SQ as a small status board next to the quest.
+
+**Implementation notes:** New comm prefixes `SQ_READY_CHECK` (broadcast, payload: questID) and `SQ_READY_RESP` (whisper back to initiator, payload: questID + ready=true/false). Store responses in a module-level table keyed by questID. Display in `RowFactory.AddQuestRow` as colored player dots (green = ready, grey = pending, red = declined). Expires after 60 seconds or on group change.
+
+### 11. Add a flyout settings panel for Quest Window
+
+**The gap:** Players may wish to toggle a number of various quest window display settings
+while they are questing, turning various filters on/off, changing display structure.  It
+would be nice if this were easily accessible to change on the fly as desired without being
+required to go into the main add-on config every time you want to adjust a small display behavior.
+
+**The idea:** Create an options panel that appears off the right of the main quest window frame.
+Ideally there is a gear icon configure toggle button on the main quest window panel that when clicked
+causes an options panel to slide out to the right or collapse back into the main window.  This
+options tab would provide a number of toggle options and filter range entry text boxes that a player
+could use to restructure or filter the quest listings in the tabs. Some of the filter option ideas are:
+
+ 1. A toggle to only show quests worth xp to the group
+ 2. A min/max range entry text box set to filter quests within a given recommended level
+ 3. A quest level delta entry box that when specified, filters the list to quests with a level
+     difference from the player of the delta value specified.
+ 4. An option to filter select party members out of the party tab.
+
+### 12. ~~Add a search/filter bar to the top of every tab~~ (*DONE*)
+
+**The gap:** Sometimes tabs can get rather spammy, especially the party tab.  It would be nice
+if players could easily and quickly locate a quest they cared about without lots of scrolling and
+searching.
+
+**The idea:** Add a textbox input at the top of each tab (the filter label should be first if
+it is present).  If the player begins typing in the textbox, filter the displayed quest listings
+down to only quests where either the quest title or quest chain title contains the typed text.
+The text would not need to persist after the window is gone.  Ideally it would be nice if the box
+provided a little "x" button inside on the right edge that when clicked, would clear the text
+(as many modern UI's do), but that is not necessary.
+
+### 13. Do-Not-Disturb toggle
+
+**The gap:** Sometimes a player wants to focus — during a difficult pull, a boss fight, or just a stretch of solo grinding — and SQ banner notifications become noise rather than signal. There is currently no way to silence them without diving into the config panel and disabling individual event toggles.
+
+**The idea:** A Do-Not-Disturb toggle in the General section of `/sq config`. When enabled, all incoming SQ banner announcements are silently suppressed — no frames are shown, no sounds play. Chat announcements are unaffected (banners only). The toggle is a single checkbox, easy to flip on and off mid-session. No state persists beyond the session (DND resets to off on login/reload).
+
+**Implementation notes:** Add a `doNotDisturb` boolean to the AceDB profile defaults (default `false`). In `Announcements.lua`, add an early-return guard at the top of the banner display path that checks `SocialQuest.db.profile.doNotDisturb` and returns without showing the frame if true. No changes to the communication layer — events are still received and processed; only the display is suppressed. Add the checkbox to `Options.lua` in the General group.
+
+---
+
+### 14. Quest log hover tooltip enhancement
+
+**The gap:** Hovering a quest link in chat already shows group progress via `ItemRefTooltip` (the existing `Tooltips.lua` hook). But hovering a quest entry directly in the quest log does nothing — the player must open the SQ window and find the quest there to see who has it and where they stand.
+
+**The idea:** Hook `GameTooltip:SetQuestLogItem` (or the equivalent quest-log tooltip entry point in TBC) so that when the player mouses over a quest title in the quest log, the same "Group Progress" block appended by the chat-link tooltip appears: a header line, then one `AddDoubleLine` row per party member who has the quest, showing their objective fractions or completion state. Reuses `addGroupProgressToTooltip` from `Tooltips.lua` — no duplication of display logic.
+
+**Implementation notes:** In TBC the quest log tooltip is populated by the default UI calling `GameTooltip:SetQuestLogItem(index)` (via `QuestLog_UpdateQuestDetails` and related functions). Hook `hooksecurefunc(GameTooltip, "SetQuestLogItem", ...)` in `Tooltips.lua:Initialize`. Extract the questID from `AQL:GetQuestLogIndex` reverse lookup or from `GetQuestLogTitle(index)` → `AQL:FindQuestByTitle`. The cleanest path: `hooksecurefunc("QuestLog_SetSelection", ...)` fires when the player clicks a quest and updates the detail pane — the selected log index is available via `GetQuestLogSelection()` at that point. Alternatively, hook `GameTooltip`'s `OnTooltipSetItem`/`SetQuestLogItem` script directly. Either way, resolve the questID, then call the existing `addGroupProgressToTooltip(GameTooltip, questID)`. No protocol changes; no new data structures.
+
+---
+
+### 15. `/sq sync` slash command
+
+**The gap:** The Force Resync button lives inside `/sq config` → Resync tab. A player who notices stale data mid-session has to open the config panel, navigate to the right tab, and click the button — several steps for a one-shot operation that should be instant.
+
+**The idea:** Add a `/sq sync` slash command that triggers the exact same logic as the Force Resync button: calls `SocialQuestComm:SendResyncRequest()`, enforces the same 30-second cooldown, and re-enables after the cooldown expires. If the command is run while the cooldown is still active, print an error to chat showing how many seconds remain: *"Force Resync is on cooldown. Please wait N more seconds."* Fires a debug message when issued and when rejected by the cooldown.
+
+**Implementation notes:** The 30-second cooldown constant is currently a magic number (`30`) repeated in `Options.lua` — it appears in both the `disabled` guard and the `AceTimer` re-enable call. Centralize it as a module-level constant (e.g. `local RESYNC_COOLDOWN = 30`) in `Communications.lua` alongside `SendResyncRequest`, and reference it from `Options.lua`. The slash command handler in `SocialQuest.lua` checks `SQWowAPI.GetTime() - lastResyncTime < RESYNC_COOLDOWN`; if blocked, prints the remaining seconds via `SocialQuest:Print`; if allowed, sets `lastResyncTime`, calls `SendResyncRequest`, and schedules the `AceConfigRegistry:NotifyChange` re-enable timer. The `lastResyncTime` variable must also move from `Options.lua` to a shared location (or be exposed as a getter/setter on `SocialQuestComm`) so both the button and the slash command share the same state and the cooldown is respected regardless of which path triggered the sync.
+
+### 16. Quest failure reason in failed-quest announcements
+
+**The gap:** When a quest is failed, SQ already broadcasts a banner and chat message (e.g. *"You failed: [The Mana Cells]"*), but gives no indication of *why* it failed. The two most common causes in TBC — timer expiry on timed quests, and escort NPC death on escort quests — are often surprising to the player and always relevant to the party.
+
+**The idea:** Append a failure reason to the existing failed-quest banner and chat message where it can be determined. Examples: *"You failed: [The Mana Cells] — time limit expired"* or *"You failed: [Escort the Prisoner] — escort target died"*. When no reason can be determined, the message is unchanged. The same reason is included when a party member's failure is announced remotely. A new **Test Quest Failed (Timed)** debug button demonstrates the timed-failure variant alongside the existing generic Test Quest Failed button.
+
+**Implementation notes:** `questInfo.timerSeconds ~= nil` reliably identifies a timed quest; when a timed quest fails it is almost certainly due to timer expiry, so append `L["time limit expired"]` in that case. Escort-quest detection is less reliable in the TBC API — `GetQuestTagInfo(questID)` returns a tag type that may include escort quests; verify at implementation time whether this is available via AQL or WoW API and only append the escort reason if a confirmed check exists, otherwise omit it. The failure reason is appended in `Announcements.lua` inside `OnQuestEvent` (for chat) and `OnOwnQuestEvent` (for own banner) before `appendChainStep`. For the remote case, `questInfo.timerSeconds` is already serialized in `SQ_UPDATE` payloads and available at `OnRemoteQuestEvent`. New locale keys: `L["time limit expired"]` and optionally `L["escort target died"]`. New debug test entry in `Options.lua` alongside the existing `failed` test button.
+
+### 17. Font size setting for the SQ window
+
+**The gap:** Players with small monitors, high-DPI displays, or accessibility needs can't adjust how much content fits in the SQ window. The only option today is to resize the window itself — which changes the *amount* of visible space, not the *density* of information within it. A player who wants to see twice as many quest rows without scrolling has no path forward.
+
+**The idea:** A "Window font size" selector in `/sq config` → Social Quest Window (or the flyout panel from #11). Five named presets — Very Small (70%), Small (85%), Normal (100%, default), Large (115%), Very Large (130%) — stored as a numeric scale factor in the AceDB profile. When changed, all text in the SQ window redraws at the scaled size and all row heights adjust proportionally, so the window never has gaps or overflow. Progress bar heights and indent widths scale with the row height.
+
+**Implementation notes:** Store `windowFontScale` (default `1.0`) in AceDB profile. `RowFactory` exposes a `GetScaledRowHeight()` helper (`math.floor(ROW_H * scale)`) and a `GetScaledFont(baseFontObject)` helper that calls `fontString:SetFont(face, baseSize * scale, flags)` after reading the face/size/flags from the base font object with `fontString:GetFont()`. The module-level `ROW_H` constant becomes the *base* height; the effective height at render time is always fetched through the helper. `SetContentWidth` already runs before every render, so a companion `SetFontScale(scale)` call from `GroupFrame:Refresh()` propagates the current profile value before the tab provider renders. No protocol changes; no locale changes needed (labels use existing keys).
+
+---
+
+### 18. Advanced filter language for the search bar
+
+**The gap:** The search bar filters only by title substring. Players who want to see "all group quests in Hellfire Peninsula" or "all quests between level 60 and 65 that Bob needs" must combine the zone auto-filter, the Party tab, and their own memory. There is no way to compound multiple criteria or filter on any field other than title without the unbuilt flyout settings panel (#11).
+
+**The idea:** Extend the search bar to accept an optional structured filter expression alongside plain text. The moment the user presses Enter, the input is evaluated: if it matches the filter syntax, a dismissible filter label is created from it, the search bar clears, and the structured criteria are applied to all tabs. Plain freeform text (no `=`) continues to work as an immediate, real-time title substring match with no Enter required — the Enter path is only triggered when the expression parses as a valid filter string. Typed filter labels compound with previous ones: a second `zone=` definition replaces the first; a new `level=` definition adds to the active criteria.
+
+**Filter syntax:**
+
+```
+key=value
+key="value with spaces"
+key=value1|value2          -- OR: zone=Elwynn|Deadmines
+key="value 1"|"value 2"    -- OR with quoted values
+key=N&M                    -- AND / range: level=60&65 means 60–65
+```
+
+Quotes are optional; required only when the value contains spaces, `|`, `&`, or `=`. Escaped quotes inside a quoted value: `\"`. Keys are case-insensitive. Leading/trailing whitespace around `=`, `|`, and `&` is stripped.
+
+**Supported keys:**
+
+| Key | Alias | Meaning |
+|-----|-------|---------|
+| `zone` | `z` | Zone name substring match (OR of multiple values) |
+| `title` | `t` | Quest title substring match — same as plain text |
+| `chain` | `c` | Chain title substring match |
+| `level` | `lvl`, `l` | Recommended quest level; exact (`level=60`) or range (`level=60&65`) |
+| `group` | `g` | Group quest filter: `group=yes` shows only [Group] quests; `group=no` hides them; `group=2`–`group=5` matches a specific group size |
+| `type` | — | Quest type: `chain`, `group`, `solo`, `timed` |
+| `player` | `p` | Show only quests where the named party member is listed (Party/Shared tabs) |
+| `status` | — | `complete`, `incomplete`, `failed` — filters by local completion state |
+| `tracked` | — | `tracked=yes` / `tracked=no` — filters to watched/unwatched quests (Mine tab) |
+| `step` | `s` | Chain step number; exact or range |
+
+Additional keys to consider at implementation time: `instance` (match instance name), `shared` (show only quests the local player can still share), `missing` (show quests the local player lacks that others have).
+
+**Parser design (fail-fast):** The parser runs only on Enter, not on every keystroke. Step 1: if the trimmed string contains no `=` character, immediately return `nil` — treat as plain text, no label created. Step 2: attempt to match the first token as `(\w+)\s*=` — if the token is not in the recognised key table, return `nil` immediately. Step 3: parse values (handle quotes, escape sequences, `|`/`&` operators). Any parse error returns `nil` and the search bar retains its text unchanged. On success, return a structured filter descriptor compatible with (and extending) the existing `filterTable` passed to `BuildTree`. The entire parser can be a pure function with no side effects and no allocations on the fast-fail paths.
+
+**Filter table extension:** The existing `filterTable = { zone = "...", search = "..." }` is extended to carry richer field types while remaining backward-compatible with the existing tab `BuildTree` methods until they are updated:
+
+```lua
+filterTable = {
+    search  = "plain text",            -- existing: substring on title (real-time, not from parser)
+    zone    = { "Elwynn", "Deadmines" }, -- OR list; string kept as single-element table internally
+    level   = { min = 60, max = 65 },
+    group   = "yes",
+    player  = "Thad",
+    status  = "incomplete",
+}
+```
+
+**Filter label tooltip:** Every filter label's tooltip (`GameTooltip` on `OnEnter`) displays the complete original filter expression string so that a truncated label never hides what the filter actually says. Example: hovering `zone: Elwynn | Deadmines` shows `"zone=Elwynn|Deadmines"` in the tooltip.
+
+**Implementation notes:** The parser lives in a new `UI/FilterParser.lua` module (`SocialQuestFilterParser`) — a pure library with no WoW frame dependencies, making it independently testable. `GroupFrame.lua` calls `SocialQuestFilterParser:Parse(text)` in the `OnKeyDown` / `OnEnter` handler of the search box; `BuildTree` in each tab is updated to interpret the extended filter table fields. The `WindowFilter` module stores an ordered list of active filter descriptors (one per key) keyed by filter key, so a second `zone=` parse result replaces the first `zone` entry. Filter labels are rendered from this list each `Refresh()` — multiple labels stack vertically in the fixed header, each with its own `[x]` dismiss button and full-text tooltip. No protocol changes.
+
+---
+
+## Summary
+
+| # | Feature | Complexity | Impact | Protocol change? |
+|---|---------|-----------|--------|-----------------|
+| 1 | ~~Progress bars~~ | — | — | *DONE* |
+| 2 | Almost-done highlighting | Very low | Medium | No |
+| 3 | Chain "what's next" notification | Low | High | No |
+| 4 | Zone quest summary | Medium | High | No |
+| 5 | ~~Dungeon quest auto-filter~~ | — | — | *DONE* |
+| 6 | One-click share button | Low | High | No |
+| 7 | Session stats | Low | Medium | No |
+| 8 | Objective countdown mode | Very low | Medium | No |
+| 9 | Party zone divergence | Medium | High | Yes (SQ_ZONE) |
+| 10 | ~~Group quest ready-check~~ | — | — | No plans to implement |
+| 11 | Flyout settings panel | Medium | Medium | No |
+| 12 | ~~Search/filter bar~~ | — | — | *DONE* |
+| 13 | Do-Not-Disturb toggle | Very low | Medium | No |
+| 14 | Quest log hover tooltip | Very low | Medium | No |
+| 15 | `/sq sync` slash command | Very low | Medium | No |
+| 16 | Quest failure reason | Very low | Medium | No |
+| 17 | Font size setting | Low | Medium | No |
+| 18 | Advanced filter language | Medium | High | No |
+
+**Quick wins (start here):** #2 (almost-done highlight), #6 (one-click share), #3 (chain what's-next notification), #8 (objective countdown), #13 (do-not-disturb), #14 (quest log tooltip), #15 (/sq sync), #16 (failure reason), #17 (font size) — all low/very-low complexity, no protocol changes.
+
+**High-value medium lifts:** #9 (zone divergence), #11 (flyout settings), #18 (advanced filter language).
+
+**Biggest feature:** #4 (zone quest summary) — most planning effort required but highest pre-session value for organized groups.

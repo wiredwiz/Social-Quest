@@ -139,7 +139,7 @@ function PartyTab:GetLabel()
 end
 
 -- Builds the zone/chain/quest tree from all party members + local player.
-function PartyTab:BuildTree()
+function PartyTab:BuildTree(filterTable)
     local AQL = SocialQuest.AQL
     if not AQL then return { zones = {} } end
 
@@ -161,52 +161,54 @@ function PartyTab:BuildTree()
 
     for questID in pairs(allQuestIDs) do
         local zoneName = SocialQuestTabUtils.GetZoneForQuestID(questID)
-        if not tree.zones[zoneName] then
-            orderIdx = orderIdx + 1
-            tree.zones[zoneName] = {
-                name   = zoneName,
-                order  = orderIdx,
-                chains = {},
-                quests = {},
+        local filtered = filterTable and filterTable.zone and zoneName ~= filterTable.zone
+        if not filtered then
+            if not tree.zones[zoneName] then
+                orderIdx = orderIdx + 1
+                tree.zones[zoneName] = {
+                    name   = zoneName,
+                    order  = orderIdx,
+                    chains = {},
+                    quests = {},
+                }
+            end
+            local zone = tree.zones[zoneName]
+
+            local localInfo    = AQL:GetQuest(questID)
+            local ci           = localInfo and localInfo.chainInfo or SocialQuestTabUtils.GetChainInfoForQuestID(questID)
+            local localHasIt   = localInfo ~= nil
+
+            local entry = {
+                questID        = questID,
+                title          = (localInfo and localInfo.title)
+                                 or AQL:GetQuestTitle(questID)
+                                 or ("Quest " .. questID),
+                level          = localInfo and localInfo.level or 0,
+                zone           = zoneName,
+                isComplete     = localInfo and localInfo.isComplete or false,
+                isFailed       = localInfo and localInfo.isFailed   or false,
+                isTracked      = false,
+                logIndex       = localInfo and localInfo.logIndex,
+                suggestedGroup = localInfo and localInfo.suggestedGroup or 0,
+                timerSeconds   = localInfo and localInfo.timerSeconds,
+                snapshotTime   = localInfo and localInfo.snapshotTime,
+                chainInfo      = ci,
+                objectives     = localInfo and localInfo.objectives or {},
+                players        = buildPlayerRowsForQuest(questID, localHasIt),
             }
-        end
-        local zone = tree.zones[zoneName]
 
-        local localInfo    = AQL:GetQuest(questID)
-        local ci           = localInfo and localInfo.chainInfo or SocialQuestTabUtils.GetChainInfoForQuestID(questID)
-        local localHasIt   = localInfo ~= nil
-
-        local entry = {
-            questID        = questID,
-            title          = (localInfo and localInfo.title)
-                             or AQL:GetQuestTitle(questID)
-                             or ("Quest " .. questID),
-            level          = localInfo and localInfo.level or 0,
-            zone           = zoneName,
-            isComplete     = localInfo and localInfo.isComplete or false,
-            isFailed       = localInfo and localInfo.isFailed   or false,
-            isTracked      = false,
-            logIndex       = localInfo and localInfo.logIndex,
-            suggestedGroup = localInfo and localInfo.suggestedGroup or 0,
-            timerSeconds   = localInfo and localInfo.timerSeconds,
-            snapshotTime   = localInfo and localInfo.snapshotTime,
-            chainInfo      = ci,
-            objectives     = localInfo and localInfo.objectives or {},
-            players        = buildPlayerRowsForQuest(questID, localHasIt),
-        }
-
-        if ci.knownStatus == AQL.ChainStatus.Known and ci.chainID then
-            local chainID = ci.chainID
-            if not zone.chains[chainID] then
-                zone.chains[chainID] = { title = entry.title, steps = {} }
+            if ci.knownStatus == AQL.ChainStatus.Known and ci.chainID then
+                local chainID = ci.chainID
+                if not zone.chains[chainID] then
+                    zone.chains[chainID] = { title = entry.title, steps = {} }
+                end
+                if ci.step == 1 then
+                    zone.chains[chainID].title = entry.title
+                end
+                table.insert(zone.chains[chainID].steps, entry)
+            else
+                table.insert(zone.quests, entry)
             end
-            -- Prefer step-1 title as chain label (deterministic regardless of pairs() order).
-            if ci.step == 1 then
-                zone.chains[chainID].title = entry.title
-            end
-            table.insert(zone.chains[chainID].steps, entry)
-        else
-            table.insert(zone.quests, entry)
         end
     end
 
@@ -221,12 +223,43 @@ function PartyTab:BuildTree()
         end
     end
 
+    -- Search text filter: case-insensitive substring match on quest/chain titles.
+    -- Applied independently from the zone filter; both must pass for a quest to appear.
+    local searchText = filterTable and filterTable.search
+    if searchText then
+        local lower = string.lower(searchText)
+        local function matches(title)
+            return string.find(string.lower(title or ""), lower, 1, true) ~= nil
+        end
+        for zoneName, zone in pairs(tree.zones) do
+            for chainID, chain in pairs(zone.chains) do
+                if not matches(chain.title) then
+                    local kept = {}
+                    for _, step in ipairs(chain.steps) do
+                        if matches(step.title) then kept[#kept + 1] = step end
+                    end
+                    chain.steps = kept
+                end
+                if #chain.steps == 0 then zone.chains[chainID] = nil end
+            end
+            local kept = {}
+            for _, quest in ipairs(zone.quests) do
+                if matches(quest.title) then kept[#kept + 1] = quest end
+            end
+            zone.quests = kept
+            local empty = true
+            for _ in pairs(zone.chains) do empty = false; break end
+            if empty then empty = (#zone.quests == 0) end
+            if empty then tree.zones[zoneName] = nil end
+        end
+    end
+
     return tree
 end
 
 -- Renders the Party tree into contentFrame using RowFactory.
-function PartyTab:Render(contentFrame, rowFactory, tabCollapsedZones)
-    local tree = self:BuildTree()
+function PartyTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTable, tabId)
+    local tree = self:BuildTree(filterTable)
     local y    = 0
 
     local sortedZones = {}
@@ -234,14 +267,6 @@ function PartyTab:Render(contentFrame, rowFactory, tabCollapsedZones)
         table.insert(sortedZones, zone)
     end
     table.sort(sortedZones, function(a, b) return a.order < b.order end)
-
-    if #sortedZones > 0 then
-        local zoneNames = {}
-        for _, zone in ipairs(sortedZones) do table.insert(zoneNames, zone.name) end
-        y = rowFactory.AddExpandCollapseHeader(contentFrame, y,
-            function() SocialQuestGroupFrame:ExpandAll("party") end,
-            function() SocialQuestGroupFrame:CollapseAll("party", zoneNames) end)
-    end
 
     for _, zone in ipairs(sortedZones) do
         local zoneName    = zone.name
@@ -268,18 +293,28 @@ function PartyTab:Render(contentFrame, rowFactory, tabCollapsedZones)
 
                 for _, entry in ipairs(chain.steps) do
                     y = rowFactory.AddQuestRow(contentFrame, y, entry, QUEST_INDENT + 8, {})
+                    local nameColumnWidth = 0
+                    for _, player in ipairs(entry.players) do
+                        local w = rowFactory.MeasureNameWidth(rowFactory.GetDisplayName(player))
+                        if w > nameColumnWidth then nameColumnWidth = w end
+                    end
                     for _, player in ipairs(entry.players) do
                         -- AddPlayerRow renders objectives internally; do not loop here.
-                        y = rowFactory.AddPlayerRow(contentFrame, y, player, PLAYER_INDENT + 8)
+                        y = rowFactory.AddPlayerRow(contentFrame, y, player, PLAYER_INDENT + 8, nameColumnWidth)
                     end
                 end
             end
 
             for _, entry in ipairs(zone.quests) do
                 y = rowFactory.AddQuestRow(contentFrame, y, entry, QUEST_INDENT, {})
+                local nameColumnWidth = 0
+                for _, player in ipairs(entry.players) do
+                    local w = rowFactory.MeasureNameWidth(rowFactory.GetDisplayName(player))
+                    if w > nameColumnWidth then nameColumnWidth = w end
+                end
                 for _, player in ipairs(entry.players) do
                     -- AddPlayerRow renders objectives internally; do not loop here.
-                    y = rowFactory.AddPlayerRow(contentFrame, y, player, PLAYER_INDENT)
+                    y = rowFactory.AddPlayerRow(contentFrame, y, player, PLAYER_INDENT, nameColumnWidth)
                 end
             end
         end

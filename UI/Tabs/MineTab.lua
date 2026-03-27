@@ -17,7 +17,7 @@ end
 
 -- Builds the zone/chain/quest tree from local AQL data + GroupData chain peers.
 -- Returns: { zones = { [zoneName] = { name, order, chains, quests } } }
-function MineTab:BuildTree()
+function MineTab:BuildTree(filterTable)  -- filterTable.search applied; filterTable.zone intentionally ignored
     local AQL = SocialQuest.AQL
     if not AQL then return { zones = {} } end
 
@@ -110,14 +110,45 @@ function MineTab:BuildTree()
         end
     end
 
+    -- Search text filter: case-insensitive substring match on quest/chain titles.
+    -- filterTable.zone is intentionally not applied in MineTab.
+    local searchText = filterTable and filterTable.search
+    if searchText then
+        local lower = string.lower(searchText)
+        local function matches(title)
+            return string.find(string.lower(title or ""), lower, 1, true) ~= nil
+        end
+        for zoneName, zone in pairs(tree.zones) do
+            for chainID, chain in pairs(zone.chains) do
+                if not matches(chain.title) then
+                    local kept = {}
+                    for _, step in ipairs(chain.steps) do
+                        if matches(step.title) then kept[#kept + 1] = step end
+                    end
+                    chain.steps = kept
+                end
+                if #chain.steps == 0 then zone.chains[chainID] = nil end
+            end
+            local kept = {}
+            for _, quest in ipairs(zone.quests) do
+                if matches(quest.title) then kept[#kept + 1] = quest end
+            end
+            zone.quests = kept
+            local empty = true
+            for _ in pairs(zone.chains) do empty = false; break end
+            if empty then empty = (#zone.quests == 0) end
+            if empty then tree.zones[zoneName] = nil end
+        end
+    end
+
     return tree
 end
 
 -- Renders the Mine tree into contentFrame using RowFactory.
 -- tabCollapsedZones: the mine-tab subtable from SocialQuestDB.char.frameState.collapsedZones.
 -- Returns: total content height (number).
-function MineTab:Render(contentFrame, rowFactory, tabCollapsedZones)
-    local tree  = self:BuildTree()
+function MineTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTable, tabId)
+    local tree  = self:BuildTree(filterTable)
     local y     = 0
     local zones = tree.zones
 
@@ -127,14 +158,6 @@ function MineTab:Render(contentFrame, rowFactory, tabCollapsedZones)
         table.insert(sortedZones, zone)
     end
     table.sort(sortedZones, function(a, b) return a.order < b.order end)
-
-    if #sortedZones > 0 then
-        local zoneNames = {}
-        for _, zone in ipairs(sortedZones) do table.insert(zoneNames, zone.name) end
-        y = rowFactory.AddExpandCollapseHeader(contentFrame, y,
-            function() SocialQuestGroupFrame:ExpandAll("mine") end,
-            function() SocialQuestGroupFrame:CollapseAll("mine", zoneNames) end)
-    end
 
     for _, zone in ipairs(sortedZones) do
         local zoneName    = zone.name

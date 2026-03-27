@@ -238,3 +238,18 @@ L["Display a banner notification when a party member discovers a new flight path
 -- UI/Options.lua — follow notification test button
 L["Test Follow Notification"]   = true
 L["Display a demo follow notification banner showing the 'started following you' message."] = true
+
+-- UI/Options.lua — Social Quest Window option group
+-- UI/WindowFilter.lua — filter header labels
+L["Click to dismiss the active filter for this tab."] = true
+L["Instance: %s"]                           = "Filter: Instance: %s"
+L["Zone: %s"]                               = "Filter: Zone: %s"
+L["Social Quest Window"]                    = true
+L["Auto-filter to current instance"]        = true
+L["When inside a dungeon or raid instance, the Party and Shared tabs show only quests for that instance."] = true
+L["Auto-filter to current zone"]            = true
+L["Outside of instances, the Party and Shared tabs show only quests for your current zone."] = true
+
+-- UI/GroupFrame.lua — search bar
+L["Search..."]                               = true
+L["Clear search"]                            = true

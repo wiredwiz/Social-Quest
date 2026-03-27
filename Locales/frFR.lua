@@ -197,3 +197,18 @@ L["Display a demo flight path unlock banner using your character's starting city
 -- UI/Options.lua — follow notification test button
 L["Test Follow Notification"]   = "Test Follow Notification"
 L["Display a demo follow notification banner showing the 'started following you' message."] = "Display a demo follow notification banner showing the 'started following you' message."
+
+-- UI/Options.lua — Social Quest Window option group
+-- UI/WindowFilter.lua — filter header labels
+L["Click to dismiss the active filter for this tab."] = "Cliquez pour masquer le filtre actif de cet onglet."
+L["Instance: %s"]                           = "Filtre : Instance : %s"
+L["Zone: %s"]                               = "Filtre : Zone : %s"
+L["Social Quest Window"]                    = "Fenêtre SocialQuest"
+L["Auto-filter to current instance"]        = "Filtrer automatiquement sur l'instance en cours"
+L["When inside a dungeon or raid instance, the Party and Shared tabs show only quests for that instance."] = "Dans un donjon ou un raid, les onglets « Groupe » et « Partagées » n'affichent que les quêtes de l'instance en cours."
+L["Auto-filter to current zone"]            = "Filtrer automatiquement sur la zone actuelle"
+L["Outside of instances, the Party and Shared tabs show only quests for your current zone."] = "Hors instance, les onglets « Groupe » et « Partagées » n'affichent que les quêtes de votre zone actuelle."
+
+-- UI/GroupFrame.lua — search bar
+L["Search..."]                               = "Rechercher..."
+L["Clear search"]                            = "Effacer la recherche"

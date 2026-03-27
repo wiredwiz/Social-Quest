@@ -135,6 +135,7 @@ function SocialQuestGroupComposition:OnGroupRosterUpdate()
         if fullName ~= selfName and not self.memberSet[fullName] then
             SocialQuest:Debug("Group", fullName .. " joined the group")
             SocialQuestGroupData:OnMemberJoined(fullName, groupType)
+            SocialQuestBridgeRegistry:OnMemberJoined(fullName)
             SocialQuestComm:OnMemberJoined(fullName, groupType)
         end
     end

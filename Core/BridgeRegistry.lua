@@ -55,6 +55,16 @@ function SocialQuestBridgeRegistry:EnableAll()
     end
 end
 
+-- Called by GroupComposition when a new member joins the group.
+-- Notifies each active bridge so they can fetch data for the new member.
+function SocialQuestBridgeRegistry:OnMemberJoined(fullName)
+    for _, bridge in ipairs(self._bridges) do
+        if bridge._active and bridge.OnMemberJoined then
+            bridge:OnMemberJoined(fullName)
+        end
+    end
+end
+
 -- Called by GroupComposition when the local player leaves all groups.
 -- Suspends all bridge callbacks until the next EnableAll().
 function SocialQuestBridgeRegistry:DisableAll()

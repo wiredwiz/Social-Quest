@@ -311,10 +311,42 @@ function SocialQuestOptions:Initialize()
                 },
             },
 
+            window = {
+                type  = "group",
+                name  = L["Social Quest Window"],
+                order = 9,
+                args  = {
+                    autoFilterInstance = {
+                        type  = "toggle",
+                        name  = L["Auto-filter to current instance"],
+                        desc  = L["When inside a dungeon or raid instance, the Party and Shared tabs show only quests for that instance."],
+                        order = 1,
+                        get   = function(info) return db.window.autoFilterInstance end,
+                        set   = function(info, value)
+                            db.window.autoFilterInstance = value
+                            SocialQuestWindowFilter:Reset()
+                            SocialQuestGroupFrame:RequestRefresh()
+                        end,
+                    },
+                    autoFilterZone = {
+                        type  = "toggle",
+                        name  = L["Auto-filter to current zone"],
+                        desc  = L["Outside of instances, the Party and Shared tabs show only quests for your current zone."],
+                        order = 2,
+                        get   = function(info) return db.window.autoFilterZone end,
+                        set   = function(info, value)
+                            db.window.autoFilterZone = value
+                            SocialQuestWindowFilter:Reset()
+                            SocialQuestGroupFrame:RequestRefresh()
+                        end,
+                    },
+                },
+            },
+
             debug = {
                 type  = "group",
                 name  = L["Debug"],
-                order = 9,
+                order = 10,
                 args  = {
                     enabled = toggle(L["Enable debug mode"],
                         L["Print internal debug messages to the chat frame. Useful for diagnosing comm issues or event flow problems."],
