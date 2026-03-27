@@ -200,6 +200,9 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.12.25 (March 2026 — AdvancedFilters branch)
+- Bug fix: filter label tooltips now appear when hovering anywhere over the label, not only the dismiss button. `HeaderLabel` frames now have `EnableMouse(true)` and wire `OnEnter`/`OnLeave` on both the container frame and the button so the tooltip fires across the full label area.
+
 ### Version 2.12.24 (March 2026 — AdvancedFilters branch)
 - Bug fix: help window interleaving with SQ window. Changed help frame strata from `HIGH` to `DIALOG` so it always renders above the SQ window with no frame-level interleaving. Added `OnMouseDown → Raise()` to the help frame (mirrors the SQ window) so clicking it brings it fully to the front.
 - Bug fix: help window positioning. Replaced all formula-based coordinate-space detection with a two-step approach: anchor TOPLEFT to the right of the SQ frame, then check `helpFrame:GetRight() > UIParent:GetRight()` and flip to TOPLEFT anchored to the left side if off-screen. `GetRight()` values are in WoW's absolute screen coordinate space and are directly comparable. Position is recalculated on every Show() call (not just at frame creation), so it correctly adapts to the SQ window's current position and any savedPos reset takes effect immediately.

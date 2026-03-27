@@ -28,6 +28,8 @@ function SocialQuestHeaderLabel.New(parent, config)
     btn:SetPushedTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Down")
     btn:SetHighlightTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Highlight")
 
+    frame:EnableMouse(true)
+
     local ctrl = {}
 
     -- SetContent wires new text and handlers. Always reassigns OnClick so
@@ -35,13 +37,18 @@ function SocialQuestHeaderLabel.New(parent, config)
     function ctrl:SetContent(text, tooltipText, onDismiss)
         label:SetText(text or "")
         if tooltipText and tooltipText ~= "" then
-            btn:SetScript("OnEnter", function(self)
-                GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
+            local function showTip(anchor)
+                GameTooltip:SetOwner(anchor, "ANCHOR_BOTTOMRIGHT")
                 GameTooltip:SetText(tooltipText, 1, 1, 1, nil, true)
                 GameTooltip:Show()
-            end)
+            end
+            frame:SetScript("OnEnter", function(self) showTip(self) end)
+            frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            btn:SetScript("OnEnter", function(self) showTip(self) end)
             btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
         else
+            frame:SetScript("OnEnter", nil)
+            frame:SetScript("OnLeave", nil)
             btn:SetScript("OnEnter", nil)
             btn:SetScript("OnLeave", nil)
         end
