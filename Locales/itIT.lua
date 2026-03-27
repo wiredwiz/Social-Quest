@@ -227,6 +227,8 @@ L["filter.key.tracked"]=true L["filter.key.tracked.desc"]=true
 L["filter.val.yes"]=true L["filter.val.no"]=true
 L["filter.val.complete"]=true L["filter.val.incomplete"]=true L["filter.val.failed"]=true
 L["filter.val.chain"]=true L["filter.val.group"]=true L["filter.val.solo"]=true L["filter.val.timed"]=true
+L["filter.val.escort"]=true L["filter.val.dungeon"]=true L["filter.val.raid"]=true L["filter.val.elite"]=true L["filter.val.daily"]=true L["filter.val.pvp"]=true
+L["filter.val.kill"]=true L["filter.val.gather"]=true L["filter.val.interact"]=true
 L["filter.err.UNKNOWN_KEY"]=true L["filter.err.INVALID_OPERATOR"]=true
 L["filter.err.TYPE_MISMATCH"]=true L["filter.err.UNCLOSED_QUOTE"]=true
 L["filter.err.EMPTY_VALUE"]=true L["filter.err.INVALID_NUMBER"]=true
@@ -241,3 +243,7 @@ L["filter.help.example.3"]=true L["filter.help.example.3.note"]=true
 L["filter.help.example.4"]=true L["filter.help.example.4.note"]=true
 L["filter.help.example.5"]=true L["filter.help.example.5.note"]=true
 L["filter.help.example.6"]=true L["filter.help.example.6.note"]=true
+L["filter.help.type.note"]=true
+L["filter.help.example.7"]=true L["filter.help.example.7.note"]=true
+L["filter.help.example.8"]=true L["filter.help.example.8.note"]=true
+L["filter.help.example.9"]=true L["filter.help.example.9.note"]=true
