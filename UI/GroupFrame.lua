@@ -156,15 +156,17 @@ local function createHelpFrame()
         local scale = hf:GetEffectiveScale()
         hf:SetPoint("CENTER", UIParent, "BOTTOMLEFT", savedPos.x / scale, savedPos.y / scale)
     elseif frame then
-        -- Prefer right side; fall back to left only if it would go off screen.
-        -- Position right first, then let WoW's layout engine determine the actual
-        -- right edge — avoids coordinate-space conversion errors entirely.
-        hf:SetPoint("TOPLEFT", frame, "TOPRIGHT", 4, 0)
-        local hfRight = hf:GetRight()
-        local uiRight = UIParent:GetRight() or UIParent:GetWidth()
-        if hfRight and uiRight and hfRight > uiRight then
-            hf:ClearAllPoints()
-            hf:SetPoint("TOPRIGHT", frame, "TOPLEFT", -4, 0)
+        -- Prefer right side; fall back to left if the right side would go off screen.
+        -- UIParent:GetRight() returns the screen-right boundary in UI units (same space
+        -- as frame:GetRight()). Guard nil: if it is unavailable, default left to avoid
+        -- off-screen rendering. Do NOT fall back to GetScreenWidth() — that is screen
+        -- pixels and mixing units produces wrong results.
+        local sqRight = frame:GetRight() or 0
+        local uiRight = UIParent:GetRight()
+        if uiRight and sqRight + 424 <= uiRight then
+            hf:SetPoint("TOPLEFT",  frame, "TOPRIGHT",  4, 0)
+        else
+            hf:SetPoint("TOPRIGHT", frame, "TOPLEFT",  -4, 0)
         end
     else
         hf:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
