@@ -135,6 +135,7 @@ end
 local function createHelpFrame()
     local hf = CreateFrame("Frame", "SocialQuestFilterHelpFrame", UIParent, "BasicFrameTemplate")
     hf:SetSize(420, 500)
+    hf:SetFrameStrata("HIGH")
     hf:SetMovable(true)
     hf:EnableMouse(true)
     hf:RegisterForDrag("LeftButton")
@@ -150,16 +151,19 @@ local function createHelpFrame()
     tinsert(UISpecialFrames, "SocialQuestFilterHelpFrame")
 
     local savedPos = SocialQuest.db.char.frameState.helpWindowPos
+    hf:ClearAllPoints()
     if savedPos then
         local scale = hf:GetEffectiveScale()
         hf:SetPoint("CENTER", UIParent, "BOTTOMLEFT", savedPos.x / scale, savedPos.y / scale)
     elseif frame then
-        -- Open beside the SQ window: prefer right side, fall back to left if near screen edge.
-        local sqRight = frame:GetRight() or 0
-        if sqRight + 424 <= UIParent:GetRight() then
-            hf:SetPoint("TOPLEFT", frame, "TOPRIGHT", 4, 0)
+        -- Prefer right side; fall back to left if the right side would go off screen.
+        local sqRight  = frame:GetRight()  or 0
+        local sqLeft   = frame:GetLeft()   or 0
+        local screenRight = UIParent:GetRight() or GetScreenWidth()
+        if sqRight + 424 <= screenRight then
+            hf:SetPoint("TOPLEFT",  frame, "TOPRIGHT",  4, 0)
         else
-            hf:SetPoint("TOPRIGHT", frame, "TOPLEFT", -4, 0)
+            hf:SetPoint("TOPRIGHT", frame, "TOPLEFT",  -4, 0)
         end
     else
         hf:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
