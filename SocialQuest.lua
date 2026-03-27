@@ -119,6 +119,9 @@ function SocialQuest:OnInitialize()
             tabScrollPositions = { mine = 0,  party = 0,  shared = 0  },
             tabContentHeights  = { mine = 0,  party = 0,  shared = 0  },
             windowOpen         = false,
+            activeFilters      = {},
+            helpWindowOpen     = false,
+            helpWindowPos      = nil,
         }
         SocialQuestGroupFrame:ResetFrameState()
     end)

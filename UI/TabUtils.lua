@@ -117,7 +117,9 @@ end
 -- Range:  { op="range", min=N, max=N }
 function SocialQuestTabUtils.MatchesNumericFilter(value, descriptor)
     if not descriptor then return true end
-    local n = tonumber(value) or 0
+    if value == nil then return false end
+    local n = tonumber(value)
+    if not n then return false end
     if descriptor.op == "range" then return n >= descriptor.min and n <= descriptor.max
     elseif descriptor.op == "="  then return n == descriptor.val
     elseif descriptor.op == "<"  then return n <  descriptor.val
