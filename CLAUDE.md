@@ -200,6 +200,9 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.12.30 (March 2026 — AdvancedFilters branch)
+- Feature: Full filter localization for 11 non-enUS locales (deDE, frFR, esES, esMX, zhCN, zhTW, ptBR, itIT, koKR, ruRU, jaJP). All `filter.*` keys previously falling back to enUS (`= true`) are now replaced with natural, game-appropriate translated strings — key names players type, enum values, key descriptions, error messages, and help window text. Single-letter aliases remain `= true` (English letters). WoW's own in-game terminology is used where applicable (e.g., German Verlies/Schlachtzug, French Donjon, Spanish Mazmorra/Banda, Korean 던전/공격대). esMX is identical to esES.
+
 ### Version 2.12.29 (March 2026 — AdvancedFilters branch)
 - Feature: Extended `type` filter with 9 new predicates. AQL-based: `escort`, `dungeon`, `raid`, `elite`, `daily`, `pvp` (matched via `AQL:GetQuestInfo().type`). Objective-based: `kill` (any monster objective), `gather` (any item objective), `interact` (any object objective) — a quest with mixed objectives matches multiple types simultaneously. Replaced the priority-chain `mapType()` in all three tabs with `SocialQuestTabUtils.MatchesTypeFilter(entry, descriptor)` — each type value is now an independent boolean predicate, so `type=chain` and `type=dungeon` both match a chain dungeon quest. Extended to Party and Shared tabs. Requires Questie or Quest Weaver for AQL-based and objective predicates; filter help window updated with full 13-value list and Questie/QuestWeaver caveat note.
 
