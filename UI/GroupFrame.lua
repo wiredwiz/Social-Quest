@@ -13,6 +13,8 @@ local scrollRestoreSeq    = 0    -- incremented each Refresh(); deferred scroll 
 local leavingWorld        = false -- true while a loading-screen transition is in progress;
                                   -- prevents OnHide from clearing the persisted open state
 local searchText          = ""   -- current search bar text; shared across all tabs
+local _keyDefs = {}     -- stored for help window content; set by buildKeyDefs()
+local helpFrame = nil   -- lazy-created filter syntax help window
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 local SQWowAPI = SocialQuestWowAPI
 local SQWowUI  = SocialQuestWowUI
@@ -90,6 +92,45 @@ end
 ------------------------------------------------------------------------
 -- Frame construction
 ------------------------------------------------------------------------
+
+local function buildKeyDefs()
+    local defs = {
+        { canonical="zone",   names={L["filter.key.zone"],   L["filter.key.zone.z"]},
+          type="string",  descKey="filter.key.zone.desc" },
+        { canonical="title",  names={L["filter.key.title"],  L["filter.key.title.t"]},
+          type="string",  descKey="filter.key.title.desc" },
+        { canonical="chain",  names={L["filter.key.chain"],  L["filter.key.chain.c"]},
+          type="string",  descKey="filter.key.chain.desc" },
+        { canonical="player", names={L["filter.key.player"], L["filter.key.player.p"]},
+          type="string",  descKey="filter.key.player.desc" },
+        { canonical="level",  names={L["filter.key.level"],  L["filter.key.level.lvl"], L["filter.key.level.l"]},
+          type="numeric", descKey="filter.key.level.desc" },
+        { canonical="step",   names={L["filter.key.step"],   L["filter.key.step.s"]},
+          type="numeric", descKey="filter.key.step.desc" },
+        { canonical="group",  names={L["filter.key.group"],  L["filter.key.group.g"]},
+          type="enum",
+          enumMap={ [L["filter.val.yes"]]="yes", [L["filter.val.no"]]="no",
+                    ["2"]="2", ["3"]="3", ["4"]="4", ["5"]="5" },
+          descKey="filter.key.group.desc" },
+        { canonical="type",   names={L["filter.key.type"]},
+          type="enum",
+          enumMap={ [L["filter.val.chain"]]="chain", [L["filter.val.group"]]="group",
+                    [L["filter.val.solo"]]="solo",   [L["filter.val.timed"]]="timed" },
+          descKey="filter.key.type.desc" },
+        { canonical="status", names={L["filter.key.status"]},
+          type="enum",
+          enumMap={ [L["filter.val.complete"]]="complete",
+                    [L["filter.val.incomplete"]]="incomplete",
+                    [L["filter.val.failed"]]="failed" },
+          descKey="filter.key.status.desc" },
+        { canonical="tracked",names={L["filter.key.tracked"]},
+          type="enum",
+          enumMap={ [L["filter.val.yes"]]="yes", [L["filter.val.no"]]="no" },
+          descKey="filter.key.tracked.desc" },
+    }
+    _keyDefs = defs
+    return defs
+end
 
 local function createFrame()
     local f = CreateFrame("Frame", "SocialQuestGroupFramePanel", UIParent,
@@ -198,7 +239,7 @@ local function createFrame()
 
     local searchBox = CreateFrame("EditBox", nil, searchBarFrame)
     searchBox:SetPoint("LEFT",  searchBarFrame, "LEFT",   6, 0)
-    searchBox:SetPoint("RIGHT", searchBarFrame, "RIGHT", -26, 0)
+    searchBox:SetPoint("RIGHT", searchBarFrame, "RIGHT", -48, 0)
     searchBox:SetHeight(SEARCH_H)
     searchBox:SetFontObject("GameFontNormalSmall")
     searchBox:SetAutoFocus(false)
@@ -208,11 +249,38 @@ local function createFrame()
     searchPlaceholder:SetPoint("LEFT", searchBox, "LEFT", 2, 0)
     searchPlaceholder:SetText(L["Search..."])
 
-    searchBox:SetScript("OnTextChanged", function(self)
+    searchBox:SetScript("OnTextChanged", function(self, userInput)
+        f.errorLabel:Hide()   -- any keystroke clears the error label
         local text = self:GetText()
         searchPlaceholder:SetShown(text == "")
         searchText = text
         SocialQuestGroupFrame:RequestRefresh()
+    end)
+    searchBox:SetScript("OnEnterPressed", function(self)
+        local text = self:GetText()
+        if not text:find("=", 1, true) then return end  -- plain text; Enter is no-op
+
+        local result = SocialQuestFilterParser:Parse(text)
+        if not result then return end
+
+        if result.filter then
+            SocialQuestFilterState:Apply(result)
+            self:SetText("")
+            searchText = ""
+            f.errorLabel:Hide()
+            SocialQuestGroupFrame:RequestRefresh()
+        else
+            -- Translate error code to locale string
+            local template = L["filter.err." .. result.code] or result.code
+            local msg = string.format(template, unpack(result.args or {}))
+            local fullMsg = string.format(L["filter.err.label"], msg)
+            f.errorLabel:SetContent(fullMsg, nil, function()
+                f.errorLabel:Hide()
+                SocialQuestGroupFrame:RequestRefresh()
+            end)
+            f.errorLabel:Show()
+            SocialQuestGroupFrame:RequestRefresh()
+        end
     end)
     searchBox:SetScript("OnEscapePressed", function(self)
         self:SetText("")
@@ -235,6 +303,31 @@ local function createFrame()
         GameTooltip:Show()
     end)
     searchClearBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    -- [?] help button: opens the filter syntax help window.
+    local helpBtn = CreateFrame("Button", nil, searchBarFrame)
+    helpBtn:SetSize(22, 22)
+    helpBtn:SetPoint("RIGHT", searchBarFrame, "RIGHT", -24, 0)
+    helpBtn:SetNormalFontObject("GameFontNormalSmall")
+    helpBtn:SetText("?")
+    helpBtn:GetFontString():SetTextColor(0.8, 0.8, 0.2)
+    helpBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
+        GameTooltip:SetText(L["filter.help.title"], 1, 1, 1, nil, true)
+        GameTooltip:Show()
+    end)
+    helpBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    helpBtn:SetScript("OnClick", function()
+        if not helpFrame then helpFrame = createHelpFrame() end
+        if helpFrame:IsShown() then helpFrame:Hide() else helpFrame:Show() end
+    end)
+    f.helpBtn = helpBtn
+
+    -- Error label: shown on parse error, hidden on any keystroke or [x] dismiss.
+    local errorLabel = SocialQuestHeaderLabel.New(f, { height=18, r=1.0, g=0.4, b=0.4 })
+    errorLabel:GetFrame():SetPoint("TOPLEFT",  searchBarFrame, "BOTTOMLEFT",  0, -2)
+    errorLabel:GetFrame():SetPoint("TOPRIGHT", searchBarFrame, "BOTTOMRIGHT", 0, -2)
+    f.errorLabel = errorLabel
 
     f.searchBarFrame    = searchBarFrame
     f.searchBox         = searchBox
@@ -651,3 +744,6 @@ function SocialQuestGroupFrame:RestoreAfterTransition()
     end
 end
 
+-- Initialize FilterParser with localized key definitions.
+-- Locale files are loaded before GroupFrame.lua in the TOC, so L is ready.
+SocialQuestFilterParser:Initialize(buildKeyDefs())
