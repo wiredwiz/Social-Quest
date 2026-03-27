@@ -72,8 +72,20 @@ function SocialQuestTabUtils.BuildRemoteObjectives(pquest, localInfo)
     local objs = {}
     for i, obj in ipairs(pquest.objectives or {}) do
         local localObj = localObjs[i]
-        local text = (localObj and localObj.text ~= "" and localObj.text)
-                  or (tostring(obj.numFulfilled or 0) .. "/" .. tostring(obj.numRequired or 1))
+        local text
+        if localObj and localObj.text and localObj.text ~= "" then
+            -- WoW objective text is "Description: X/Y". Strip the local player's
+            -- embedded count and substitute the remote player's values so the bar
+            -- overlay shows "6/8" instead of "0/8" when the local player is at 0.
+            local baseName = localObj.text:match("^(.-)%s*:%s*%d+/%d+%s*$")
+            if baseName then
+                text = baseName .. ": " .. tostring(obj.numFulfilled or 0) .. "/" .. tostring(obj.numRequired or 1)
+            else
+                text = localObj.text  -- event/NPC objectives with no count; use as-is
+            end
+        else
+            text = tostring(obj.numFulfilled or 0) .. "/" .. tostring(obj.numRequired or 1)
+        end
         objs[i] = {
             text         = text,
             isFinished   = obj.isFinished,

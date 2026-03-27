@@ -369,7 +369,11 @@ function SocialQuest:GetDefaults()
                     party  = 0,
                     shared = 0,
                 },
-                windowOpen = false,
+                windowOpen  = false,
+                frameX      = nil,  -- saved absolute screen position (TOPLEFT corner)
+                frameY      = nil,
+                frameWidth  = nil,
+                frameHeight = nil,
             },
             knownFlightNodes = {},  -- [nodeName] = true; persists across sessions
         },

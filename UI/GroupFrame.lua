@@ -101,7 +101,12 @@ local function createFrame()
     f:EnableMouse(true)
     f:RegisterForDrag("LeftButton")
     f:SetScript("OnDragStart", function(self) self:StartMoving() end)
-    f:SetScript("OnDragStop",  f.StopMovingOrSizing)
+    f:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        local fs = SocialQuest.db.char.frameState
+        fs.frameX = self:GetLeft()
+        fs.frameY = self:GetTop()
+    end)
     f:SetScript("OnMouseDown", function(self) self:Raise() end)
     f:Hide()
 
@@ -120,6 +125,9 @@ local function createFrame()
     end)
     resizeHandle:SetScript("OnMouseUp", function()
         f:StopMovingOrSizing()
+        local fs = SocialQuest.db.char.frameState
+        fs.frameWidth  = f:GetWidth()
+        fs.frameHeight = f:GetHeight()
         SocialQuestGroupFrame:RequestRefresh()
     end)
 
@@ -360,12 +368,31 @@ local function createFrame()
 end
 
 ------------------------------------------------------------------------
+-- Private helpers
+------------------------------------------------------------------------
+
+-- Applies saved position and size from AceDB to the frame.
+-- Called after createFrame() when a prior position exists.
+-- Uses TOPLEFT anchor against UIParent so coordinates are screen-absolute.
+local function applyFrameState(f)
+    local fs = SocialQuest.db.char.frameState
+    if fs.frameWidth and fs.frameHeight then
+        f:SetSize(fs.frameWidth, fs.frameHeight)
+    end
+    if fs.frameX and fs.frameY then
+        f:ClearAllPoints()
+        f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", fs.frameX, fs.frameY)
+    end
+end
+
+------------------------------------------------------------------------
 -- Public API
 ------------------------------------------------------------------------
 
 function SocialQuestGroupFrame:Toggle()
     if not frame then
         frame = createFrame()
+        applyFrameState(frame)
     end
     if frame:IsShown() then
         frame:Hide()
@@ -608,7 +635,10 @@ end
 function SocialQuestGroupFrame:RestoreAfterTransition()
     leavingWorld = false
     if SocialQuest.db.char.frameState.windowOpen then
-        if not frame then frame = createFrame() end
+        if not frame then
+            frame = createFrame()
+            applyFrameState(frame)
+        end
         -- Repopulate the search EditBox from the preserved upvalue.
         -- OnTextChanged fires on SetText(), which updates the placeholder and calls
         -- RequestRefresh() — the subsequent Refresh() below is the effective rebuild.
