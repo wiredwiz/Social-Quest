@@ -200,18 +200,23 @@ assert_eq("type= canonical",        r and r.filter.descriptor.value, "chain")
 
 r = P:Parse("status=complete")
 assert_filter("status= complete",   r, "status", "=")
+assert_eq("status= value",          r and r.filter.descriptor.value, "complete")
 
 r = P:Parse("status!=incomplete")
 assert_filter("status!= op",        r, "status", "!=")
 
 r = P:Parse("tracked=yes")
 assert_filter("tracked= yes",       r, "tracked", "=")
+assert_eq("tracked= value",         r and r.filter.descriptor.value, "yes")
 
 -- Operator variant: != and ~= produce identical results
-local r1, r2 = P:Parse("zone!=Elwynn"), P:Parse("zone~=Elwynn")
+local r1, r2 = P:Parse("status!=complete"), P:Parse("status~=complete")
 assert_eq("!= and ~= same op",
     r1 and r1.filter.descriptor.op,
     r2 and r2.filter.descriptor.op)
+assert_eq("~= normalizes to !=",
+    r1 and r1.filter.descriptor.op,
+    "!=")
 
 -- Enum error
 assert_error("INVALID_ENUM",        P:Parse("type=dungeon"),  "INVALID_ENUM")
