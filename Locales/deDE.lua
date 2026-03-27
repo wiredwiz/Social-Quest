@@ -227,7 +227,8 @@ L["filter.key.player"]       = "Spieler"
 L["filter.key.player.p"]=true
 L["filter.key.player.desc"]  = "Gruppenname (nur Gruppe/Geteilt-Reiter)"
 L["filter.key.level"]        = "Stufe"
-L["filter.key.level.lvl"]=true L["filter.key.level.l"]=true
+L["filter.key.level.lvl"]=true
+L["filter.key.level.l"]=true
 L["filter.key.level.desc"]   = "Empfohlene Queststufe"
 L["filter.key.step"]         = "Schritt"
 L["filter.key.step.s"]=true
