@@ -150,24 +150,39 @@ local function createHelpFrame()
     -- code owns that field. Writing it here would race with the lifecycle snapshot.
     tinsert(UISpecialFrames, "SocialQuestFilterHelpFrame")
 
+    -- Allow the engine to clamp the frame to the screen. This is the safety net that
+    -- guarantees no off-screen rendering regardless of coordinate-space edge cases.
+    hf:SetClampedToScreen(true)
+
     local savedPos = SocialQuest.db.char.frameState.helpWindowPos
     hf:ClearAllPoints()
     if savedPos then
         local scale = hf:GetEffectiveScale()
         hf:SetPoint("CENTER", UIParent, "BOTTOMLEFT", savedPos.x / scale, savedPos.y / scale)
     elseif frame then
-        -- Prefer right side; fall back to left if the right side would go off screen.
-        -- UIParent:GetRight() returns the screen-right boundary in UI units (same space
-        -- as frame:GetRight()). Guard nil: if it is unavailable, default left to avoid
-        -- off-screen rendering. Do NOT fall back to GetScreenWidth() — that is screen
-        -- pixels and mixing units produces wrong results.
-        local sqRight = frame:GetRight() or 0
-        local uiRight = UIParent:GetRight()
-        if uiRight and sqRight + 424 <= uiRight then
-            hf:SetPoint("TOPLEFT",  frame, "TOPRIGHT",  4, 0)
-        else
-            hf:SetPoint("TOPRIGHT", frame, "TOPLEFT",  -4, 0)
-        end
+        -- Prefer the right side of the SQ window. After the first Show() the engine
+        -- has calculated the clamped position; if clamping pushed the frame left into
+        -- the SQ window (hf:GetLeft() < frame:GetRight()), there is no room on the right
+        -- and we reposition to the left side instead. Uses a one-frame defer so that
+        -- SetClampedToScreen has been applied before we read GetLeft().
+        -- This avoids all coordinate-unit conversion issues — we only compare frame
+        -- edges that are guaranteed to be in the same coordinate space.
+        hf:SetPoint("TOPLEFT", frame, "TOPRIGHT", 4, 0)
+        local positionChecked = false
+        hf:HookScript("OnShow", function(self)
+            if positionChecked then return end
+            positionChecked = true
+            C_Timer.After(0, function()
+                if not self:IsShown() then return end
+                if SocialQuest.db.char.frameState.helpWindowPos then return end
+                local hfLeft  = self:GetLeft()
+                local sqRight = frame:GetRight()
+                if hfLeft and sqRight and hfLeft < sqRight then
+                    self:ClearAllPoints()
+                    self:SetPoint("TOPRIGHT", frame, "TOPLEFT", -4, 0)
+                end
+            end)
+        end)
     else
         hf:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     end
