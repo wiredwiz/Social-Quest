@@ -200,6 +200,9 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.12.18 (March 2026 — FilterTextbox branch)
+- Feature: `MineTab:BuildTree` now applies structured filters from `filterTable` (Feature #18). Filters `zone`, `title`, `chain`, `level`, `group`, `type`, `step`, `status`, and `tracked` are evaluated against each quest entry using `SocialQuestTabUtils` helpers (`MatchesStringFilter`, `MatchesNumericFilter`, `MatchesEnumFilter`). Standalone quests and chain steps that fail any active filter are pruned; chains and zones that become empty are removed. Applied after the `autoZone` block and before the existing `search` text filter.
+
 ### Version 2.12.17 (March 2026 — FilterTextbox branch)
 - Bug fix: `OnInitReceived` stored quest entries directly from the wire payload without converting integer flags to booleans. `buildInitPayload()` sends `isComplete`/`isFailed` as `0` or `1` (integers), but in Lua `0` is truthy — so every unprogressed quest received via SQ_INIT had `isComplete = 0` which evaluated as `true` everywhere in the UI and announce logic. `OnUpdateReceived` already used `payload.isComplete == 1` to convert correctly; `OnInitReceived` now does the same for `isComplete`, `isFailed`, and each objective's `isFinished` before storing.
 
