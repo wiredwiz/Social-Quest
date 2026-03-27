@@ -131,15 +131,6 @@ function MineTab:BuildTree(filterTable)  -- filterTable.search, filterTable.auto
             return "no"
         end
 
-        local function mapType(entry)
-            if entry.chainInfo and entry.chainInfo.knownStatus == AQL.ChainStatus.Known then
-                return "chain"
-            elseif (entry.suggestedGroup or 0) >= 2 then return "group"
-            elseif (entry.timerSeconds or 0) > 0 then return "timed"
-            else return "solo"
-            end
-        end
-
         local function questPasses(entry)
             if ft.zone   and not T.MatchesStringFilter(entry.zone,  ft.zone)   then return false end
             if ft.title  and not T.MatchesStringFilter(entry.title, ft.title)  then return false end
@@ -147,7 +138,7 @@ function MineTab:BuildTree(filterTable)  -- filterTable.search, filterTable.auto
             if ft.step   and not T.MatchesNumericFilter(
                     entry.chainInfo and entry.chainInfo.step, ft.step)          then return false end
             if ft.group  and not T.MatchesEnumFilter(mapGroup(entry), ft.group) then return false end
-            if ft.type   and not T.MatchesEnumFilter(mapType(entry),  ft.type)  then return false end
+            if ft.type   and not T.MatchesTypeFilter(entry, ft.type)  then return false end
             if ft.status then
                 local s = entry.isFailed and "failed" or entry.isComplete and "complete" or "incomplete"
                 if not T.MatchesEnumFilter(s, ft.status) then return false end
