@@ -339,8 +339,6 @@ local function createFrame()
     -- Handlers are re-wired on every Refresh() to target the current active tab.
     local EC_H = 18   -- matches ROW_H in RowFactory
     local expandCollapseFrame = CreateFrame("Frame", nil, f)
-    expandCollapseFrame:SetPoint("TOPLEFT",  searchBarFrame, "BOTTOMLEFT",  0, -2)
-    expandCollapseFrame:SetPoint("TOPRIGHT", searchBarFrame, "BOTTOMRIGHT", 0, -2)
     expandCollapseFrame:SetHeight(EC_H)
 
     local expandAllBtn = CreateFrame("Button", nil, expandCollapseFrame)
@@ -389,38 +387,12 @@ local function createFrame()
     f.expandAllBtn        = expandAllBtn
     f.collapseAllBtn      = collapseAllBtn
 
-    -- Filter label (zone/instance filter; shown only when a filter is active).
-    -- Positioned below the expand/collapse row; shown/hidden and re-wired on every Refresh().
-    local FILTER_LABEL_H = 18    -- matches ROW_H in RowFactory (18px)
-    local filterLabelFrame = CreateFrame("Frame", nil, f)
-    filterLabelFrame:SetPoint("TOPLEFT",  expandCollapseFrame, "BOTTOMLEFT",  0, -2)
-    filterLabelFrame:SetPoint("TOPRIGHT", expandCollapseFrame, "BOTTOMRIGHT", 0, -2)
-    filterLabelFrame:SetHeight(FILTER_LABEL_H)
-    filterLabelFrame:Hide()
+    -- Auto-zone label (replaces filterLabelFrame). Anchored dynamically in Refresh().
+    local autoZoneLabel = SocialQuestHeaderLabel.New(f, { height = 18 })
+    f.autoZoneLabel = autoZoneLabel
 
-    local filterLabelText = filterLabelFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    filterLabelText:SetPoint("TOPLEFT",     filterLabelFrame, "TOPLEFT",     4,  0)
-    filterLabelText:SetPoint("BOTTOMRIGHT", filterLabelFrame, "BOTTOMRIGHT", -28, 0)
-    filterLabelText:SetJustifyH("LEFT")
-    filterLabelText:SetJustifyV("MIDDLE")
-
-    local filterDismissBtn = CreateFrame("Button", nil, filterLabelFrame)
-    filterDismissBtn:SetSize(22, FILTER_LABEL_H)
-    filterDismissBtn:SetPoint("TOPRIGHT", filterLabelFrame, "TOPRIGHT", -4, 0)
-    filterDismissBtn:SetText("[x]")
-    filterDismissBtn:SetNormalFontObject("GameFontNormalSmall")
-    filterDismissBtn:SetHighlightFontObject("GameFontHighlightSmall")
-    filterDismissBtn:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText(L["Click to dismiss the active filter for this tab."], 1, 1, 1)
-        GameTooltip:Show()
-    end)
-    filterDismissBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    -- OnClick is assigned in Refresh() so it captures the current activeID.
-
-    f.filterLabelFrame  = filterLabelFrame
-    f.filterLabelText   = filterLabelText
-    f.filterDismissBtn  = filterDismissBtn
+    -- User-typed filter label slots (lazy-created in Refresh, one per canonical key).
+    f.filterLabels = {}
 
     -- Scroll area.
     -- Named so that UIPanelScrollFrameTemplate helper functions
@@ -581,26 +553,70 @@ function SocialQuestGroupFrame:Refresh()
         }
     end
 
-    -- Update filter label in fixed header.
-    -- GetFilterLabel is called separately (same computeFilterState() path as GetActiveFilter).
-    -- The dismiss button OnClick is reassigned here so it always captures the current activeID.
-    -- Note: dismiss now calls RequestRefresh() (deferred one frame) instead of Refresh()
-    -- directly — intentional, consistent with the rest of the debounce pattern.
+    -- ── Dynamic header anchor chain ────────────────────────────────────
+    local lastHeader = frame.searchBarFrame
+
+    -- Error label: re-anchor below search bar; visibility managed by OnEnterPressed/OnTextChanged.
+    if frame.errorLabel:IsShown() then
+        frame.errorLabel:GetFrame():ClearAllPoints()
+        frame.errorLabel:GetFrame():SetPoint("TOPLEFT",  lastHeader, "BOTTOMLEFT",  0, -2)
+        frame.errorLabel:GetFrame():SetPoint("TOPRIGHT", lastHeader, "BOTTOMRIGHT", 0, -2)
+        lastHeader = frame.errorLabel:GetFrame()
+    end
+
+    -- Expand/collapse row: re-anchored every Refresh.
+    frame.expandCollapseFrame:ClearAllPoints()
+    frame.expandCollapseFrame:SetPoint("TOPLEFT",  lastHeader, "BOTTOMLEFT",  0, -2)
+    frame.expandCollapseFrame:SetPoint("TOPRIGHT", lastHeader, "BOTTOMRIGHT", 0, -2)
+    lastHeader = frame.expandCollapseFrame
+
+    -- Auto-zone label (WindowFilter).
     local filterLabel = SocialQuestWindowFilter:GetFilterLabel(activeID)
     if filterLabel then
-        frame.filterLabelText:SetText(filterLabel)
-        frame.filterLabelFrame:Show()
-        frame.filterDismissBtn:SetScript("OnClick", function()
+        frame.autoZoneLabel:SetContent(filterLabel, filterLabel, function()
             SocialQuestWindowFilter:Dismiss(activeID)
             SocialQuestGroupFrame:RequestRefresh()
         end)
+        frame.autoZoneLabel:GetFrame():ClearAllPoints()
+        frame.autoZoneLabel:GetFrame():SetPoint("TOPLEFT",  lastHeader, "BOTTOMLEFT",  0, -2)
+        frame.autoZoneLabel:GetFrame():SetPoint("TOPRIGHT", lastHeader, "BOTTOMRIGHT", 0, -2)
+        frame.autoZoneLabel:Show()
+        lastHeader = frame.autoZoneLabel:GetFrame()
     else
-        frame.filterLabelFrame:Hide()
+        frame.autoZoneLabel:Hide()
     end
 
+    -- User-typed filter labels (one per canonical key; lazy-created).
+    local usedCanonicals = {}
+    for canonical, entry in pairs(SocialQuestFilterState:GetAll()) do
+        usedCanonicals[canonical] = true
+        if not frame.filterLabels[canonical] then
+            frame.filterLabels[canonical] = SocialQuestHeaderLabel.New(frame, { height = 18 })
+        end
+        local lbl = frame.filterLabels[canonical]
+        local displayText = canonical .. ": " .. (entry.raw or "")
+        lbl:SetContent(displayText, entry.raw or "", function()
+            SocialQuestFilterState:Dismiss(canonical)
+            SocialQuestGroupFrame:RequestRefresh()
+        end)
+        lbl:GetFrame():ClearAllPoints()
+        lbl:GetFrame():SetPoint("TOPLEFT",  lastHeader, "BOTTOMLEFT",  0, -2)
+        lbl:GetFrame():SetPoint("TOPRIGHT", lastHeader, "BOTTOMRIGHT", 0, -2)
+        lbl:Show()
+        lastHeader = lbl:GetFrame()
+    end
+    for canonical, lbl in pairs(frame.filterLabels) do
+        if not usedCanonicals[canonical] then lbl:Hide() end
+    end
+
+    -- Scroll frame always anchored below the last visible header.
+    frame.scrollFrame:ClearAllPoints()
+    frame.scrollFrame:SetPoint("TOPLEFT",     lastHeader, "BOTTOMLEFT",  0, -4)
+    frame.scrollFrame:SetPoint("BOTTOMRIGHT", frame,      "BOTTOMRIGHT", -28, 10)
+    -- ── End of dynamic header anchor chain ────────────────────────────
+
     -- Wire expand/collapse all buttons in the fixed header.
-    -- Re-wired on every Refresh() so handlers always target the current tab,
-    -- matching the same pattern used for filterDismissBtn.
+    -- Re-wired on every Refresh() so handlers always target the current tab.
     if frame.expandAllBtn then
         local capturedActiveID = activeID
         frame.expandAllBtn:SetScript("OnClick", function()
@@ -618,16 +634,6 @@ function SocialQuestGroupFrame:Refresh()
             SocialQuestGroupFrame:CollapseAll(capturedActiveID, names)
         end)
     end
-
-    -- Re-anchor scroll frame: TOPLEFT moves dynamically based on filter label visibility.
-    -- Both points are always set explicitly to prevent width collapsing.
-    frame.scrollFrame:ClearAllPoints()
-    if filterLabel then
-        frame.scrollFrame:SetPoint("TOPLEFT",  frame.filterLabelFrame,     "BOTTOMLEFT",  0, -4)
-    else
-        frame.scrollFrame:SetPoint("TOPLEFT",  frame.expandCollapseFrame,  "BOTTOMLEFT",  0, -4)
-    end
-    frame.scrollFrame:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -28, 10)
 
     local totalHeight = activeProvider.module:Render(frame.content, RowFactory, tabCollapsed, filterTable, activeID)
     local effectiveH   = math.max(totalHeight, 10)
