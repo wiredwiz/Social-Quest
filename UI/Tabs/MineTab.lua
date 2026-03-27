@@ -119,6 +119,79 @@ function MineTab:BuildTree(filterTable)  -- filterTable.search, filterTable.auto
         end
     end
 
+    -- ── Structured filter application (Feature #18) ──────────────────
+    local ft = filterTable
+    if ft then
+        local T = SocialQuestTabUtils
+        local AQL = SocialQuest.AQL
+
+        local function mapGroup(entry)
+            local sg = entry.suggestedGroup or 0
+            if sg >= 2 then return tostring(sg) end
+            if sg == 1 then return "yes" end
+            return "no"
+        end
+
+        local function mapType(entry)
+            if entry.chainInfo and entry.chainInfo.knownStatus == AQL.ChainStatus.Known then
+                return "chain"
+            elseif (entry.suggestedGroup or 0) >= 2 then return "group"
+            elseif (entry.timerSeconds or 0) > 0 then return "timed"
+            else return "solo"
+            end
+        end
+
+        local function questPasses(entry)
+            if ft.zone   and not T.MatchesStringFilter(entry.zone,  ft.zone)   then return false end
+            if ft.title  and not T.MatchesStringFilter(entry.title, ft.title)  then return false end
+            if ft.level  and not T.MatchesNumericFilter(entry.level, ft.level) then return false end
+            if ft.step   and not T.MatchesNumericFilter(
+                    entry.chainInfo and entry.chainInfo.step, ft.step)          then return false end
+            if ft.group  and not T.MatchesEnumFilter(mapGroup(entry), ft.group) then return false end
+            if ft.type   and not T.MatchesEnumFilter(mapType(entry),  ft.type)  then return false end
+            if ft.status then
+                local s = entry.isFailed and "failed" or entry.isComplete and "complete" or "incomplete"
+                if not T.MatchesEnumFilter(s, ft.status) then return false end
+            end
+            if ft.tracked then
+                local tv = entry.isTracked and "yes" or "no"
+                if not T.MatchesEnumFilter(tv, ft.tracked) then return false end
+            end
+            return true
+        end
+
+        for zoneName, zone in pairs(tree.zones) do
+            -- Filter standalone quests
+            local kept = {}
+            for _, e in ipairs(zone.quests) do
+                if questPasses(e) then kept[#kept+1] = e end
+            end
+            zone.quests = kept
+
+            -- Filter chains
+            for chainID, chain in pairs(zone.chains) do
+                local chainMatchesTitle = not ft.chain
+                    or T.MatchesStringFilter(chain.title, ft.chain)
+                local keptSteps = {}
+                for _, step in ipairs(chain.steps) do
+                    if (chainMatchesTitle or T.MatchesStringFilter(step.title, ft.chain))
+                       and questPasses(step) then
+                        keptSteps[#keptSteps+1] = step
+                    end
+                end
+                chain.steps = keptSteps
+                if #chain.steps == 0 then zone.chains[chainID] = nil end
+            end
+
+            -- Remove empty zones
+            local empty = true
+            for _ in pairs(zone.chains) do empty = false; break end
+            if empty then empty = (#zone.quests == 0) end
+            if empty then tree.zones[zoneName] = nil end
+        end
+    end
+    -- ── End of structured filter application ─────────────────────────
+
     -- Search text filter: case-insensitive substring match on quest/chain titles.
     local searchText = filterTable and filterTable.search
     if searchText then
