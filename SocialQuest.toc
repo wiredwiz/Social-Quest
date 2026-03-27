@@ -45,6 +45,9 @@ Core\QuestieBridge.lua
 # UI modules
 UI\TabUtils.lua
 UI\RowFactory.lua
+UI\FilterParser.lua
+UI\FilterState.lua
+UI\HeaderLabel.lua
 UI\Tabs\MineTab.lua
 UI\Tabs\PartyTab.lua
 UI\Tabs\SharedTab.lua

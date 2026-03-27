@@ -373,7 +373,11 @@ function SocialQuest:GetDefaults()
                 frameX      = nil,  -- saved absolute screen position (TOPLEFT corner)
                 frameY      = nil,
                 frameWidth  = nil,
-                frameHeight = nil,
+                frameHeight    = nil,
+                -- Advanced filter language (Feature #18)
+                activeFilters  = {},    -- [canonical] = { descriptor={...}, raw="..." }
+                helpWindowOpen = false,
+                helpWindowPos  = nil,   -- { x=N, y=N } or nil (use default position)
             },
             knownFlightNodes = {},  -- [nodeName] = true; persists across sessions
         },
