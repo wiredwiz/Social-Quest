@@ -757,7 +757,7 @@ function SocialQuestGroupFrame:Refresh()
         local displayText = "Filter: " .. canonical .. ": " .. valStr
         local capturedTab = activeID
         local capturedCanonical = canonical
-        lbl:SetContent(displayText, entry.raw or "", function()
+        lbl:SetContent(displayText, displayText, function()
             SocialQuestFilterState:Dismiss(capturedTab, capturedCanonical)
             SocialQuestGroupFrame:RequestRefresh()
         end)

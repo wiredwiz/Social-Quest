@@ -200,6 +200,9 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.12.26 (March 2026 — AdvancedFilters branch)
+- Bug fix: advanced filter label tooltips now use the display text ("Filter: key: value") instead of the raw expression ("key=value"), matching the auto-zone label tooltip format. Both label types now consistently show their display text as the tooltip.
+
 ### Version 2.12.25 (March 2026 — AdvancedFilters branch)
 - Bug fix: filter label tooltips now appear when hovering anywhere over the label, not only the dismiss button. `HeaderLabel` frames now have `EnableMouse(true)` and wire `OnEnter`/`OnLeave` on both the container frame and the button so the tooltip fires across the full label area.
 
