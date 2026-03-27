@@ -213,37 +213,86 @@ L["Outside of instances, the Party and Shared tabs show only quests for your cur
 L["Search..."]                               = "Cerca..."
 L["Clear search"]                            = "Cancella ricerca"
 
--- Advanced filter language (Feature #18) — translate these strings
-L["filter.key.zone"]=true L["filter.key.zone.z"]=true L["filter.key.zone.desc"]=true
-L["filter.key.title"]=true L["filter.key.title.t"]=true L["filter.key.title.desc"]=true
-L["filter.key.chain"]=true L["filter.key.chain.c"]=true L["filter.key.chain.desc"]=true
-L["filter.key.player"]=true L["filter.key.player.p"]=true L["filter.key.player.desc"]=true
-L["filter.key.level"]=true L["filter.key.level.lvl"]=true L["filter.key.level.l"]=true L["filter.key.level.desc"]=true
-L["filter.key.step"]=true L["filter.key.step.s"]=true L["filter.key.step.desc"]=true
-L["filter.key.group"]=true L["filter.key.group.g"]=true L["filter.key.group.desc"]=true
-L["filter.key.type"]=true L["filter.key.type.desc"]=true
-L["filter.key.status"]=true L["filter.key.status.desc"]=true
-L["filter.key.tracked"]=true L["filter.key.tracked.desc"]=true
-L["filter.val.yes"]=true L["filter.val.no"]=true
-L["filter.val.complete"]=true L["filter.val.incomplete"]=true L["filter.val.failed"]=true
-L["filter.val.chain"]=true L["filter.val.group"]=true L["filter.val.solo"]=true L["filter.val.timed"]=true
-L["filter.val.escort"]=true L["filter.val.dungeon"]=true L["filter.val.raid"]=true L["filter.val.elite"]=true L["filter.val.daily"]=true L["filter.val.pvp"]=true
-L["filter.val.kill"]=true L["filter.val.gather"]=true L["filter.val.interact"]=true
-L["filter.err.UNKNOWN_KEY"]=true L["filter.err.INVALID_OPERATOR"]=true
-L["filter.err.TYPE_MISMATCH"]=true L["filter.err.UNCLOSED_QUOTE"]=true
-L["filter.err.EMPTY_VALUE"]=true L["filter.err.INVALID_NUMBER"]=true
-L["filter.err.RANGE_REVERSED"]=true L["filter.err.INVALID_ENUM"]=true
-L["filter.err.label"]=true
-L["filter.help.title"]=true L["filter.help.intro"]=true
-L["filter.help.section.syntax"]=true L["filter.help.section.keys"]=true L["filter.help.section.examples"]=true
-L["filter.help.col.key"]=true L["filter.help.col.aliases"]=true L["filter.help.col.desc"]=true
-L["filter.help.example.1"]=true L["filter.help.example.1.note"]=true
-L["filter.help.example.2"]=true L["filter.help.example.2.note"]=true
-L["filter.help.example.3"]=true L["filter.help.example.3.note"]=true
-L["filter.help.example.4"]=true L["filter.help.example.4.note"]=true
-L["filter.help.example.5"]=true L["filter.help.example.5.note"]=true
-L["filter.help.example.6"]=true L["filter.help.example.6.note"]=true
-L["filter.help.type.note"]=true
-L["filter.help.example.7"]=true L["filter.help.example.7.note"]=true
-L["filter.help.example.8"]=true L["filter.help.example.8.note"]=true
-L["filter.help.example.9"]=true L["filter.help.example.9.note"]=true
+-- Advanced filter language (Feature #18)
+L["filter.key.zone"]         = "zona"
+L["filter.key.zone.z"]=true
+L["filter.key.zone.desc"]    = "Nome della zona (corrispondenza parziale)"
+L["filter.key.title"]        = "titolo"
+L["filter.key.title.t"]=true
+L["filter.key.title.desc"]   = "Titolo della missione (corrispondenza parziale)"
+L["filter.key.chain"]        = "serie"
+L["filter.key.chain.c"]=true
+L["filter.key.chain.desc"]   = "Titolo della serie (corrispondenza parziale)"
+L["filter.key.player"]       = "giocatore"
+L["filter.key.player.p"]=true
+L["filter.key.player.desc"]  = "Nome del membro (solo schede Gruppo/Condiviso)"
+L["filter.key.level"]        = "livello"
+L["filter.key.level.lvl"]=true
+L["filter.key.level.l"]=true
+L["filter.key.level.desc"]   = "Livello consigliato della missione"
+L["filter.key.step"]         = "passo"
+L["filter.key.step.s"]=true
+L["filter.key.step.desc"]    = "Numero del passo nella serie"
+L["filter.key.group"]        = "gruppo"
+L["filter.key.group.g"]=true
+L["filter.key.group.desc"]   = "Requisito di gruppo (sì, no, 2-5)"
+L["filter.key.type"]         = "tipo"
+L["filter.key.type.desc"]    = "Tipo di missione — serie, gruppo, solo, a tempo, scorta, dungeon, incursione, elite, giornaliera, pvp, uccidere, raccogliere, interagire"
+L["filter.key.status"]       = "stato"
+L["filter.key.status.desc"]  = "Stato della missione (completata, incompleta, fallita)"
+L["filter.key.tracked"]      = "monitorato"
+L["filter.key.tracked.desc"] = "Monitorato sulla minimappa (sì, no; solo scheda Mio)"
+L["filter.val.yes"]          = "sì"
+L["filter.val.no"]           = "no"
+L["filter.val.complete"]     = "completata"
+L["filter.val.incomplete"]   = "incompleta"
+L["filter.val.failed"]       = "fallita"
+L["filter.val.chain"]        = "serie"
+L["filter.val.group"]        = "gruppo"
+L["filter.val.solo"]         = "solo"
+L["filter.val.timed"]        = "a tempo"
+L["filter.val.escort"]       = "scorta"
+L["filter.val.dungeon"]      = "dungeon"
+L["filter.val.raid"]         = "incursione"
+L["filter.val.elite"]        = "elite"
+L["filter.val.daily"]        = "giornaliera"
+L["filter.val.pvp"]          = "pvp"
+L["filter.val.kill"]         = "uccidere"
+L["filter.val.gather"]       = "raccogliere"
+L["filter.val.interact"]     = "interagire"
+L["filter.err.UNKNOWN_KEY"]      = "chiave filtro sconosciuta '%s'"
+L["filter.err.INVALID_OPERATOR"] = "l'operatore '%s' non può essere usato con '%s'"
+L["filter.err.TYPE_MISMATCH"]    = "'%s' richiede un campo numerico"
+L["filter.err.UNCLOSED_QUOTE"]   = "virgolette non chiuse nell'espressione del filtro"
+L["filter.err.EMPTY_VALUE"]      = "valore mancante dopo '%s'"
+L["filter.err.INVALID_NUMBER"]   = "era atteso un numero per '%s', ricevuto '%s'"
+L["filter.err.RANGE_REVERSED"]   = "intervallo non valido: il min (%s) deve essere <= max (%s)"
+L["filter.err.INVALID_ENUM"]     = "'%s' non è un valore valido per '%s'"
+L["filter.err.label"]            = "Errore filtro: %s"
+L["filter.help.title"]                = "Sintassi filtri SQ"
+L["filter.help.intro"]                = "Digita un'espressione di filtro e premi Invio per applicarla come etichetta persistente. Chiudi un'etichetta con [x]. Più filtri vengono combinati con E."
+L["filter.help.section.syntax"]       = "Sintassi"
+L["filter.help.section.keys"]         = "Chiavi supportate"
+L["filter.help.section.examples"]     = "Esempi"
+L["filter.help.col.key"]              = "Chiave"
+L["filter.help.col.aliases"]          = "Alias"
+L["filter.help.col.desc"]             = "Descrizione"
+L["filter.help.example.1"]            = "livello>=60"
+L["filter.help.example.1.note"]       = "Mostra missioni di livello 60 o superiore"
+L["filter.help.example.2"]            = "livello=58..62"
+L["filter.help.example.2.note"]       = "Mostra missioni nel range di livello 58-62"
+L["filter.help.example.3"]            = "zona=Elwynn|Miniere"
+L["filter.help.example.3.note"]       = "Mostra missioni nella Foresta di Elwynn O nelle Miniere della Morte"
+L["filter.help.example.4"]            = "stato=incompleta"
+L["filter.help.example.4.note"]       = "Mostra solo missioni incomplete"
+L["filter.help.example.5"]            = "tipo=serie"
+L["filter.help.example.5.note"]       = "Mostra solo missioni in serie"
+L["filter.help.example.6"]            = "zona=\"Penisola del Fuoco Infernale\""
+L["filter.help.example.6.note"]       = "Valore tra virgolette (da usare quando il valore contiene spazi)"
+L["filter.help.type.note"]            = "uccidere, raccogliere e interagire corrispondono alle missioni con almeno un obiettivo di quel tipo — le missioni possono corrispondere a più tipi. I filtri di tipo richiedono l'add-on Questie o Quest Weaver."
+L["filter.help.example.7"]            = "tipo=dungeon"
+L["filter.help.example.7.note"]       = "Mostra solo missioni dungeon (richiede Questie o Quest Weaver)"
+L["filter.help.example.8"]            = "tipo=uccidere"
+L["filter.help.example.8.note"]       = "Mostra missioni con almeno un obiettivo di uccidere"
+L["filter.help.example.9"]            = "tipo=giornaliera"
+L["filter.help.example.9.note"]       = "Mostra solo missioni giornaliere"
