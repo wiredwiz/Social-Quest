@@ -318,6 +318,7 @@ local function createFrame()
     end)
     helpBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     helpBtn:SetScript("OnClick", function()
+        if not createHelpFrame then return end  -- Task 16 not yet loaded
         if not helpFrame then helpFrame = createHelpFrame() end
         if helpFrame:IsShown() then helpFrame:Hide() else helpFrame:Show() end
     end)
