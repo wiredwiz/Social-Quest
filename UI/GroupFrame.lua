@@ -132,6 +132,94 @@ local function buildKeyDefs()
     return defs
 end
 
+local function createHelpFrame()
+    local hf = CreateFrame("Frame", "SocialQuestFilterHelpFrame", UIParent, "BasicFrameTemplate")
+    hf:SetSize(420, 500)
+    hf:SetPoint("CENTER", UIParent, "CENTER", 60, 0)
+    hf:SetMovable(true)
+    hf:EnableMouse(true)
+    hf:RegisterForDrag("LeftButton")
+    hf:SetScript("OnDragStart", hf.StartMoving)
+    hf:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        local x, y = self:GetCenter()
+        local scale = self:GetEffectiveScale()
+        SocialQuest.db.char.frameState.helpWindowPos = { x = x * scale, y = y * scale }
+    end)
+    -- NOTE: Do NOT wire OnShow/OnHide to write helpWindowOpen — the SQ window lifecycle
+    -- code owns that field. Writing it here would race with the lifecycle snapshot.
+    tinsert(UISpecialFrames, "SocialQuestFilterHelpFrame")
+
+    local savedPos = SocialQuest.db.char.frameState.helpWindowPos
+    if savedPos then
+        hf:ClearAllPoints()
+        local scale = hf:GetEffectiveScale()
+        hf:SetPoint("CENTER", UIParent, "BOTTOMLEFT", savedPos.x / scale, savedPos.y / scale)
+    end
+
+    hf.TitleText:SetText(L["filter.help.title"])
+
+    local scrollFrame = CreateFrame("ScrollFrame", nil, hf, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT",     hf, "TOPLEFT",     10, -30)
+    scrollFrame:SetPoint("BOTTOMRIGHT", hf, "BOTTOMRIGHT", -28, 10)
+
+    local content = CreateFrame("Frame", nil, scrollFrame)
+    content:SetWidth(380)
+    scrollFrame:SetScrollChild(content)
+
+    local y = 0
+    local function addLine(text, font, r, g, b, indent)
+        local fs = content:CreateFontString(nil, "OVERLAY", font or "GameFontNormal")
+        fs:SetPoint("TOPLEFT",  content, "TOPLEFT",  (indent or 0) + 4, -y)
+        fs:SetPoint("TOPRIGHT", content, "TOPRIGHT", -4, -y)
+        fs:SetJustifyH("LEFT")
+        fs:SetTextColor(r or 1, g or 1, b or 1)
+        fs:SetText(text)
+        fs:SetWordWrap(true)
+        y = y + (fs:GetStringHeight() or 14) + 4
+    end
+
+    addLine(L["filter.help.intro"], "GameFontNormalSmall", 0.9, 0.9, 0.9)
+    y = y + 8
+
+    addLine(L["filter.help.section.syntax"], "GameFontNormal", 1, 0.82, 0)
+    for _, line in ipairs({
+        "key=value",  'key="value with spaces"',
+        "key!=value  (or ~=)",  "key=val1|val2",
+        "key<N  key>N  key<=N  key>=N",  "key=N..M",
+    }) do
+        addLine(line, "GameFontNormalSmall", 0.7, 0.9, 1, 8)
+    end
+    y = y + 8
+
+    addLine(L["filter.help.section.keys"], "GameFontNormal", 1, 0.82, 0)
+    for _, def in ipairs(_keyDefs) do
+        local aliases = {}
+        for i = 2, #def.names do aliases[#aliases+1] = def.names[i] end
+        local aliasStr = #aliases > 0 and " (" .. table.concat(aliases, ", ") .. ")" or ""
+        local desc = def.descKey and L[def.descKey] or ""
+        addLine(def.names[1] .. aliasStr .. " — " .. desc, "GameFontNormalSmall", 0.9, 0.9, 0.9, 8)
+    end
+    y = y + 8
+
+    addLine(L["filter.help.section.examples"], "GameFontNormal", 1, 0.82, 0)
+    local i = 1
+    while true do
+        local exKey  = "filter.help.example." .. i
+        local noteKey = exKey .. ".note"
+        local expr = L[exKey]
+        -- AceLocale returns the key string itself when the key is missing
+        if not expr or expr == exKey then break end
+        local note = L[noteKey]
+        local line = (note and note ~= noteKey) and (expr .. " — " .. note) or expr
+        addLine(line, "GameFontNormalSmall", 0.7, 0.9, 1, 8)
+        i = i + 1
+    end
+
+    content:SetHeight(math.max(y, 10))
+    return hf
+end
+
 local function createFrame()
     local f = CreateFrame("Frame", "SocialQuestGroupFramePanel", UIParent,
                           "BasicFrameTemplateWithInset")
@@ -318,9 +406,12 @@ local function createFrame()
     end)
     helpBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     helpBtn:SetScript("OnClick", function()
-        if not createHelpFrame then return end  -- Task 16 not yet loaded
         if not helpFrame then helpFrame = createHelpFrame() end
-        if helpFrame:IsShown() then helpFrame:Hide() else helpFrame:Show() end
+        if helpFrame:IsShown() then
+            helpFrame:Hide()
+        else
+            helpFrame:Show()
+        end
     end)
     f.helpBtn = helpBtn
 
@@ -420,6 +511,9 @@ local function createFrame()
         -- OnLeavingWorld already snapshotted the true open state before it happened.
         if not leavingWorld then
             SocialQuest.db.char.frameState.windowOpen = false
+            -- Snapshot and hide help window companion on user-initiated SQ close.
+            SocialQuest.db.char.frameState.helpWindowOpen = helpFrame ~= nil and helpFrame:IsShown()
+            if helpFrame then helpFrame:Hide() end
             -- Clear search text on user close. Preserved across loading-screen transitions
             -- (leavingWorld == true) so the filter survives hearths and instance entry.
             searchText = ""
@@ -469,6 +563,11 @@ function SocialQuestGroupFrame:Toggle()
         end
         self:Refresh()
         frame:Raise()
+        -- Restore help window companion if it was open when the SQ window last closed.
+        if SocialQuest.db.char.frameState.helpWindowOpen then
+            if not helpFrame then helpFrame = createHelpFrame() end
+            helpFrame:Show()
+        end
     end
 end
 
@@ -737,6 +836,8 @@ end
 function SocialQuestGroupFrame:OnLeavingWorld()
     leavingWorld = true
     SocialQuest.db.char.frameState.windowOpen = frame ~= nil and frame:IsShown()
+    SocialQuest.db.char.frameState.helpWindowOpen = helpFrame ~= nil and helpFrame:IsShown()
+    if helpFrame then helpFrame:Hide() end
 end
 
 -- Called from OnPlayerEnteringWorld (after the loading screen).
@@ -757,6 +858,10 @@ function SocialQuestGroupFrame:RestoreAfterTransition()
         frame:Show()
         self:Refresh()
         frame:Raise()
+        if SocialQuest.db.char.frameState.helpWindowOpen then
+            if not helpFrame then helpFrame = createHelpFrame() end
+            helpFrame:Show()
+        end
     end
 end
 
