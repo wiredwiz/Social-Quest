@@ -59,11 +59,18 @@ end
 function SocialQuestGroupData:OnInitReceived(sender, payload)
     if not self:IsInGroup(sender) then return end
 
-    -- Enrich each quest entry with a title from local AQL where available.
-    -- Titles are never transmitted; we resolve them locally.
+    -- Convert integer wire-format flags to booleans and resolve titles from AQL.
+    -- buildInitPayload() sends isComplete/isFailed/isFinished as 0 or 1 (integers).
+    -- In Lua, 0 is truthy, so without explicit conversion every unprogressed quest
+    -- would read as isComplete=true. OnUpdateReceived uses == 1 for this; do the same.
     local AQL    = SocialQuest.AQL
     local quests = payload.quests or {}
     for questID, q in pairs(quests) do
+        q.isComplete = q.isComplete == 1
+        q.isFailed   = q.isFailed   == 1
+        for _, obj in ipairs(q.objectives or {}) do
+            obj.isFinished = obj.isFinished == 1
+        end
         if not q.title then
             local info = AQL and AQL:GetQuest(questID)
             q.title = (info and info.title) or (AQL and AQL:GetQuestTitle(questID))
