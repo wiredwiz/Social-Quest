@@ -227,7 +227,6 @@ function PartyTab:BuildTree(filterTable)
     local ft = filterTable
     if ft then
         local T = SocialQuestTabUtils
-        local AQL = SocialQuest.AQL
 
         local function mapGroup(entry)
             local sg = entry.suggestedGroup or 0
