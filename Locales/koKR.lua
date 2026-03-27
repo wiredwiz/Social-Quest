@@ -213,3 +213,32 @@ L["Outside of instances, the Party and Shared tabs show only quests for your cur
 -- UI/GroupFrame.lua — search bar
 L["Search..."]                               = "검색..."
 L["Clear search"]                            = "검색 초기화"
+
+-- Advanced filter language (Feature #18) — translate these strings
+L["filter.key.zone"]=true L["filter.key.zone.z"]=true L["filter.key.zone.desc"]=true
+L["filter.key.title"]=true L["filter.key.title.t"]=true L["filter.key.title.desc"]=true
+L["filter.key.chain"]=true L["filter.key.chain.c"]=true L["filter.key.chain.desc"]=true
+L["filter.key.player"]=true L["filter.key.player.p"]=true L["filter.key.player.desc"]=true
+L["filter.key.level"]=true L["filter.key.level.lvl"]=true L["filter.key.level.l"]=true L["filter.key.level.desc"]=true
+L["filter.key.step"]=true L["filter.key.step.s"]=true L["filter.key.step.desc"]=true
+L["filter.key.group"]=true L["filter.key.group.g"]=true L["filter.key.group.desc"]=true
+L["filter.key.type"]=true L["filter.key.type.desc"]=true
+L["filter.key.status"]=true L["filter.key.status.desc"]=true
+L["filter.key.tracked"]=true L["filter.key.tracked.desc"]=true
+L["filter.val.yes"]=true L["filter.val.no"]=true
+L["filter.val.complete"]=true L["filter.val.incomplete"]=true L["filter.val.failed"]=true
+L["filter.val.chain"]=true L["filter.val.group"]=true L["filter.val.solo"]=true L["filter.val.timed"]=true
+L["filter.err.UNKNOWN_KEY"]=true L["filter.err.INVALID_OPERATOR"]=true
+L["filter.err.TYPE_MISMATCH"]=true L["filter.err.UNCLOSED_QUOTE"]=true
+L["filter.err.EMPTY_VALUE"]=true L["filter.err.INVALID_NUMBER"]=true
+L["filter.err.RANGE_REVERSED"]=true L["filter.err.INVALID_ENUM"]=true
+L["filter.err.label"]=true
+L["filter.help.title"]=true L["filter.help.intro"]=true
+L["filter.help.section.syntax"]=true L["filter.help.section.keys"]=true L["filter.help.section.examples"]=true
+L["filter.help.col.key"]=true L["filter.help.col.aliases"]=true L["filter.help.col.desc"]=true
+L["filter.help.example.1"]=true L["filter.help.example.1.note"]=true
+L["filter.help.example.2"]=true L["filter.help.example.2.note"]=true
+L["filter.help.example.3"]=true L["filter.help.example.3.note"]=true
+L["filter.help.example.4"]=true L["filter.help.example.4.note"]=true
+L["filter.help.example.5"]=true L["filter.help.example.5.note"]=true
+L["filter.help.example.6"]=true L["filter.help.example.6.note"]=true
