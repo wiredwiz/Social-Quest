@@ -176,7 +176,7 @@ local function createHelpFrame()
         fs:SetTextColor(r or 1, g or 1, b or 1)
         fs:SetText(text)
         fs:SetWordWrap(true)
-        y = y + (fs:GetStringHeight() or 14) + 4
+        y = y + math.max(fs:GetStringHeight(), 14) + 4
     end
 
     addLine(L["filter.help.intro"], "GameFontNormalSmall", 0.9, 0.9, 0.9)
