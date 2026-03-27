@@ -137,5 +137,53 @@ assert_error("TYPE_MISMATCH >=",  P:Parse("zone>=Elwynn"),   "TYPE_MISMATCH")
 -- INVALID_OPERATOR: known key with an unrecognised operator
 assert_error("INVALID_OPERATOR",  P:Parse("zone<=>Elwynn"),  "INVALID_OPERATOR")
 
+-- ── Numeric filters ──────────────────────────────────────────────────
+r = P:Parse("level=60")
+assert_filter("level= exact",       r, "level", "=")
+assert_eq("level= val",             r and r.filter.descriptor.val, 60)
+
+r = P:Parse("level>=60")
+assert_filter("level>= op",         r, "level", ">=")
+assert_eq("level>= val",            r and r.filter.descriptor.val, 60)
+
+r = P:Parse("level<=65")
+assert_filter("level<= op",         r, "level", "<=")
+
+r = P:Parse("level<60")
+assert_filter("level< op",          r, "level", "<")
+
+r = P:Parse("level>60")
+assert_filter("level> op",          r, "level", ">")
+
+r = P:Parse("level=60..65")
+assert_filter("level range",        r, "level", "range")
+assert_eq("range min",              r and r.filter.descriptor.min, 60)
+assert_eq("range max",              r and r.filter.descriptor.max, 65)
+
+r = P:Parse("level=60..60")
+assert_filter("range single",       r, "level", "range")
+assert_eq("range single min",       r and r.filter.descriptor.min, 60)
+assert_eq("range single max",       r and r.filter.descriptor.max, 60)
+
+r = P:Parse("lvl>=60")
+assert_filter("lvl alias",          r, "level", ">=")
+
+r = P:Parse("l=60")
+assert_filter("l alias",            r, "level", "=")
+
+r = P:Parse("step=2")
+assert_filter("step= exact",        r, "step", "=")
+assert_eq("step= val",              r and r.filter.descriptor.val, 2)
+
+r = P:Parse("level >= 60")
+assert_filter("whitespace around",  r, "level", ">=")
+
+-- Numeric error codes
+assert_error("INVALID_NUMBER str",  P:Parse("level=abc"),     "INVALID_NUMBER")
+assert_error("RANGE_REVERSED",      P:Parse("level=65..60"),  "RANGE_REVERSED")
+local rr = P:Parse("level=65..60")
+assert_eq("RANGE_REVERSED min arg", rr and rr.args[1], 65)
+assert_eq("RANGE_REVERSED max arg", rr and rr.args[2], 60)
+
 print(string.format("\nResults: %d passed, %d failed", pass, fail))
 if fail > 0 then os.exit(1) end

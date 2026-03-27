@@ -135,6 +135,29 @@ function SocialQuestFilterParser:Parse(text)
                             raw=text } }
     end
 
-    -- Numeric and enum handling added in Tasks 3 and 4.
+    if keyDef.type == "numeric" then
+        local values, err = parseValues(valueStr, op)
+        if err then return err end
+        local v = values[1]
+        local minS, maxS = v:match("^(.-)%.%.(.+)$")
+        if minS then
+            local minN = tonumber(minS:match("^%s*(.-)%s*$"))
+            local maxN = tonumber(maxS:match("^%s*(.-)%s*$"))
+            if not minN then return makeError("INVALID_NUMBER", {keyDef.canonical, minS}) end
+            if not maxN then return makeError("INVALID_NUMBER", {keyDef.canonical, maxS}) end
+            if minN > maxN then return makeError("RANGE_REVERSED", {minN, maxN}) end
+            return { filter = { canonical=keyDef.canonical,
+                                descriptor={ op="range", min=minN, max=maxN },
+                                raw=text } }
+        else
+            local n = tonumber(v)
+            if not n then return makeError("INVALID_NUMBER", {keyDef.canonical, v}) end
+            return { filter = { canonical=keyDef.canonical,
+                                descriptor={ op=normOp, val=n },
+                                raw=text } }
+        end
+    end
+
+    -- Enum handling added in Task 4.
     return nil
 end
