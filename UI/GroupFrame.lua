@@ -114,8 +114,15 @@ local function buildKeyDefs()
           descKey="filter.key.group.desc" },
         { canonical="type",   names={L["filter.key.type"]},
           type="enum",
-          enumMap={ [L["filter.val.chain"]]="chain", [L["filter.val.group"]]="group",
-                    [L["filter.val.solo"]]="solo",   [L["filter.val.timed"]]="timed" },
+          enumMap={
+            [L["filter.val.chain"]]   ="chain",    [L["filter.val.group"]]   ="group",
+            [L["filter.val.solo"]]    ="solo",     [L["filter.val.timed"]]   ="timed",
+            [L["filter.val.escort"]]  ="escort",   [L["filter.val.dungeon"]] ="dungeon",
+            [L["filter.val.raid"]]    ="raid",     [L["filter.val.elite"]]   ="elite",
+            [L["filter.val.daily"]]   ="daily",    [L["filter.val.pvp"]]     ="pvp",
+            [L["filter.val.kill"]]    ="kill",     [L["filter.val.gather"]]  ="gather",
+            [L["filter.val.interact"]]="interact",
+          },
           descKey="filter.key.type.desc" },
         { canonical="status", names={L["filter.key.status"]},
           type="enum",
@@ -232,6 +239,8 @@ local function createHelpFrame()
         local desc = def.descKey and L[def.descKey] or ""
         addLine(def.names[1] .. aliasStr .. " — " .. desc, "GameFontNormalSmall", 0.9, 0.9, 0.9, 8)
     end
+    y = y + 4
+    addLine(L["filter.help.type.note"], "GameFontNormalSmall", 1, 0.82, 0.2, 8)
     y = y + 8
 
     addLine(L["filter.help.section.examples"], "GameFontNormal", 1, 0.82, 0)
