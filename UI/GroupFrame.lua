@@ -360,7 +360,8 @@ local function createFrame()
         if not result then return end
 
         if result.filter then
-            SocialQuestFilterState:Apply(result)
+            local tabId = SocialQuest.db.char.frameState.activeTab or "mine"
+            SocialQuestFilterState:Apply(tabId, result)
             self:SetText("")
             searchText = ""
             f.errorLabel:Hide()
@@ -655,10 +656,10 @@ function SocialQuestGroupFrame:Refresh()
         ft = ft or {}
         ft.autoZone = zoneFilter.zone
     end
-    -- Source 2: user-typed structured filters (AceDB-persisted)
-    if not SocialQuestFilterState:IsEmpty() then
+    -- Source 2: user-typed structured filters (AceDB-persisted, per-tab)
+    if not SocialQuestFilterState:IsEmpty(activeID) then
         ft = ft or {}
-        for canonical, entry in pairs(SocialQuestFilterState:GetAll()) do
+        for canonical, entry in pairs(SocialQuestFilterState:GetAll(activeID)) do
             ft[canonical] = entry.descriptor
         end
     end
@@ -704,7 +705,7 @@ function SocialQuestGroupFrame:Refresh()
 
     -- User-typed filter labels (one per canonical key; lazy-created).
     local usedCanonicals = {}
-    for canonical, entry in pairs(SocialQuestFilterState:GetAll()) do
+    for canonical, entry in pairs(SocialQuestFilterState:GetAll(activeID)) do
         usedCanonicals[canonical] = true
         if not frame.filterLabels[canonical] then
             frame.filterLabels[canonical] = SocialQuestHeaderLabel.New(frame, { height = 18 })
@@ -722,8 +723,10 @@ function SocialQuestGroupFrame:Refresh()
             valStr = (desc.op == "!=" and "!=" or "") .. (desc.value or "")
         end
         local displayText = "Filter: " .. canonical .. ": " .. valStr
+        local capturedTab = activeID
+        local capturedCanonical = canonical
         lbl:SetContent(displayText, entry.raw or "", function()
-            SocialQuestFilterState:Dismiss(canonical)
+            SocialQuestFilterState:Dismiss(capturedTab, capturedCanonical)
             SocialQuestGroupFrame:RequestRefresh()
         end)
         lbl:GetFrame():ClearAllPoints()
