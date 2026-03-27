@@ -151,9 +151,27 @@ assert_filter("level<= op",         r, "level", "<=")
 
 r = P:Parse("level<60")
 assert_filter("level< op",          r, "level", "<")
+assert_eq("level< val",             r and r.filter.descriptor.val, 60)
 
 r = P:Parse("level>60")
 assert_filter("level> op",          r, "level", ">")
+assert_eq("level> val",             r and r.filter.descriptor.val, 60)
+
+r = P:Parse("step>3")
+assert_filter("step> op",           r, "step", ">")
+assert_eq("step> val",              r and r.filter.descriptor.val, 3)
+
+r = P:Parse("step<3")
+assert_filter("step< op",           r, "step", "<")
+assert_eq("step< val",              r and r.filter.descriptor.val, 3)
+
+-- TYPE_MISMATCH: < and > on non-numeric fields
+assert_error("TYPE_MISMATCH <  str",  P:Parse("zone<Elwynn"),   "TYPE_MISMATCH")
+assert_error("TYPE_MISMATCH >  str",  P:Parse("zone>Elwynn"),   "TYPE_MISMATCH")
+
+-- EMPTY_VALUE for < and >
+assert_error("EMPTY_VALUE <",  P:Parse("level<"),  "EMPTY_VALUE")
+assert_error("EMPTY_VALUE >",  P:Parse("level>"),  "EMPTY_VALUE")
 
 r = P:Parse("level=60..65")
 assert_filter("level range",        r, "level", "range")

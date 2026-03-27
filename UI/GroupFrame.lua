@@ -354,7 +354,7 @@ local function createFrame()
     end)
     searchBox:SetScript("OnEnterPressed", function(self)
         local text = self:GetText()
-        if not text:find("=", 1, true) then return end  -- plain text; Enter is no-op
+        if not text:find("[=<>!~]") then return end  -- plain text; Enter is no-op
 
         local result = SocialQuestFilterParser:Parse(text)
         if not result then return end
