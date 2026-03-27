@@ -746,7 +746,7 @@ function SocialQuestGroupFrame:Refresh()
         local desc = entry.descriptor
         local valStr
         if desc.values then
-            valStr = (desc.op == "!=" and "!=" or "") .. table.concat(desc.values, "|")
+            valStr = (desc.op == "!=" and "!=" or "") .. table.concat(desc.values, "||")
         elseif desc.op == "range" then
             valStr = tostring(desc.min) .. ".." .. tostring(desc.max)
         elseif desc.val ~= nil then
