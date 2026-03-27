@@ -200,6 +200,9 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.12.27 (March 2026 — AdvancedFilters branch)
+- Bug fix: advanced filter label display text now uses title-cased key names ("Filter: Zone: storm" not "Filter: zone: storm"), matching the auto-zone label format ("Filter: Zone: Elwynn Forest"). Canonical key names (always lowercase internally) have their first letter uppercased when building the display string. Error labels continue to show the raw user-typed expression unchanged.
+
 ### Version 2.12.26 (March 2026 — AdvancedFilters branch)
 - Bug fix: advanced filter label tooltips now use the display text ("Filter: key: value") instead of the raw expression ("key=value"), matching the auto-zone label tooltip format. Both label types now consistently show their display text as the tooltip.
 

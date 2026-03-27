@@ -754,7 +754,8 @@ function SocialQuestGroupFrame:Refresh()
         else
             valStr = (desc.op == "!=" and "!=" or "") .. (desc.value or "")
         end
-        local displayText = "Filter: " .. canonical .. ": " .. valStr
+        local keyDisplay  = canonical:sub(1,1):upper() .. canonical:sub(2)
+        local displayText = "Filter: " .. keyDisplay .. ": " .. valStr
         local capturedTab = activeID
         local capturedCanonical = canonical
         lbl:SetContent(displayText, displayText, function()
