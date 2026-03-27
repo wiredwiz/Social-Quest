@@ -200,6 +200,9 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.12.17 (March 2026 — FilterTextbox branch)
+- Bug fix: `OnInitReceived` stored quest entries directly from the wire payload without converting integer flags to booleans. `buildInitPayload()` sends `isComplete`/`isFailed` as `0` or `1` (integers), but in Lua `0` is truthy — so every unprogressed quest received via SQ_INIT had `isComplete = 0` which evaluated as `true` everywhere in the UI and announce logic. `OnUpdateReceived` already used `payload.isComplete == 1` to convert correctly; `OnInitReceived` now does the same for `isComplete`, `isFailed`, and each objective's `isFinished` before storing.
+
 ### Version 2.12.16 (March 2026 — FilterTextbox branch)
 - Diagnostics + fix attempt: `_ScheduleQuestieRequest` now logs `UnitInParty("player")` and `UnitInRaid("player")` at t+1s and t+5s sends to determine whether `QuestiePlayer:GetGroupType()` returns nil (which silently aborts `RequestQuestLog`). Added a third send at t+10s — by t+10s the party API is always stable on reload so `GetGroupType()` will return non-nil and the request will succeed. Hydration polls at t+14s and t+20s follow the t+10s send. The t+15s hydration-only poll (previously after the t+5s send) is replaced by the t+10s send + its polls.
 
