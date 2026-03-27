@@ -144,8 +144,9 @@ end
 -- AQL:GetQuestInfo() is called only for AQL-based and objective-type predicates.
 function SocialQuestTabUtils.MatchesTypeFilter(entry, descriptor)
     if not descriptor then return true end
+    local AQL = SocialQuest.AQL
     local value = descriptor.value
-    local matched
+    local matched = false
 
     -- group/timed/solo/chain: read from entry fields directly (no AQL call needed).
     -- suggestedGroup and timerSeconds are denormalized onto every entry by each tab's
@@ -158,10 +159,10 @@ function SocialQuestTabUtils.MatchesTypeFilter(entry, descriptor)
         matched = (entry.timerSeconds or 0) > 0
     elseif value == "chain" then
         matched = entry.chainInfo ~= nil
-            and entry.chainInfo.knownStatus == SocialQuest.AQL.ChainStatus.Known
+            and entry.chainInfo.knownStatus == AQL.ChainStatus.Known
     else
         -- AQL-based and objective predicates: one GetQuestInfo call per quest.
-        local info = SocialQuest.AQL and SocialQuest.AQL:GetQuestInfo(entry.questID)
+        local info = AQL and AQL:GetQuestInfo(entry.questID)
         if not info then
             matched = false
         elseif value == "escort" or value == "dungeon" or value == "raid"
