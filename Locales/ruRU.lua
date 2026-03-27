@@ -214,37 +214,86 @@ L["Outside of instances, the Party and Shared tabs show only quests for your cur
 L["Search..."]                               = "Поиск..."
 L["Clear search"]                            = "Очистить поиск"
 
--- Advanced filter language (Feature #18) — translate these strings
-L["filter.key.zone"]=true L["filter.key.zone.z"]=true L["filter.key.zone.desc"]=true
-L["filter.key.title"]=true L["filter.key.title.t"]=true L["filter.key.title.desc"]=true
-L["filter.key.chain"]=true L["filter.key.chain.c"]=true L["filter.key.chain.desc"]=true
-L["filter.key.player"]=true L["filter.key.player.p"]=true L["filter.key.player.desc"]=true
-L["filter.key.level"]=true L["filter.key.level.lvl"]=true L["filter.key.level.l"]=true L["filter.key.level.desc"]=true
-L["filter.key.step"]=true L["filter.key.step.s"]=true L["filter.key.step.desc"]=true
-L["filter.key.group"]=true L["filter.key.group.g"]=true L["filter.key.group.desc"]=true
-L["filter.key.type"]=true L["filter.key.type.desc"]=true
-L["filter.key.status"]=true L["filter.key.status.desc"]=true
-L["filter.key.tracked"]=true L["filter.key.tracked.desc"]=true
-L["filter.val.yes"]=true L["filter.val.no"]=true
-L["filter.val.complete"]=true L["filter.val.incomplete"]=true L["filter.val.failed"]=true
-L["filter.val.chain"]=true L["filter.val.group"]=true L["filter.val.solo"]=true L["filter.val.timed"]=true
-L["filter.val.escort"]=true L["filter.val.dungeon"]=true L["filter.val.raid"]=true L["filter.val.elite"]=true L["filter.val.daily"]=true L["filter.val.pvp"]=true
-L["filter.val.kill"]=true L["filter.val.gather"]=true L["filter.val.interact"]=true
-L["filter.err.UNKNOWN_KEY"]=true L["filter.err.INVALID_OPERATOR"]=true
-L["filter.err.TYPE_MISMATCH"]=true L["filter.err.UNCLOSED_QUOTE"]=true
-L["filter.err.EMPTY_VALUE"]=true L["filter.err.INVALID_NUMBER"]=true
-L["filter.err.RANGE_REVERSED"]=true L["filter.err.INVALID_ENUM"]=true
-L["filter.err.label"]=true
-L["filter.help.title"]=true L["filter.help.intro"]=true
-L["filter.help.section.syntax"]=true L["filter.help.section.keys"]=true L["filter.help.section.examples"]=true
-L["filter.help.col.key"]=true L["filter.help.col.aliases"]=true L["filter.help.col.desc"]=true
-L["filter.help.example.1"]=true L["filter.help.example.1.note"]=true
-L["filter.help.example.2"]=true L["filter.help.example.2.note"]=true
-L["filter.help.example.3"]=true L["filter.help.example.3.note"]=true
-L["filter.help.example.4"]=true L["filter.help.example.4.note"]=true
-L["filter.help.example.5"]=true L["filter.help.example.5.note"]=true
-L["filter.help.example.6"]=true L["filter.help.example.6.note"]=true
-L["filter.help.type.note"]=true
-L["filter.help.example.7"]=true L["filter.help.example.7.note"]=true
-L["filter.help.example.8"]=true L["filter.help.example.8.note"]=true
-L["filter.help.example.9"]=true L["filter.help.example.9.note"]=true
+-- Advanced filter language (Feature #18)
+L["filter.key.zone"]         = "зона"
+L["filter.key.zone.z"]=true
+L["filter.key.zone.desc"]    = "Название зоны (поиск по подстроке)"
+L["filter.key.title"]        = "название"
+L["filter.key.title.t"]=true
+L["filter.key.title.desc"]   = "Название задания (поиск по подстроке)"
+L["filter.key.chain"]        = "цепочка"
+L["filter.key.chain.c"]=true
+L["filter.key.chain.desc"]   = "Название цепочки (поиск по подстроке)"
+L["filter.key.player"]       = "игрок"
+L["filter.key.player.p"]=true
+L["filter.key.player.desc"]  = "Имя участника группы (только вкладки Группа/Общее)"
+L["filter.key.level"]        = "уровень"
+L["filter.key.level.lvl"]=true
+L["filter.key.level.l"]=true
+L["filter.key.level.desc"]   = "Рекомендуемый уровень задания"
+L["filter.key.step"]         = "шаг"
+L["filter.key.step.s"]=true
+L["filter.key.step.desc"]    = "Номер шага в цепочке"
+L["filter.key.group"]        = "группа"
+L["filter.key.group.g"]=true
+L["filter.key.group.desc"]   = "Требование группы (да, нет, 2-5)"
+L["filter.key.type"]         = "тип"
+L["filter.key.type.desc"]    = "Тип задания — цепочка, группа, соло, на время, сопровождение, подземелье, рейд, элитный, ежедневное, pvp, убийство, собрать, взаимодействие"
+L["filter.key.status"]       = "статус"
+L["filter.key.status.desc"]  = "Статус задания (выполнено, не выполнено, провалено)"
+L["filter.key.tracked"]      = "отслеживается"
+L["filter.key.tracked.desc"] = "Отслеживается на миникарте (да, нет; только вкладка Мои)"
+L["filter.val.yes"]          = "да"
+L["filter.val.no"]           = "нет"
+L["filter.val.complete"]     = "выполнено"
+L["filter.val.incomplete"]   = "не выполнено"
+L["filter.val.failed"]       = "провалено"
+L["filter.val.chain"]        = "цепочка"
+L["filter.val.group"]        = "группа"
+L["filter.val.solo"]         = "соло"
+L["filter.val.timed"]        = "на время"
+L["filter.val.escort"]       = "сопровождение"
+L["filter.val.dungeon"]      = "подземелье"
+L["filter.val.raid"]         = "рейд"
+L["filter.val.elite"]        = "элитный"
+L["filter.val.daily"]        = "ежедневное"
+L["filter.val.pvp"]          = "pvp"
+L["filter.val.kill"]         = "убийство"
+L["filter.val.gather"]       = "собрать"
+L["filter.val.interact"]     = "взаимодействие"
+L["filter.err.UNKNOWN_KEY"]      = "неизвестный ключ фильтра '%s'"
+L["filter.err.INVALID_OPERATOR"] = "оператор '%s' нельзя использовать с '%s'"
+L["filter.err.TYPE_MISMATCH"]    = "'%s' требует числового поля"
+L["filter.err.UNCLOSED_QUOTE"]   = "незакрытая кавычка в выражении фильтра"
+L["filter.err.EMPTY_VALUE"]      = "отсутствует значение после '%s'"
+L["filter.err.INVALID_NUMBER"]   = "ожидалось число для '%s', получено '%s'"
+L["filter.err.RANGE_REVERSED"]   = "неверный диапазон: мин (%s) должен быть <= макс (%s)"
+L["filter.err.INVALID_ENUM"]     = "'%s' не является допустимым значением для '%s'"
+L["filter.err.label"]            = "Ошибка фильтра: %s"
+L["filter.help.title"]                = "Синтаксис фильтров SQ"
+L["filter.help.intro"]                = "Введите выражение фильтра и нажмите Enter, чтобы применить его как постоянную метку. Закройте метку кнопкой [x]. Несколько фильтров объединяются по И."
+L["filter.help.section.syntax"]       = "Синтаксис"
+L["filter.help.section.keys"]         = "Поддерживаемые ключи"
+L["filter.help.section.examples"]     = "Примеры"
+L["filter.help.col.key"]              = "Ключ"
+L["filter.help.col.aliases"]          = "Псевдонимы"
+L["filter.help.col.desc"]             = "Описание"
+L["filter.help.example.1"]            = "уровень>=60"
+L["filter.help.example.1.note"]       = "Показать задания для уровня 60 и выше"
+L["filter.help.example.2"]            = "уровень=58..62"
+L["filter.help.example.2.note"]       = "Показать задания в диапазоне уровней 58-62"
+L["filter.help.example.3"]            = "зона=Элвинн|Мёртвые"
+L["filter.help.example.3.note"]       = "Показать задания в Лесу Элвинн ИЛИ Мёртвых копях"
+L["filter.help.example.4"]            = "статус=не выполнено"
+L["filter.help.example.4.note"]       = "Показать только невыполненные задания"
+L["filter.help.example.5"]            = "тип=цепочка"
+L["filter.help.example.5.note"]       = "Показать только задания-цепочки"
+L["filter.help.example.6"]            = "зона=\"Полуостров Адского Пламени\""
+L["filter.help.example.6.note"]       = "Значение в кавычках (используйте, если значение содержит пробелы)"
+L["filter.help.type.note"]            = "убийство, собрать и взаимодействие совпадают с заданиями, имеющими хотя бы одну цель такого рода — задания могут соответствовать нескольким типам. Фильтры типов требуют установки аддона Questie или Quest Weaver."
+L["filter.help.example.7"]            = "тип=подземелье"
+L["filter.help.example.7.note"]       = "Показать только задания подземелья (требуется Questie или Quest Weaver)"
+L["filter.help.example.8"]            = "тип=убийство"
+L["filter.help.example.8.note"]       = "Показать задания хотя бы с одной целью убийства"
+L["filter.help.example.9"]            = "тип=ежедневное"
+L["filter.help.example.9.note"]       = "Показать только ежедневные задания"
