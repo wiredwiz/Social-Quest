@@ -132,60 +132,62 @@ local function buildKeyDefs()
     return defs
 end
 
+-- Positions helpFrame relative to the SQ main frame.
+-- Two-step: anchor TOPLEFT to the right side of the SQ frame, then check the
+-- actual rendered GetRight() value.  Both GetRight() calls are in WoW's absolute
+-- screen coordinate space, so no scale arithmetic is needed.  If the right edge
+-- is off-screen we flip to TOPRIGHT anchored to the left side of the SQ frame.
+-- Also restores a valid saved drag position (stored by OnDragStop) when present.
+local function positionHelpFrame()
+    if not helpFrame then return end
+    local savedPos = SocialQuest.db.char.frameState.helpWindowPos
+    helpFrame:ClearAllPoints()
+    if savedPos then
+        local sw = UIParent:GetRight()
+        local sh = UIParent:GetTop()
+        local hw = helpFrame:GetWidth()  / 2
+        local hh = helpFrame:GetHeight() / 2
+        if savedPos.x >= hw and savedPos.x <= sw - hw
+        and savedPos.y >= hh and savedPos.y <= sh - hh then
+            helpFrame:SetPoint("CENTER", UIParent, "BOTTOMLEFT", savedPos.x, savedPos.y)
+            return
+        end
+        SocialQuest.db.char.frameState.helpWindowPos = nil
+    end
+    if not frame then
+        helpFrame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+        return
+    end
+    -- Step 1: try the right side.
+    helpFrame:SetPoint("TOPLEFT", frame, "TOPRIGHT", 4, 0)
+    -- Step 2: check the actual rendered right edge against the screen right edge.
+    if helpFrame:GetRight() > UIParent:GetRight() then
+        helpFrame:ClearAllPoints()
+        helpFrame:SetPoint("TOPRIGHT", frame, "TOPLEFT", -4, 0)
+    end
+end
+
 local function createHelpFrame()
     local hf = CreateFrame("Frame", "SocialQuestFilterHelpFrame", UIParent, "BasicFrameTemplate")
     hf:SetSize(420, 500)
-    hf:SetFrameStrata("HIGH")
+    hf:SetFrameStrata("DIALOG")
     hf:SetMovable(true)
     hf:EnableMouse(true)
     hf:RegisterForDrag("LeftButton")
-    hf:SetScript("OnDragStart", hf.StartMoving)
+    hf:SetScript("OnMouseDown", function(self) self:Raise() end)
+    hf:SetScript("OnDragStart", function(self) self:StartMoving(); self:Raise() end)
     hf:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
         local x, y = self:GetCenter()
-        local scale = self:GetEffectiveScale()
-        SocialQuest.db.char.frameState.helpWindowPos = { x = x * scale, y = y * scale }
+        -- Store raw screen coordinates (same space as GetRight()/UIParent:GetRight()).
+        SocialQuest.db.char.frameState.helpWindowPos = { x = x, y = y }
     end)
     -- NOTE: Do NOT wire OnShow/OnHide to write helpWindowOpen — the SQ window lifecycle
     -- code owns that field. Writing it here would race with the lifecycle snapshot.
     tinsert(UISpecialFrames, "SocialQuestFilterHelpFrame")
 
-    -- Allow the engine to clamp the frame to the screen. This is the safety net that
-    -- guarantees no off-screen rendering regardless of coordinate-space edge cases.
-    hf:SetClampedToScreen(true)
-
-    local savedPos = SocialQuest.db.char.frameState.helpWindowPos
-    hf:ClearAllPoints()
-    if savedPos then
-        local scale = hf:GetEffectiveScale()
-        hf:SetPoint("CENTER", UIParent, "BOTTOMLEFT", savedPos.x / scale, savedPos.y / scale)
-    elseif frame then
-        -- Prefer the right side of the SQ window. After the first Show() the engine
-        -- has calculated the clamped position; if clamping pushed the frame left into
-        -- the SQ window (hf:GetLeft() < frame:GetRight()), there is no room on the right
-        -- and we reposition to the left side instead. Uses a one-frame defer so that
-        -- SetClampedToScreen has been applied before we read GetLeft().
-        -- This avoids all coordinate-unit conversion issues — we only compare frame
-        -- edges that are guaranteed to be in the same coordinate space.
-        hf:SetPoint("TOPLEFT", frame, "TOPRIGHT", 4, 0)
-        local positionChecked = false
-        hf:HookScript("OnShow", function(self)
-            if positionChecked then return end
-            positionChecked = true
-            C_Timer.After(0, function()
-                if not self:IsShown() then return end
-                if SocialQuest.db.char.frameState.helpWindowPos then return end
-                local hfLeft  = self:GetLeft()
-                local sqRight = frame:GetRight()
-                if hfLeft and sqRight and hfLeft < sqRight then
-                    self:ClearAllPoints()
-                    self:SetPoint("TOPRIGHT", frame, "TOPLEFT", -4, 0)
-                end
-            end)
-        end)
-    else
-        hf:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-    end
+    -- Default anchor; overridden by positionHelpFrame() on every Show().
+    hf:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 
     hf.TitleText:SetText(L["filter.help.title"])
 
@@ -235,18 +237,22 @@ local function createHelpFrame()
     addLine(L["filter.help.section.examples"], "GameFontNormal", 1, 0.82, 0)
     local i = 1
     while true do
-        local exKey  = "filter.help.example." .. i
+        local exKey   = "filter.help.example." .. i
         local noteKey = exKey .. ".note"
-        local expr = L[exKey]
-        -- AceLocale returns the key string itself when the key is missing
-        if not expr or expr == exKey then break end
-        local note = L[noteKey]
-        local line = (note and note ~= noteKey) and (expr .. " — " .. note) or expr
+        -- rawget bypasses AceLocale's strict __index so missing keys return nil
+        -- instead of throwing an error, allowing the loop to terminate cleanly.
+        local expr = rawget(L, exKey)
+        if not expr then break end
+        local note = rawget(L, noteKey)
+        local line = note and (expr .. " — " .. note) or expr
         addLine(line, "GameFontNormalSmall", 0.7, 0.9, 1, 8)
         i = i + 1
     end
 
     content:SetHeight(math.max(y, 10))
+    -- WoW creates frames visible by default (inheriting parent show state). Hide
+    -- explicitly so OnClick's IsShown() check works correctly on the first press.
+    hf:Hide()
     return hf
 end
 
@@ -441,7 +447,9 @@ local function createFrame()
         if helpFrame:IsShown() then
             helpFrame:Hide()
         else
+            positionHelpFrame()
             helpFrame:Show()
+            helpFrame:Raise()
         end
     end)
     f.helpBtn = helpBtn
@@ -597,7 +605,9 @@ function SocialQuestGroupFrame:Toggle()
         -- Restore help window companion if it was open when the SQ window last closed.
         if SocialQuest.db.char.frameState.helpWindowOpen then
             if not helpFrame then helpFrame = createHelpFrame() end
+            positionHelpFrame()
             helpFrame:Show()
+            helpFrame:Raise()
         end
     end
 end
@@ -904,7 +914,9 @@ function SocialQuestGroupFrame:RestoreAfterTransition()
         frame:Raise()
         if SocialQuest.db.char.frameState.helpWindowOpen then
             if not helpFrame then helpFrame = createHelpFrame() end
+            positionHelpFrame()
             helpFrame:Show()
+            helpFrame:Raise()
         end
     end
 end
