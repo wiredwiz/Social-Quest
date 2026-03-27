@@ -214,37 +214,86 @@ L["Outside of instances, the Party and Shared tabs show only quests for your cur
 L["Search..."]                               = "搜索..."
 L["Clear search"]                            = "清除搜索"
 
--- Advanced filter language (Feature #18) — translate these strings
-L["filter.key.zone"]=true L["filter.key.zone.z"]=true L["filter.key.zone.desc"]=true
-L["filter.key.title"]=true L["filter.key.title.t"]=true L["filter.key.title.desc"]=true
-L["filter.key.chain"]=true L["filter.key.chain.c"]=true L["filter.key.chain.desc"]=true
-L["filter.key.player"]=true L["filter.key.player.p"]=true L["filter.key.player.desc"]=true
-L["filter.key.level"]=true L["filter.key.level.lvl"]=true L["filter.key.level.l"]=true L["filter.key.level.desc"]=true
-L["filter.key.step"]=true L["filter.key.step.s"]=true L["filter.key.step.desc"]=true
-L["filter.key.group"]=true L["filter.key.group.g"]=true L["filter.key.group.desc"]=true
-L["filter.key.type"]=true L["filter.key.type.desc"]=true
-L["filter.key.status"]=true L["filter.key.status.desc"]=true
-L["filter.key.tracked"]=true L["filter.key.tracked.desc"]=true
-L["filter.val.yes"]=true L["filter.val.no"]=true
-L["filter.val.complete"]=true L["filter.val.incomplete"]=true L["filter.val.failed"]=true
-L["filter.val.chain"]=true L["filter.val.group"]=true L["filter.val.solo"]=true L["filter.val.timed"]=true
-L["filter.val.escort"]=true L["filter.val.dungeon"]=true L["filter.val.raid"]=true L["filter.val.elite"]=true L["filter.val.daily"]=true L["filter.val.pvp"]=true
-L["filter.val.kill"]=true L["filter.val.gather"]=true L["filter.val.interact"]=true
-L["filter.err.UNKNOWN_KEY"]=true L["filter.err.INVALID_OPERATOR"]=true
-L["filter.err.TYPE_MISMATCH"]=true L["filter.err.UNCLOSED_QUOTE"]=true
-L["filter.err.EMPTY_VALUE"]=true L["filter.err.INVALID_NUMBER"]=true
-L["filter.err.RANGE_REVERSED"]=true L["filter.err.INVALID_ENUM"]=true
-L["filter.err.label"]=true
-L["filter.help.title"]=true L["filter.help.intro"]=true
-L["filter.help.section.syntax"]=true L["filter.help.section.keys"]=true L["filter.help.section.examples"]=true
-L["filter.help.col.key"]=true L["filter.help.col.aliases"]=true L["filter.help.col.desc"]=true
-L["filter.help.example.1"]=true L["filter.help.example.1.note"]=true
-L["filter.help.example.2"]=true L["filter.help.example.2.note"]=true
-L["filter.help.example.3"]=true L["filter.help.example.3.note"]=true
-L["filter.help.example.4"]=true L["filter.help.example.4.note"]=true
-L["filter.help.example.5"]=true L["filter.help.example.5.note"]=true
-L["filter.help.example.6"]=true L["filter.help.example.6.note"]=true
-L["filter.help.type.note"]=true
-L["filter.help.example.7"]=true L["filter.help.example.7.note"]=true
-L["filter.help.example.8"]=true L["filter.help.example.8.note"]=true
-L["filter.help.example.9"]=true L["filter.help.example.9.note"]=true
+-- Advanced filter language (Feature #18)
+L["filter.key.zone"]         = "区域"
+L["filter.key.zone.z"]=true
+L["filter.key.zone.desc"]    = "区域名称（部分匹配）"
+L["filter.key.title"]        = "标题"
+L["filter.key.title.t"]=true
+L["filter.key.title.desc"]   = "任务标题（部分匹配）"
+L["filter.key.chain"]        = "任务链"
+L["filter.key.chain.c"]=true
+L["filter.key.chain.desc"]   = "任务链标题（部分匹配）"
+L["filter.key.player"]       = "玩家"
+L["filter.key.player.p"]=true
+L["filter.key.player.desc"]  = "队员名称（仅队伍/共享标签）"
+L["filter.key.level"]        = "等级"
+L["filter.key.level.lvl"]=true
+L["filter.key.level.l"]=true
+L["filter.key.level.desc"]   = "推荐任务等级"
+L["filter.key.step"]         = "步骤"
+L["filter.key.step.s"]=true
+L["filter.key.step.desc"]    = "任务链步骤编号"
+L["filter.key.group"]        = "组队"
+L["filter.key.group.g"]=true
+L["filter.key.group.desc"]   = "组队要求（是，否，2-5）"
+L["filter.key.type"]         = "类型"
+L["filter.key.type.desc"]    = "任务类型 — 任务链, 组队, 单人, 限时, 护送, 地下城, 团队副本, 精英, 日常, pvp, 击杀, 采集, 互动"
+L["filter.key.status"]       = "状态"
+L["filter.key.status.desc"]  = "任务状态（完成, 未完成, 失败）"
+L["filter.key.tracked"]      = "追踪"
+L["filter.key.tracked.desc"] = "在小地图上追踪（是, 否；仅我的标签）"
+L["filter.val.yes"]          = "是"
+L["filter.val.no"]           = "否"
+L["filter.val.complete"]     = "完成"
+L["filter.val.incomplete"]   = "未完成"
+L["filter.val.failed"]       = "失败"
+L["filter.val.chain"]        = "任务链"
+L["filter.val.group"]        = "组队"
+L["filter.val.solo"]         = "单人"
+L["filter.val.timed"]        = "限时"
+L["filter.val.escort"]       = "护送"
+L["filter.val.dungeon"]      = "地下城"
+L["filter.val.raid"]         = "团队副本"
+L["filter.val.elite"]        = "精英"
+L["filter.val.daily"]        = "日常"
+L["filter.val.pvp"]          = "pvp"
+L["filter.val.kill"]         = "击杀"
+L["filter.val.gather"]       = "采集"
+L["filter.val.interact"]     = "互动"
+L["filter.err.UNKNOWN_KEY"]      = "未知的过滤键 '%s'"
+L["filter.err.INVALID_OPERATOR"] = "运算符 '%s' 不能与 '%s' 一起使用"
+L["filter.err.TYPE_MISMATCH"]    = "'%s' 需要数字字段"
+L["filter.err.UNCLOSED_QUOTE"]   = "过滤表达式中存在未闭合的引号"
+L["filter.err.EMPTY_VALUE"]      = "'%s' 后缺少值"
+L["filter.err.INVALID_NUMBER"]   = "'%s' 需要数字，但收到 '%s'"
+L["filter.err.RANGE_REVERSED"]   = "无效范围：最小值 (%s) 必须 <= 最大值 (%s)"
+L["filter.err.INVALID_ENUM"]     = "'%s' 不是 '%s' 的有效值"
+L["filter.err.label"]            = "过滤错误：%s"
+L["filter.help.title"]                = "SQ 过滤语法"
+L["filter.help.intro"]                = "输入过滤表达式并按 Enter 将其应用为持久标签。用 [x] 关闭标签。多个过滤条件以 AND 方式组合。"
+L["filter.help.section.syntax"]       = "语法"
+L["filter.help.section.keys"]         = "支持的键"
+L["filter.help.section.examples"]     = "示例"
+L["filter.help.col.key"]              = "键"
+L["filter.help.col.aliases"]          = "别名"
+L["filter.help.col.desc"]             = "描述"
+L["filter.help.example.1"]            = "等级>=60"
+L["filter.help.example.1.note"]       = "显示60级或以上的任务"
+L["filter.help.example.2"]            = "等级=58..62"
+L["filter.help.example.2.note"]       = "显示58-62级范围内的任务"
+L["filter.help.example.3"]            = "区域=艾尔文|死亡矿"
+L["filter.help.example.3.note"]       = "显示艾尔文森林或死亡矿井中的任务"
+L["filter.help.example.4"]            = "状态=未完成"
+L["filter.help.example.4.note"]       = "仅显示未完成的任务"
+L["filter.help.example.5"]            = "类型=任务链"
+L["filter.help.example.5.note"]       = "仅显示任务链中的任务"
+L["filter.help.example.6"]            = "区域=\"地狱火半岛\""
+L["filter.help.example.6.note"]       = "带引号的值（当值包含空格时使用）"
+L["filter.help.type.note"]            = "击杀、采集和互动匹配至少包含一个相应目标的任务——任务可以匹配多种类型。类型过滤器需要安装 Questie 或 Quest Weaver 插件。"
+L["filter.help.example.7"]            = "类型=地下城"
+L["filter.help.example.7.note"]       = "仅显示地下城任务（需要 Questie 或 Quest Weaver）"
+L["filter.help.example.8"]            = "类型=击杀"
+L["filter.help.example.8.note"]       = "显示至少有一个击杀目标的任务"
+L["filter.help.example.9"]            = "类型=日常"
+L["filter.help.example.9.note"]       = "仅显示日常任务"
