@@ -135,7 +135,6 @@ end
 local function createHelpFrame()
     local hf = CreateFrame("Frame", "SocialQuestFilterHelpFrame", UIParent, "BasicFrameTemplate")
     hf:SetSize(420, 500)
-    hf:SetPoint("CENTER", UIParent, "CENTER", 60, 0)
     hf:SetMovable(true)
     hf:EnableMouse(true)
     hf:RegisterForDrag("LeftButton")
@@ -152,9 +151,18 @@ local function createHelpFrame()
 
     local savedPos = SocialQuest.db.char.frameState.helpWindowPos
     if savedPos then
-        hf:ClearAllPoints()
         local scale = hf:GetEffectiveScale()
         hf:SetPoint("CENTER", UIParent, "BOTTOMLEFT", savedPos.x / scale, savedPos.y / scale)
+    elseif frame then
+        -- Open beside the SQ window: prefer right side, fall back to left if near screen edge.
+        local sqRight = frame:GetRight() or 0
+        if sqRight + 424 <= UIParent:GetRight() then
+            hf:SetPoint("TOPLEFT", frame, "TOPRIGHT", 4, 0)
+        else
+            hf:SetPoint("TOPRIGHT", frame, "TOPLEFT", -4, 0)
+        end
+    else
+        hf:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
     end
 
     hf.TitleText:SetText(L["filter.help.title"])
@@ -702,7 +710,18 @@ function SocialQuestGroupFrame:Refresh()
             frame.filterLabels[canonical] = SocialQuestHeaderLabel.New(frame, { height = 18 })
         end
         local lbl = frame.filterLabels[canonical]
-        local displayText = canonical .. ": " .. (entry.raw or "")
+        local desc = entry.descriptor
+        local valStr
+        if desc.values then
+            valStr = (desc.op == "!=" and "!=" or "") .. table.concat(desc.values, "|")
+        elseif desc.op == "range" then
+            valStr = tostring(desc.min) .. ".." .. tostring(desc.max)
+        elseif desc.val ~= nil then
+            valStr = (desc.op == "=" and "" or desc.op) .. tostring(desc.val)
+        else
+            valStr = (desc.op == "!=" and "!=" or "") .. (desc.value or "")
+        end
+        local displayText = "Filter: " .. canonical .. ": " .. valStr
         lbl:SetContent(displayText, entry.raw or "", function()
             SocialQuestFilterState:Dismiss(canonical)
             SocialQuestGroupFrame:RequestRefresh()

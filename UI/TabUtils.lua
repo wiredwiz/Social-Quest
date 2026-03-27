@@ -109,7 +109,7 @@ function SocialQuestTabUtils.MatchesStringFilter(value, descriptor)
     for _, v in ipairs(descriptor.values or {}) do
         if lower:find(v:lower(), 1, true) then anyMatch = true; break end
     end
-    return descriptor.op == "=" and anyMatch or not anyMatch
+    if descriptor.op == "=" then return anyMatch else return not anyMatch end
 end
 
 -- Numeric filter: exact, comparison, or range.
