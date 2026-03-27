@@ -539,16 +539,28 @@ function SocialQuestGroupFrame:Refresh()
     local tabCollapsed   = collapsedZones[activeID] or {}
 
     -- Delegate rendering to the tab provider.
-    -- Assemble composite filterTable: zone filter (from WindowFilter) + search text.
-    -- The existing GetActiveFilter line is fully replaced by this block.
-    local zoneFilter  = SocialQuestWindowFilter:GetActiveFilter(activeID)
-    local filterTable = nil
-    if zoneFilter or (searchText ~= "") then
-        filterTable = {
-            zone   = zoneFilter and zoneFilter.zone or nil,
-            search = searchText ~= "" and searchText or nil,
-        }
+    -- Assemble composite filterTable from three sources:
+    -- Source 1: auto-zone exact match (WindowFilter — key renamed autoZone to avoid
+    --           collision with new structured zone descriptor from FilterState)
+    local ft = nil
+    local zoneFilter = SocialQuestWindowFilter:GetActiveFilter(activeID)
+    if zoneFilter then
+        ft = ft or {}
+        ft.autoZone = zoneFilter.zone
     end
+    -- Source 2: user-typed structured filters (AceDB-persisted)
+    if not SocialQuestFilterState:IsEmpty() then
+        ft = ft or {}
+        for canonical, entry in pairs(SocialQuestFilterState:GetAll()) do
+            ft[canonical] = entry.descriptor
+        end
+    end
+    -- Source 3: real-time search text
+    if searchText ~= "" then
+        ft = ft or {}
+        ft.search = searchText
+    end
+    local filterTable = ft
 
     -- ── Dynamic header anchor chain ────────────────────────────────────
     local lastHeader = frame.searchBarFrame

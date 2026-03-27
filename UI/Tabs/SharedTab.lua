@@ -82,7 +82,7 @@ function SharedTab:BuildTree(filterTable)
                     if info and info.zone then zoneName = info.zone; break end
                 end
             end
-            local filtered = filterTable and filterTable.zone and zoneName ~= filterTable.zone
+            local filtered = filterTable and filterTable.autoZone and zoneName ~= filterTable.autoZone
             if not filtered then
                 local zone = ensureZone(zoneName)
 
@@ -183,7 +183,7 @@ function SharedTab:BuildTree(filterTable)
         for _ in pairs(engaged) do count = count + 1 end
         if count >= 2 then
             local zoneName  = SocialQuestTabUtils.GetZoneForQuestID(questID)
-            local filtered = filterTable and filterTable.zone and zoneName ~= filterTable.zone
+            local filtered = filterTable and filterTable.autoZone and zoneName ~= filterTable.autoZone
             if not filtered then
                 local zone      = ensureZone(zoneName)
                 local localInfo = AQL:GetQuest(questID)

@@ -161,7 +161,7 @@ function PartyTab:BuildTree(filterTable)
 
     for questID in pairs(allQuestIDs) do
         local zoneName = SocialQuestTabUtils.GetZoneForQuestID(questID)
-        local filtered = filterTable and filterTable.zone and zoneName ~= filterTable.zone
+        local filtered = filterTable and filterTable.autoZone and zoneName ~= filterTable.autoZone
         if not filtered then
             if not tree.zones[zoneName] then
                 orderIdx = orderIdx + 1

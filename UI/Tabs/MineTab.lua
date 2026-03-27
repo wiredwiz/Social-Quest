@@ -17,7 +17,7 @@ end
 
 -- Builds the zone/chain/quest tree from local AQL data + GroupData chain peers.
 -- Returns: { zones = { [zoneName] = { name, order, chains, quests } } }
-function MineTab:BuildTree(filterTable)  -- filterTable.search applied; filterTable.zone intentionally ignored
+function MineTab:BuildTree(filterTable)  -- filterTable.search, filterTable.autoZone, and structured filters applied
     local AQL = SocialQuest.AQL
     if not AQL then return { zones = {} } end
 
@@ -110,8 +110,16 @@ function MineTab:BuildTree(filterTable)  -- filterTable.search applied; filterTa
         end
     end
 
+    -- autoZone exact match (same as Party/Shared tabs)
+    if filterTable and filterTable.autoZone then
+        for zoneName in pairs(tree.zones) do
+            if zoneName ~= filterTable.autoZone then
+                tree.zones[zoneName] = nil
+            end
+        end
+    end
+
     -- Search text filter: case-insensitive substring match on quest/chain titles.
-    -- filterTable.zone is intentionally not applied in MineTab.
     local searchText = filterTable and filterTable.search
     if searchText then
         local lower = string.lower(searchText)
