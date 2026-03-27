@@ -31,7 +31,7 @@
 | `Core\Communications.lua` | `SocialQuestComm` | All AceComm send/receive. Manages sync protocol, jitter timers, and per-sender cooldowns. |
 | `Core\Announcements.lua` | `SocialQuestAnnounce` | All chat announcements (outbound) and banner notifications (inbound). Drives throttle queue, Questie suppression, UIErrorsFrame hook. |
 | `Core\BridgeRegistry.lua` | `SocialQuestBridgeRegistry` | Thin lifecycle manager for data-provider bridges. Holds registered bridges; `EnableAll()` hydrates then enables each available bridge on group join; `DisableAll()` suspends processing on leave; `GetNameTag(provider)` returns the display icon for a provider. |
-| `Core\QuestieBridge.lua` | `QuestieBridge` | Questie bridge implementation. Hooks `QuestieComms:InsertQuestDataPacket` and `QuestieComms.data:RemoveQuestFromPlayer` via `hooksecurefunc`. `_active` flag gates processing; `_hookInstalled` prevents duplicate hooks. Registers itself with `BridgeRegistry` at load time. |
+| `Core\QuestieBridge.lua` | `QuestieBridge` | Questie bridge implementation. Hooks `QuestieComms.data:RegisterTooltip` (fires after all packet-insertion paths populate `remoteQuestLogs`) and `QuestieComms.data:RemoveQuestFromPlayer` via `hooksecurefunc`. `_active` flag gates processing; `_hookInstalled` prevents duplicate hooks. Registers itself with `BridgeRegistry` at load time. |
 
 ### UI Modules (`UI\`)
 
@@ -199,6 +199,57 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 ---
 
 ## Version History
+
+### Version 2.12.16 (March 2026 — FilterTextbox branch)
+- Diagnostics + fix attempt: `_ScheduleQuestieRequest` now logs `UnitInParty("player")` and `UnitInRaid("player")` at t+1s and t+5s sends to determine whether `QuestiePlayer:GetGroupType()` returns nil (which silently aborts `RequestQuestLog`). Added a third send at t+10s — by t+10s the party API is always stable on reload so `GetGroupType()` will return non-nil and the request will succeed. Hydration polls at t+14s and t+20s follow the t+10s send. The t+15s hydration-only poll (previously after the t+5s send) is replaced by the t+10s send + its polls.
+
+### Version 2.12.15 (March 2026 — FilterTextbox branch)
+- Diagnostics: added debug logging to `QuestieBridge:Enable`, `_ScheduleQuestieRequest` (t+1s and t+5s sends), `_EnsurePartyStubs` (group member count, stub creation, nil UnitName), and `_ScheduleHydration` callback (`remoteQuestLogs` quest count, snapshot player count). Enabled via `/sq config` → Debug tab.
+
+### Version 2.12.14 (March 2026 — FilterTextbox branch)
+- Bug fix: Questie player's quests never appeared after `/reload` even after 30+ seconds. Root cause: on reload, `UnitName("party1")` returns nil during `PLAYER_LOGIN`, so `GroupComposition:OnGroupRosterUpdate()` misses the party member and never calls `OnMemberJoined` — leaving no `PlayerQuests` stub for them. `GROUP_ROSTER_UPDATE` may not re-fire after the party API is ready (or fires before SocialQuest is even registered for it), leaving no other path to create the stub. Every `_ScheduleHydration()` poll called `OnBridgeHydrate()`, which silently skips any player not already in `PlayerQuests`, so all Questie data was dropped. Fix: new `_EnsurePartyStubs()` method called before `GetSnapshot()` in `_ScheduleHydration()`. At poll-time (t+5s, t+9s, etc.) `UnitName("party1")` is reliably available, so the method creates any missing stubs and `OnBridgeHydrate()` can then hydrate them. Also added a t+20s safety-net hydration poll to `_ScheduleQuestieRequest()`.
+
+### Version 2.12.13 (March 2026 — FilterTextbox branch)
+- Bug fix: Questie player's quests never appeared after `/reload` even after 30+ seconds. Root cause: `QuestieComms:Initialize()` — which calls `Questie:RegisterMessage("QC_ID_REQUEST_FULL_QUESTLIST", ...)` to register the AceEvent listener — runs in QuestieInit Stage 3, which only starts after Stage 2 finishes (up to 3s waiting for game cache validation). Our t+1s request fired before the listener existed, so `Questie:SendMessage(...)` went unhandled. Fix: fire the request at both t+1s (initial group join, Questie already initialized) and t+5s (reload, after QuestieComms:Initialize() has had time to run). Hydration polls follow each send. `_pendingRequest` is reset at t+5s so subsequent member joins can schedule new requests.
+
+### Version 2.12.12 (March 2026 — FilterTextbox branch)
+- Bug fix: Questie player's quests never appeared after `/reload`. Root cause: on `PLAYER_LOGIN`, group API data (`UnitName("party1")` etc.) may not be populated yet, so `newMembers` contained only self and `OnMemberJoined` was never called for existing party members — leaving no code path to call `_ScheduleQuestieRequest()`. Fix: call `_ScheduleQuestieRequest()` from `QuestieBridge:Enable()` directly. `Enable()` is called by `BridgeRegistry:EnableAll()` which is triggered reliably by the first `GROUP_ROSTER_UPDATE` or `PLAYER_LOGIN` event. `_pendingRequest` guards against duplicate requests if `OnMemberJoined` also fires.
+
+### Version 2.12.11 (March 2026 — FilterTextbox branch)
+- Bug fix: SQ window restored to screen center after reload instead of its last position. Added `frameX`, `frameY`, `frameWidth`, `frameHeight` to `char.frameState` AceDB defaults. Position saved on `OnDragStop`; size saved on resize handle `OnMouseUp`. `applyFrameState()` helper restores both using `TOPLEFT` anchor against `UIParent` after `createFrame()` is called — both in `Toggle()` and `RestoreAfterTransition()`.
+
+### Version 2.12.10 (March 2026 — FilterTextbox branch)
+- Bug fix: progress bar text overlay for remote players (Questie bridge) showed the local player's progress count instead of the remote player's. E.g. "Tough Wolf Meat: 0/8" when local player had 0 but remote player had 6. Root cause: `BuildRemoteObjectives` used `localObj.text` verbatim, which embeds the local player's count. Fix: strip the trailing `: X/Y` from `localObj.text` via pattern match and re-append with the remote player's `numFulfilled`/`numRequired`. Event/NPC objectives with no embedded count are passed through unchanged.
+
+### Version 2.12.9 (March 2026 — FilterTextbox branch)
+- Bug fix: Questie bridge quests never appeared on member join. Root cause confirmed: `hooksecurefunc(qc.data, "RegisterTooltip", ...)` never fires for V2 full-log packets despite `remoteQuestLogs` being populated within 10 seconds. Diagnostic: trace hook installed in WoWLua also never fired, ruling out SQ-specific logic as the cause. Fix: after sending `QC_ID_REQUEST_FULL_QUESTLIST` in `_ScheduleQuestieRequest()`, schedule `_ScheduleHydration()` at t+4s and t+8s (relative to request send) to poll `remoteQuestLogs` directly. Covers the 3–6 second V2 response window (`BroadcastQuestLogV2` uses `C_Timer.After(random() * 3)` + `C_Timer.NewTicker(3)`). `_ScheduleHydration()` is idempotent so double-firing is safe.
+
+### Version 2.12.8 (March 2026 — FilterTextbox branch)
+- Refactor: replaced two separate packet hooks (`InsertQuestDataPacket` V1 and `InsertQuestDataPacketV2_noclass_RenameMe` V2) with a single stable hook on `QuestieComms.data:RegisterTooltip(questId, playerName, objectives)`. `RegisterTooltip` is called by all Questie packet-insertion paths (V1, V2-noclass, V2-with-class) after `remoteQuestLogs` is populated, has a semantic name, and passes `questId` directly — eliminating the need for separate handlers and correctly handling multi-block V2 full-log responses. `_OnQuestUpdated` and `_OnQuestUpdatedV2` replaced by single `_OnQuestDataArrived(questId, playerName)`.
+
+### Version 2.12.7 (March 2026 — FilterTextbox branch)
+- Bug fix: (superseded by 2.12.8) Hooked `InsertQuestDataPacketV2_noclass_RenameMe` — unstable name (developer TODO), and `_OnQuestUpdatedV2` could not handle multi-block logs for existing players.
+
+### Version 2.12.6 (March 2026 — FilterTextbox branch)
+- Bug fix: (superseded by 2.12.8) Attempted to hook `InsertQuestDataPacketV2` for full quest log responses — was the wrong function.
+
+### Version 2.12.5 (March 2026 — FilterTextbox branch)
+- Bug fix: Questie bridge name mismatch. `CHAT_MSG_ADDON` whisper senders include `-RealmName` even for same-realm players, but `UnitName("partyN")` returns a nil realm for same-realm players so `PlayerQuests` stores short names. Added `_NormalizeName()` helper that tries the full name first (correct for cross-realm) then falls back to the short name (correct for same-realm Questie whispers). Applied in `_OnQuestUpdated`, `_OnQuestRemoved`, and `GetSnapshot`.
+
+### Version 2.12.4 (March 2026 — FilterTextbox branch)
+- Bug fix: `SocialQuestBridgeRegistry:OnMemberJoined` was called after `SocialQuestComm:OnMemberJoined` in the member-join loop. An error in `SocialQuestComm:OnMemberJoined` was stopping execution before the bridge call was reached. Moved `BridgeRegistry:OnMemberJoined` before `SocialQuestComm:OnMemberJoined` so comm errors cannot block bridge initialization.
+
+### Version 2.12.3 (March 2026 — FilterTextbox branch)
+- Bug fix: Questie player joining an existing group never had their quests appear. Root cause: Questie's `GroupRosterUpdate` handler has its broadcast commented out, so Questie never requests quest logs when a new member joins. Fix: `QuestieBridge:OnMemberJoined()` sends `Questie:SendMessage("QC_ID_REQUEST_FULL_QUESTLIST")` via a 1-second debounced timer (`_pendingRequest` guard) so rapid joins produce one request. Wired through new `BridgeRegistry:OnMemberJoined()` called from `GroupComposition` in the member-join loop.
+
+### Version 2.12.2 (March 2026 — FilterTextbox branch)
+- `GroupData:OnMemberJoined`, `PurgePlayer`, and `OnSelfLeftGroup` now call `SocialQuestGroupFrame:RequestRefresh()` so the Party and Shared tabs update immediately when the group roster changes. `RequestRefresh` is already a no-op when the frame is hidden, so there is no cost when the window is closed.
+
+### Version 2.12.1 (March 2026 — FilterTextbox branch)
+- Bug fix: Questie bridge live updates used abbreviated objective field names (`fin`/`ful`/`req`) from the raw packet, but `_BuildQuestEntry` expected full names (`finished`/`fulfilled`/`required`). Live updates now read from `remoteQuestLogs` (post-transform, full names) instead of the raw packet. Added `_ScheduleHydration()`: on first contact for a player (stub, no quests yet), defers a full re-hydration via `C_Timer.After(0)` so all packets in the comm batch land in `remoteQuestLogs` before the snapshot is taken — prevents missing quests and spurious `ET.Accepted` banners caused by the group-join hydration firing before Questie's comm exchange completes.
+
+### Version 2.12.0 (March 2026 — FilterTextbox branch)
+- Bug fix: `QuestieBridge` was referencing the global `QuestieComms` which does not exist. Questie registers all modules via `QuestieLoader:CreateModule()` into a private table, not as globals (`_G.QuestieComms` is only set when Questie debug mode calls `PopulateGlobals()`). `IsAvailable()`, `Enable()`, and `GetSnapshot()` now resolve the reference via `QuestieLoader:ImportModule("QuestieComms")` through a new `_GetQuestieComms()` helper. `IsAvailable()` also now checks `remoteQuestLogs ~= nil` as an additional readiness guard.
 
 ### Version 2.11.1 (March 2026 — FilterTextbox branch)
 - Expand/collapse all buttons moved from scrollable content to fixed header. The `[+]` and `[-]` buttons are now permanently visible in the search bar row (right side, left of the `[x]` clear button) regardless of scroll position. Handlers are re-wired on every `Refresh()` to target the current active tab. `RowFactory.AddExpandCollapseHeader` removed; the per-tab calls in `MineTab`, `PartyTab`, and `SharedTab` `Render()` methods removed. Hovering shows "expand all" / "collapse all" tooltips.
