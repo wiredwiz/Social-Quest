@@ -17,10 +17,10 @@ The following categories of keys are translated. Everything else remains `= true
 | Category | Keys | Notes |
 |---|---|---|
 | Key names (typed) | `filter.key.zone` through `filter.key.tracked` — 10 full names | Aliases (`filter.key.zone.z` etc.) stay `= true` |
-| Enum values (typed) | `filter.val.*` — 20 values | yes/no, complete/incomplete/failed, all 13 type values |
+| Enum values (typed) | `filter.val.*` — 18 values | yes/no, complete/incomplete/failed, all 13 type values |
 | Key descriptions | `filter.key.*.desc` — 10 strings | Shown in help window key table |
 | Error messages | `filter.err.*` — 9 strings | Shown in filter error labels |
-| Help window text | `filter.help.*` — title, intro, sections, columns, examples, type note | 19 strings |
+| Help window text | `filter.help.*` — title, intro, sections, columns, examples, type note | 27 strings |
 
 **What never changes:** Canonical internal values (`"dungeon"`, `"complete"`, etc.) in `enumMap` — those are Lua code, not locale keys. The architecture separates typed input from internal canonical values.
 
@@ -50,7 +50,7 @@ The following categories of keys are translated. Everything else remains `= true
 | player | player | Spieler | joueur | jugador | 玩家 | 玩家 | jogador | giocatore | 플레이어 | игрок | プレイヤー |
 | level | level | Stufe | niveau | nivel | 等级 | 等級 | nível | livello | 레벨 | уровень | レベル |
 | step | step | Schritt | étape | paso | 步骤 | 步驟 | passo | passo | 단계 | шаг | ステップ |
-| group | group | Gruppe | groupe | grupo | 小队 | 小隊 | grupo | gruppo | 그룹 | группа | グループ |
+| group | group | Gruppe | groupe | grupo | 组队 | 組隊 | grupo | gruppo | 그룹 | группа | グループ |
 | type | type | Typ | type | tipo | 类型 | 類型 | tipo | tipo | 유형 | тип | タイプ |
 | status | status | Status | statut | estado | 状态 | 狀態 | estado | stato | 상태 | статус | ステータス |
 | tracked | tracked | Verfolgt | suivi | seguido | 追踪 | 追蹤 | rastreado | monitorato | 추적중 | отслеживается | 追跡中 |
@@ -376,7 +376,7 @@ L["filter.key.chain"]        = "任务链"
 L["filter.key.player"]       = "玩家"
 L["filter.key.level"]        = "等级"
 L["filter.key.step"]         = "步骤"
-L["filter.key.group"]        = "小队"
+L["filter.key.group"]        = "组队"
 L["filter.key.type"]         = "类型"
 L["filter.key.status"]       = "状态"
 L["filter.key.tracked"]      = "追踪"
@@ -388,7 +388,7 @@ L["filter.key.chain.desc"]   = "任务链标题（部分匹配）"
 L["filter.key.player.desc"]  = "队员名称（仅队伍/共享标签）"
 L["filter.key.level.desc"]   = "推荐任务等级"
 L["filter.key.step.desc"]    = "任务链步骤编号"
-L["filter.key.group.desc"]   = "组队要求（是, 否, 2-5）"
+L["filter.key.group.desc"]   = "组队要求（是，否，2-5）"
 L["filter.key.type.desc"]    = "任务类型 — 任务链, 组队, 单人, 限时, 护送, 地下城, 团队副本, 精英, 日常, pvp, 击杀, 采集, 互动"
 L["filter.key.status.desc"]  = "任务状态（完成, 未完成, 失败）"
 L["filter.key.tracked.desc"] = "在小地图上追踪（是, 否；仅我的标签）"
@@ -466,7 +466,7 @@ L["filter.key.chain"]        = "任務鏈"
 L["filter.key.player"]       = "玩家"
 L["filter.key.level"]        = "等級"
 L["filter.key.step"]         = "步驟"
-L["filter.key.group"]        = "小隊"
+L["filter.key.group"]        = "組隊"
 L["filter.key.type"]         = "類型"
 L["filter.key.status"]       = "狀態"
 L["filter.key.tracked"]      = "追蹤"
@@ -478,7 +478,7 @@ L["filter.key.chain.desc"]   = "任務鏈標題（部分匹配）"
 L["filter.key.player.desc"]  = "隊員名稱（僅隊伍/共享標籤）"
 L["filter.key.level.desc"]   = "推薦任務等級"
 L["filter.key.step.desc"]    = "任務鏈步驟編號"
-L["filter.key.group.desc"]   = "組隊要求（是, 否, 2-5）"
+L["filter.key.group.desc"]   = "組隊要求（是，否，2-5）"
 L["filter.key.type.desc"]    = "任務類型 — 任務鏈, 組隊, 單人, 限時, 護送, 地下城, 團隊副本, 精英, 日常, pvp, 擊殺, 採集, 互動"
 L["filter.key.status.desc"]  = "任務狀態（完成, 未完成, 失敗）"
 L["filter.key.tracked.desc"] = "在小地圖上追蹤（是, 否；僅我的標籤）"
