@@ -158,6 +158,18 @@ function SocialQuestFilterParser:Parse(text)
         end
     end
 
-    -- Enum handling added in Task 4.
+    if keyDef.type == "enum" then
+        local values, err = parseValues(valueStr, op)
+        if err then return err end
+        local v = values[1]:lower()
+        local canonicalVal = keyDef.enumMap and keyDef.enumMap[v]
+        if not canonicalVal then
+            return makeError("INVALID_ENUM", {keyDef.canonical, values[1]})
+        end
+        return { filter = { canonical=keyDef.canonical,
+                            descriptor={ op=normOp, value=canonicalVal },
+                            raw=text } }
+    end
+
     return nil
 end

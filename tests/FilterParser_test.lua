@@ -185,5 +185,39 @@ local rr = P:Parse("level=65..60")
 assert_eq("RANGE_REVERSED min arg", rr and rr.args[1], 65)
 assert_eq("RANGE_REVERSED max arg", rr and rr.args[2], 60)
 
+-- ── Enum filters ─────────────────────────────────────────────────────
+r = P:Parse("group=yes")
+assert_filter("group= yes",         r, "group", "=")
+assert_eq("group= canonical",       r and r.filter.descriptor.value, "yes")
+
+r = P:Parse("group=2")
+assert_filter("group= 2",           r, "group", "=")
+assert_eq("group= 2 canonical",     r and r.filter.descriptor.value, "2")
+
+r = P:Parse("type=chain")
+assert_filter("type= chain",        r, "type", "=")
+assert_eq("type= canonical",        r and r.filter.descriptor.value, "chain")
+
+r = P:Parse("status=complete")
+assert_filter("status= complete",   r, "status", "=")
+
+r = P:Parse("status!=incomplete")
+assert_filter("status!= op",        r, "status", "!=")
+
+r = P:Parse("tracked=yes")
+assert_filter("tracked= yes",       r, "tracked", "=")
+
+-- Operator variant: != and ~= produce identical results
+local r1, r2 = P:Parse("zone!=Elwynn"), P:Parse("zone~=Elwynn")
+assert_eq("!= and ~= same op",
+    r1 and r1.filter.descriptor.op,
+    r2 and r2.filter.descriptor.op)
+
+-- Enum error
+assert_error("INVALID_ENUM",        P:Parse("type=dungeon"),  "INVALID_ENUM")
+local ie = P:Parse("type=dungeon")
+assert_eq("INVALID_ENUM canonical", ie and ie.args[1], "type")
+assert_eq("INVALID_ENUM value",     ie and ie.args[2], "dungeon")
+
 print(string.format("\nResults: %d passed, %d failed", pass, fail))
 if fail > 0 then os.exit(1) end
