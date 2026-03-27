@@ -251,15 +251,6 @@ function SharedTab:BuildTree(filterTable)
             return "no"
         end
 
-        local function mapType(entry)
-            if entry.chainInfo and entry.chainInfo.knownStatus == AQL.ChainStatus.Known then
-                return "chain"
-            elseif (entry.suggestedGroup or 0) >= 2 then return "group"
-            elseif (entry.timerSeconds or 0) > 0 then return "timed"
-            else return "solo"
-            end
-        end
-
         local function playerMatches(players)
             if not ft.player then return true end
             for _, p in ipairs(players) do
@@ -275,7 +266,7 @@ function SharedTab:BuildTree(filterTable)
             if ft.step   and not T.MatchesNumericFilter(
                     entry.chainInfo and entry.chainInfo.step, ft.step)          then return false end
             if ft.group  and not T.MatchesEnumFilter(mapGroup(entry), ft.group) then return false end
-            if ft.type   and not T.MatchesEnumFilter(mapType(entry),  ft.type)  then return false end
+            if ft.type   and not T.MatchesTypeFilter(entry, ft.type)  then return false end
             if not playerMatches(entry.players) then return false end
             return true
         end
