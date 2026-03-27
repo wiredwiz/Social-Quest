@@ -1,6 +1,147 @@
 SocialQuest Changelog
 =====================
 
+Version 2.12.18 (March 2026)
+- Feature: Advanced filter language. The search bar now accepts structured filter
+  expressions entered by pressing Enter (e.g. level>=60, zone=Elwynn|Deadmines,
+  status=incomplete, player=Thad). Active filters are stored persistently and
+  displayed as dismissible labels in the header. Multiple filters AND together with
+  each other, the search text, and the auto-zone filter. A [?] button opens a
+  movable syntax reference window. New modules: FilterParser, FilterState,
+  HeaderLabel.
+
+Version 2.12.17 (March 2026)
+- Bug fix: quests received via SQ_INIT from other players were always shown as
+  complete/failed due to integer-to-boolean conversion not being applied to the
+  wire payload. isComplete, isFailed, and objective isFinished flags are now
+  correctly converted on receipt.
+
+Version 2.12.16 (March 2026)
+- Bug fix: Questie bridge quest data did not arrive after /reload in some cases.
+  Added a third request attempt at t+10s, by which point the party API is always
+  stable and Questie's listener is reliably registered.
+
+Version 2.12.15 (March 2026)
+- Added debug logging to QuestieBridge Enable, request scheduling, stub creation,
+  and hydration callback to aid diagnosing Questie bridge issues.
+
+Version 2.12.14 (March 2026)
+- Bug fix: Questie player's quests never appeared after /reload even after 30+
+  seconds. On reload, party member unit names are unavailable during PLAYER_LOGIN
+  so stubs were never created. New _EnsurePartyStubs() method creates missing
+  stubs before each hydration poll, when unit names are reliably available.
+
+Version 2.12.13 (March 2026)
+- Bug fix: Questie quest request sent at t+1s on reload arrived before Questie's
+  own message listener was registered (QuestieComms initializes up to 3s after
+  load). Added a second request at t+5s to ensure it is received.
+
+Version 2.12.12 (March 2026)
+- Bug fix: Questie bridge did not request quest data on /reload because the
+  party roster is not populated at PLAYER_LOGIN. Now requests directly from
+  QuestieBridge:Enable(), which fires reliably on the first GROUP_ROSTER_UPDATE.
+
+Version 2.12.11 (March 2026)
+- Bug fix: SQ window restored to screen center after reload instead of its last
+  position. Window position and size are now saved and restored across sessions
+  and loading screens.
+
+Version 2.12.10 (March 2026)
+- Bug fix: objective progress bars for Questie bridge players showed the local
+  player's count instead of the remote player's. The count is now stripped from
+  the local objective text and re-appended with the remote player's values.
+
+Version 2.12.9 (March 2026)
+- Bug fix: Questie bridge quests never appeared on member join. The RegisterTooltip
+  hook used to detect incoming data does not fire for V2 full-log packets.
+  Switched to polling remoteQuestLogs directly at t+4s and t+8s after sending
+  the quest log request.
+
+Version 2.12.8 (March 2026)
+- Refactor: replaced two separate Questie packet hooks (V1 and V2) with a single
+  stable hook on QuestieComms.data:RegisterTooltip, which is called by all
+  packet-insertion paths and passes questId directly.
+
+Version 2.12.7 (March 2026)
+- Bug fix: (superseded by 2.12.8) Hooked unstable V2 packet function name.
+
+Version 2.12.6 (March 2026)
+- Bug fix: (superseded by 2.12.8) Hooked wrong V2 packet function.
+
+Version 2.12.5 (March 2026)
+- Bug fix: Questie bridge player names with realm suffix did not match PlayerQuests
+  entries stored under short names. Added name normalization that tries the full
+  name first then falls back to the short name.
+
+Version 2.12.4 (March 2026)
+- Bug fix: an error in SocialQuestComm:OnMemberJoined was stopping execution
+  before the Questie bridge join handler ran. Moved BridgeRegistry:OnMemberJoined
+  before the comm call so bridge initialization cannot be blocked by comm errors.
+
+Version 2.12.3 (March 2026)
+- Bug fix: Questie player joining an existing group never had their quests appear.
+  Questie does not broadcast on roster update, so SocialQuest now sends the
+  QC_ID_REQUEST_FULL_QUESTLIST message directly when a member joins.
+
+Version 2.12.2 (March 2026)
+- Party and Shared tabs now refresh immediately when the group roster changes
+  (member joins or leaves).
+
+Version 2.12.1 (March 2026)
+- Bug fix: Questie bridge live objective updates used abbreviated field names from
+  the raw packet instead of the full names expected by the entry builder.
+- Added deferred re-hydration on first contact so all packets in a comm batch
+  land in remoteQuestLogs before the snapshot is taken.
+
+Version 2.12.0 (March 2026)
+- Bug fix: QuestieBridge referenced QuestieComms as a global, which only exists
+  in Questie debug mode. Now resolves via QuestieLoader:ImportModule().
+
+Version 2.11.1 (March 2026)
+- Expand/collapse all buttons moved from scrollable content to the fixed header
+  row, so they remain visible regardless of scroll position.
+
+Version 2.11.0 (March 2026)
+- Search bar: a persistent search box appears below the tab strip and filters all
+  three tabs by quest or chain title (case-insensitive). Search text is shared
+  across tabs and preserved across loading screens.
+- Zone/instance filter label moved from scrollable content into the fixed header
+  strip below the search bar.
+
+Version 2.10.4 (March 2026)
+- Bug fix: zone/instance filter did not update when a flight path ended in a
+  different zone. PLAYER_CONTROL_GAINED now resets the filter when the taxi
+  system releases the player at the destination.
+
+Version 2.10.3 (March 2026)
+- Feature: the SQ window now reopens automatically after loading screens
+  (hearthstone, portals, instance entry/exit, /reload) if it was open before
+  the transition.
+
+Version 2.10.2 (March 2026)
+- Filter label now prefixed with "Filter: " across all 12 locales.
+- Bug fix: zone filter was not updating when crossing an overland zone border.
+  ZONE_CHANGED_NEW_AREA now resets the filter for seamless zone transitions.
+
+Version 2.10.1 (March 2026)
+- Progress bar polish: replaced flat colored bars with WoW-native StatusBar
+  widgets using the standard UI-StatusBar fill texture and a CastingBar border
+  overlay. Objective text forced white with drop shadow; WoW color escapes
+  stripped. Colorblind sky-blue for completed objectives unchanged.
+
+Version 2.10.0 (March 2026)
+- Progress Bars: objective rows in the Party and Shared tabs render as inline
+  progress bars filling proportionally to numFulfilled/numRequired. Player names
+  in a left-aligned column so all bars line up for at-a-glance comparison.
+  Colorblind mode respected. Falls back to plain text when numeric data is absent.
+
+Version 2.9.0 (March 2026)
+- Zone & Instance Auto-Filter: Party and Shared tabs can optionally filter to the
+  current dungeon/raid instance or open-world zone. New UI/WindowFilter.lua module
+  owns all filter state. Two new toggles in /sq config: "Auto-filter to current
+  instance" (default ON) and "Auto-filter to current zone" (default OFF). Filter
+  resets on zone change, window close, or settings toggle.
+
 Version 2.8.2 (March 2026)
 - Bug fix: eliminated false "objective completed again" and false regression
   announcements when splitting or merging bag stacks of quest collectible items.

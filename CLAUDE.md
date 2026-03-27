@@ -200,6 +200,35 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.12.30 (March 2026 — AdvancedFilters branch)
+- Feature: Full filter localization for 11 non-enUS locales (deDE, frFR, esES, esMX, zhCN, zhTW, ptBR, itIT, koKR, ruRU, jaJP). All `filter.*` keys previously falling back to enUS (`= true`) are now replaced with natural, game-appropriate translated strings — key names players type, enum values, key descriptions, error messages, and help window text. Single-letter aliases remain `= true` (English letters). WoW's own in-game terminology is used where applicable (e.g., German Verlies/Schlachtzug, French Donjon, Spanish Mazmorra/Banda, Korean 던전/공격대). esMX is identical to esES.
+
+### Version 2.12.29 (March 2026 — AdvancedFilters branch)
+- Feature: Extended `type` filter with 9 new predicates. AQL-based: `escort`, `dungeon`, `raid`, `elite`, `daily`, `pvp` (matched via `AQL:GetQuestInfo().type`). Objective-based: `kill` (any monster objective), `gather` (any item objective), `interact` (any object objective) — a quest with mixed objectives matches multiple types simultaneously. Replaced the priority-chain `mapType()` in all three tabs with `SocialQuestTabUtils.MatchesTypeFilter(entry, descriptor)` — each type value is now an independent boolean predicate, so `type=chain` and `type=dungeon` both match a chain dungeon quest. Extended to Party and Shared tabs. Requires Questie or Quest Weaver for AQL-based and objective predicates; filter help window updated with full 13-value list and Questie/QuestWeaver caveat note.
+
+### Version 2.12.28 (March 2026 — AdvancedFilters branch)
+- Bug fix: multi-value filter labels ("zone=storm|war") displayed garbled text ("stormar") because WoW treats `|` as an escape sequence prefix and swallows characters following it. The OR separator in the label is now `||`, which WoW renders as a literal `|`.
+
+### Version 2.12.27 (March 2026 — AdvancedFilters branch)
+- Bug fix: advanced filter label display text now uses title-cased key names ("Filter: Zone: storm" not "Filter: zone: storm"), matching the auto-zone label format ("Filter: Zone: Elwynn Forest"). Canonical key names (always lowercase internally) have their first letter uppercased when building the display string. Error labels continue to show the raw user-typed expression unchanged.
+
+### Version 2.12.26 (March 2026 — AdvancedFilters branch)
+- Bug fix: advanced filter label tooltips now use the display text ("Filter: key: value") instead of the raw expression ("key=value"), matching the auto-zone label tooltip format. Both label types now consistently show their display text as the tooltip.
+
+### Version 2.12.25 (March 2026 — AdvancedFilters branch)
+- Bug fix: filter label tooltips now appear when hovering anywhere over the label, not only the dismiss button. `HeaderLabel` frames now have `EnableMouse(true)` and wire `OnEnter`/`OnLeave` on both the container frame and the button so the tooltip fires across the full label area.
+
+### Version 2.12.24 (March 2026 — AdvancedFilters branch)
+- Bug fix: help window interleaving with SQ window. Changed help frame strata from `HIGH` to `DIALOG` so it always renders above the SQ window with no frame-level interleaving. Added `OnMouseDown → Raise()` to the help frame (mirrors the SQ window) so clicking it brings it fully to the front.
+- Bug fix: help window positioning. Replaced all formula-based coordinate-space detection with a two-step approach: anchor TOPLEFT to the right of the SQ frame, then check `helpFrame:GetRight() > UIParent:GetRight()` and flip to TOPLEFT anchored to the left side if off-screen. `GetRight()` values are in WoW's absolute screen coordinate space and are directly comparable. Position is recalculated on every Show() call (not just at frame creation), so it correctly adapts to the SQ window's current position and any savedPos reset takes effect immediately.
+- Bug fix: savedPos no longer uses scale-multiplied coordinates. `OnDragStop` now stores raw `GetCenter()` values (absolute screen coordinates); validation uses `UIParent:GetRight()` and `UIParent:GetTop()` in the same space.
+
+### Version 2.12.23 (March 2026 — AdvancedFilters branch)
+- Bug fix: help window first-press-after-reload/login. WoW creates frames shown by default (inheriting parent visibility); `createHelpFrame()` now calls `hf:Hide()` before returning so the `OnClick` `IsShown()` check works correctly and the first press opens instead of closes. AceLocale strict mode crash fixed with `rawget(L, exKey)` for optional locale keys in the examples loop.
+
+### Version 2.12.18 (March 2026 — FilterTextbox branch)
+- Feature: Advanced filter language (Feature #18). The SQ search bar now accepts structured filter expressions (e.g. `level>=60`, `zone=Elwynn|Deadmines`, `status=incomplete`) entered by pressing Enter. Valid expressions are stored persistently in AceDB `char.frameState.activeFilters` (one entry per canonical key) and displayed as dismissible filter labels in the fixed header. Multiple filters AND together with each other, the real-time search text, and the auto-zone filter. New modules: `UI/FilterParser.lua` (pure Lua parser, standalone test runner at `tests/FilterParser_test.lua`), `UI/FilterState.lua` (AceDB-backed compound state with Apply/Dismiss/GetAll/IsEmpty — no mass reset), `UI/HeaderLabel.lua` (dismissible label widget factory). The auto-zone label, error label, and all user-typed filter labels are `HeaderLabel` instances stacked via a `lastHeader` cursor in `Refresh()`. A `[?]` button opens a movable reference panel (`SocialQuestFilterHelpFrame`) registered in `UISpecialFrames`; its open state persists and it opens/closes with the main SQ window. `filterTable.zone` (WindowFilter exact-match key) renamed to `filterTable.autoZone` to avoid collision with the new structured `zone` descriptor; `autoZone` now applies to all three tabs including Mine. Three helpers added to `TabUtils`: `MatchesStringFilter`, `MatchesNumericFilter`, `MatchesEnumFilter`. All three tab `BuildTree` functions apply the new structured filters per the per-tab applicability table (status/tracked: Mine only; player: Party/Shared only).
+
 ### Version 2.12.17 (March 2026 — FilterTextbox branch)
 - Bug fix: `OnInitReceived` stored quest entries directly from the wire payload without converting integer flags to booleans. `buildInitPayload()` sends `isComplete`/`isFailed` as `0` or `1` (integers), but in Lua `0` is truthy — so every unprogressed quest received via SQ_INIT had `isComplete = 0` which evaluated as `true` everywhere in the UI and announce logic. `OnUpdateReceived` already used `payload.isComplete == 1` to convert correctly; `OnInitReceived` now does the same for `isComplete`, `isFailed`, and each objective's `isFinished` before storing.
 

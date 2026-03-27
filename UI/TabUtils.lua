@@ -95,3 +95,94 @@ function SocialQuestTabUtils.BuildRemoteObjectives(pquest, localInfo)
     end
     return objs
 end
+
+------------------------------------------------------------------------
+-- Advanced filter language helpers (Feature #18)
+------------------------------------------------------------------------
+
+-- String filter: case-insensitive substring match.
+-- descriptor = { op = "=" | "!=", values = { ... } }
+function SocialQuestTabUtils.MatchesStringFilter(value, descriptor)
+    if not descriptor then return true end
+    local lower = (value or ""):lower()
+    local anyMatch = false
+    for _, v in ipairs(descriptor.values or {}) do
+        if lower:find(v:lower(), 1, true) then anyMatch = true; break end
+    end
+    if descriptor.op == "=" then return anyMatch else return not anyMatch end
+end
+
+-- Numeric filter: exact, comparison, or range.
+-- Single: { op="="|"<"|">"|"<="|">=", val=N }
+-- Range:  { op="range", min=N, max=N }
+function SocialQuestTabUtils.MatchesNumericFilter(value, descriptor)
+    if not descriptor then return true end
+    if value == nil then return false end
+    local n = tonumber(value)
+    if not n then return false end
+    if descriptor.op == "range" then return n >= descriptor.min and n <= descriptor.max
+    elseif descriptor.op == "="  then return n == descriptor.val
+    elseif descriptor.op == "<"  then return n <  descriptor.val
+    elseif descriptor.op == ">"  then return n >  descriptor.val
+    elseif descriptor.op == "<=" then return n <= descriptor.val
+    elseif descriptor.op == ">=" then return n >= descriptor.val
+    end
+    return true
+end
+
+-- Enum filter: canonical value exact match.
+-- descriptor = { op = "=" | "!=", value = canonicalString }
+function SocialQuestTabUtils.MatchesEnumFilter(value, descriptor)
+    if not descriptor then return true end
+    local matches = (value == descriptor.value)
+    return descriptor.op == "=" and matches or not matches
+end
+
+-- Type filter: each value is an independent boolean predicate.
+-- descriptor = { op = "=" | "!=", value = canonicalString }
+-- entry must have: questID, suggestedGroup, timerSeconds, chainInfo (all set by each tab's BuildTree).
+-- AQL:GetQuestInfo() is called only for AQL-based and objective-type predicates.
+function SocialQuestTabUtils.MatchesTypeFilter(entry, descriptor)
+    if not descriptor then return true end
+    local AQL = SocialQuest.AQL
+    local value = descriptor.value
+    local matched = false
+
+    -- group/timed/solo/chain: read from entry fields directly (no AQL call needed).
+    -- suggestedGroup and timerSeconds are denormalized onto every entry by each tab's
+    -- BuildTree; chainInfo is populated from GetChainInfoForQuestID by each tab.
+    if value == "group" then
+        matched = (entry.suggestedGroup or 0) >= 2
+    elseif value == "solo" then
+        matched = (entry.suggestedGroup or 0) <= 1
+    elseif value == "timed" then
+        matched = (entry.timerSeconds or 0) > 0
+    elseif value == "chain" then
+        matched = entry.chainInfo ~= nil
+            and entry.chainInfo.knownStatus == AQL.ChainStatus.Known
+    else
+        -- AQL-based and objective predicates: one GetQuestInfo call per quest.
+        local info = AQL and AQL:GetQuestInfo(entry.questID)
+        if not info then
+            matched = false
+        elseif value == "escort" or value == "dungeon" or value == "raid"
+            or value == "elite"  or value == "daily"   or value == "pvp" then
+            matched = (info.type == value)
+        elseif value == "kill" or value == "gather" or value == "interact" then
+            local objType = value == "kill" and "monster"
+                         or value == "gather" and "item"
+                         or "object"
+            matched = false
+            if info.objectives then
+                for _, obj in ipairs(info.objectives) do
+                    if obj.type == objType then matched = true; break end
+                end
+            end
+        else
+            matched = false  -- unknown value
+        end
+    end
+
+    -- Explicit if/else avoids the Lua `a and false or c` pitfall.
+    if descriptor.op == "=" then return matched else return not matched end
+end

@@ -119,6 +119,9 @@ function SocialQuest:OnInitialize()
             tabScrollPositions = { mine = 0,  party = 0,  shared = 0  },
             tabContentHeights  = { mine = 0,  party = 0,  shared = 0  },
             windowOpen         = false,
+            activeFilters      = {},
+            helpWindowOpen     = false,
+            helpWindowPos      = nil,
         }
         SocialQuestGroupFrame:ResetFrameState()
     end)
@@ -373,7 +376,11 @@ function SocialQuest:GetDefaults()
                 frameX      = nil,  -- saved absolute screen position (TOPLEFT corner)
                 frameY      = nil,
                 frameWidth  = nil,
-                frameHeight = nil,
+                frameHeight    = nil,
+                -- Advanced filter language (Feature #18)
+                activeFilters  = {},    -- [canonical] = { descriptor={...}, raw="..." }
+                helpWindowOpen = false,
+                helpWindowPos  = nil,   -- { x=N, y=N } or nil (use default position)
             },
             knownFlightNodes = {},  -- [nodeName] = true; persists across sessions
         },
