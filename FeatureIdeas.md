@@ -213,19 +213,24 @@ provided a little "x" button inside on the right edge that when clicked, would c
 
 **The gap:** The search bar filters only by title substring. Players who want to see "all group quests in Hellfire Peninsula" or "all quests between level 60 and 65 that Bob needs" must combine the zone auto-filter, the Party tab, and their own memory. There is no way to compound multiple criteria or filter on any field other than title without the unbuilt flyout settings panel (#11).
 
-**The idea:** Extend the search bar to accept an optional structured filter expression alongside plain text. The moment the user presses Enter, the input is evaluated: if it matches the filter syntax, a dismissible filter label is created from it, the search bar clears, and the structured criteria are applied to all tabs. Plain freeform text (no `=`) continues to work as an immediate, real-time title substring match with no Enter required — the Enter path is only triggered when the expression parses as a valid filter string. Typed filter labels compound with previous ones: a second `zone=` definition replaces the first; a new `level=` definition adds to the active criteria.
+**The idea:** Extend the search bar to accept an optional structured filter expression alongside plain text. The moment the user presses Enter, the input is evaluated: if it matches the filter syntax, a dismissible filter label is created from it, the search bar clears, and the structured criteria are applied to all tabs. If the expression looks like a filter attempt but contains errors, a temporary dismissible error label appears beneath the search bar describing what went wrong, and the search bar retains the text so the user can correct it. Plain freeform text (no `=`) continues to work as an immediate, real-time title substring match with no Enter required — the Enter path is only triggered when the expression contains `=`. Typed filter labels compound with previous ones: a second `zone=` definition replaces the first; a new `level=` definition adds to the active criteria. A `[?]` button in the search bar opens a movable, localised help popup explaining all filter keys and syntax with examples.
 
 **Filter syntax:**
 
 ```
-key=value
-key="value with spaces"
+key=value                  -- equals / substring match
+key!=value                 -- not-equal / does not contain (alias: ~=)
+key<N                      -- less than (numeric fields)
+key>N                      -- greater than (numeric fields)
+key<=N                     -- less than or equal
+key>=N                     -- greater than or equal
+key="value with spaces"    -- quoted value
 key=value1|value2          -- OR: zone=Elwynn|Deadmines
 key="value 1"|"value 2"    -- OR with quoted values
-key=N&M                    -- AND / range: level=60&65 means 60–65
+key=N..M                   -- range: level=60..65 means 60–65
 ```
 
-Quotes are optional; required only when the value contains spaces, `|`, `&`, or `=`. Escaped quotes inside a quoted value: `\"`. Keys are case-insensitive. Leading/trailing whitespace around `=`, `|`, and `&` is stripped.
+The operator appears between the key and the value: `level>=60`, `level<=65`, `zone!=Orgrimmar`. `~=` and `!=` are interchangeable not-equal operators; `~=` is the Lua idiom, `!=` is the C/common idiom — both are accepted. Comparison operators (`<`, `>`, `<=`, `>=`, `!=`, `~=`) apply only to numeric fields (`level`, `step`); on string fields they are treated as parse errors and the expression falls back to plain text. The `=` operator on string fields performs a case-insensitive substring match; on numeric fields it performs exact equality. The `..` range operator (`level=60..65`) is shorthand for `level>=60&level<=65` and applies only to numeric fields; it may be combined with `|` to express multiple ranges (`level=1..29|60..65`). Quotes are optional; required only when the value contains spaces, `|`, or an operator character. Escaped quotes inside a quoted value: `\"`. Keys are case-insensitive. Leading/trailing whitespace around the operator, `|`, and `..` is stripped.
 
 **Supported keys:**
 
@@ -244,7 +249,20 @@ Quotes are optional; required only when the value contains spaces, `|`, `&`, or 
 
 Additional keys to consider at implementation time: `instance` (match instance name), `shared` (show only quests the local player can still share), `missing` (show quests the local player lacks that others have).
 
-**Parser design (fail-fast):** The parser runs only on Enter, not on every keystroke. Step 1: if the trimmed string contains no `=` character, immediately return `nil` — treat as plain text, no label created. Step 2: attempt to match the first token as `(\w+)\s*=` — if the token is not in the recognised key table, return `nil` immediately. Step 3: parse values (handle quotes, escape sequences, `|`/`&` operators). Any parse error returns `nil` and the search bar retains its text unchanged. On success, return a structured filter descriptor compatible with (and extending) the existing `filterTable` passed to `BuildTree`. The entire parser can be a pure function with no side effects and no allocations on the fast-fail paths.
+**Parser design (fail-fast, three-way result):** The parser runs only on Enter, not on every keystroke, and returns one of three outcomes:
+
+- **`nil`** — the string is clearly not a filter attempt; treat as a plain-text search, no error shown.
+- **`{ filter = <descriptor> }`** — a valid, fully-parsed filter; apply it and clear the search bar.
+- **`{ error = true, message = <string> }`** — the string looks like a filter but is malformed; display the error label and leave the search bar text intact for correction.
+
+The dividing line between `nil` and an error result is the presence of `=` in the trimmed string. If there is no `=`, the input cannot possibly be a filter expression — return `nil` immediately with zero further processing (fast-fail). Once `=` is detected, the parser commits to the filter path and all subsequent failures produce error results rather than silent `nil`.
+
+Step 1: no `=` present → return `nil`.
+Step 2: extract the leading key token with `(\w+)\s*([~!<>]?=|[<>])`. If the key is not in the recognised key table → error: `L["Unknown filter key: '%s'"]`. If the operator is unrecognised → error: `L["Invalid operator '%s' for key '%s'"]`.
+Step 3: validate operator/field compatibility — comparison operators on string fields → error: `L["Operator '%s' cannot be used with text field '%s'"]`.
+Step 4: parse values — handle quotes, `\"` escape sequences, `|` OR combiner, `..` range operator. Specific errors: unclosed quote → `L["Unclosed quote in filter expression"]`; non-numeric value for a numeric field → `L["Expected a number for '%s', got '%s'"]`; range min > max → `L["Invalid range: min (%s) must be less than or equal to max (%s)"]`; empty value after operator → `L["Missing value after operator '%s'"]`.
+
+Error messages are plain, lower-case, player-facing strings. Every error string is a locale key so all 12 locales can provide translations. The entire parser is a pure function with no side effects and no allocations on the fast-fail (`nil`) path.
 
 **Filter table extension:** The existing `filterTable = { zone = "...", search = "..." }` is extended to carry richer field types while remaining backward-compatible with the existing tab `BuildTree` methods until they are updated:
 
@@ -252,7 +270,7 @@ Additional keys to consider at implementation time: `instance` (match instance n
 filterTable = {
     search  = "plain text",            -- existing: substring on title (real-time, not from parser)
     zone    = { "Elwynn", "Deadmines" }, -- OR list; string kept as single-element table internally
-    level   = { min = 60, max = 65 },
+    level   = { min = 60, max = 65 },    -- from level=60..65
     group   = "yes",
     player  = "Thad",
     status  = "incomplete",
@@ -261,7 +279,35 @@ filterTable = {
 
 **Filter label tooltip:** Every filter label's tooltip (`GameTooltip` on `OnEnter`) displays the complete original filter expression string so that a truncated label never hides what the filter actually says. Example: hovering `zone: Elwynn | Deadmines` shows `"zone=Elwynn|Deadmines"` in the tooltip.
 
-**Implementation notes:** The parser lives in a new `UI/FilterParser.lua` module (`SocialQuestFilterParser`) — a pure library with no WoW frame dependencies, making it independently testable. `GroupFrame.lua` calls `SocialQuestFilterParser:Parse(text)` in the `OnKeyDown` / `OnEnter` handler of the search box; `BuildTree` in each tab is updated to interpret the extended filter table fields. The `WindowFilter` module stores an ordered list of active filter descriptors (one per key) keyed by filter key, so a second `zone=` parse result replaces the first `zone` entry. Filter labels are rendered from this list each `Refresh()` — multiple labels stack vertically in the fixed header, each with its own `[x]` dismiss button and full-text tooltip. No protocol changes.
+**Error label behavior:** When the parser returns an error result, a dismissible error label appears immediately below the search bar, pushing the filter labels, expand/collapse row, and scroll frame downward to avoid overlap. The label text is formatted as `L["Filter error: %s"]` populated with the parser's message (e.g. *"Filter error: unknown filter key 'palyer'"*). The error label uses a distinct colour (red or amber) to differentiate it from normal filter labels. Clicking its `[x]` dismiss button removes the label and restores the normal layout. The error label is also cleared automatically the next time the user types in the search bar, so it never persists as stale feedback. There is at most one error label at a time — a new parse error replaces the previous one.
+
+**Dismissible label factory:** Both filter labels and error labels share the same visual structure: a full-width strip with a text FontString on the left, a `[x]` dismiss button on the right, and a tooltip that shows full content on hover. Rather than duplicating this frame construction, a `UI/HeaderLabel.lua` module (or a factory table `SocialQuestHeaderLabel`) exposes a single constructor:
+
+```lua
+SocialQuestHeaderLabel.New(parent, config)
+-- config = {
+--     text     = string,          -- display text (may be truncated)
+--     tooltip  = string,          -- full text shown on hover
+--     color    = { r, g, b },     -- label text colour
+--     height   = number,          -- row height in pixels
+--     onDismiss = function(),      -- called when [x] is clicked
+-- }
+-- returns: frame, setText(s), setTooltip(s), dismiss()
+```
+
+`GroupFrame.lua` uses this factory for filter labels, error labels, and any future notification strips (e.g. a "sync in progress" indicator). The factory owns the frame construction and tooltip wiring; `GroupFrame.lua` owns the layout (anchoring and stacking order).
+
+**Filter syntax help window:** A `[?]` button sits inside the search bar to the left of the existing `[x]` clear button. Clicking it opens (or closes, if already open) a movable, Escape-closable popup panel that documents the filter language. The panel contains:
+
+- A title: *"SQ Filter Syntax"*
+- A brief introductory line: *"Type a filter expression in the search bar and press Enter. Plain text searches without pressing Enter."*
+- A table listing every supported key, its aliases, its type (text/numeric), and a short one-line description.
+- A syntax reference block showing example expressions with plain-English explanations (e.g. `zone=Elwynn|Deadmines` → *"show quests in Elwynn Forest or The Deadmines"*).
+- A note on quoting and escaping rules.
+
+The panel is a standard `BasicFrameTemplate` frame registered in `UISpecialFrames` so Escape closes it. It is movable via left-button drag on the title bar. Its content is built entirely from locale strings so all 12 locales can provide full translations; the key list and example expressions use the same locale keys as error messages where possible, avoiding duplication. The panel is created lazily on first `[?]` click and then shown/hidden on subsequent clicks.
+
+**Implementation notes:** The parser lives in a new `UI/FilterParser.lua` module (`SocialQuestFilterParser`) — a pure library with no WoW frame dependencies, making it independently testable. `GroupFrame.lua` calls `SocialQuestFilterParser:Parse(text)` in the `OnKeyDown` / `OnEnter` handler of the search box; `BuildTree` in each tab is updated to interpret the extended filter table fields. The `WindowFilter` module stores an ordered list of active filter descriptors (one per key) keyed by filter key, so a second `zone=` parse result replaces the first `zone` entry. Filter labels, error labels, and any future header strips are all created via the `SocialQuestHeaderLabel` factory and stacked vertically in the fixed header by `GroupFrame:Refresh()`, each with its own `[x]` dismiss button and full-text tooltip. The `[?]` help button is created once in `createFrame()` alongside the `[x]` clear button; the help panel itself is created lazily. All user-facing strings introduced by this feature — error messages, key descriptions, example annotations, help panel text — are locale keys. No protocol changes.
 
 ---
 
@@ -286,10 +332,10 @@ filterTable = {
 | 15 | `/sq sync` slash command | Very low | Medium | No |
 | 16 | Quest failure reason | Very low | Medium | No |
 | 17 | Font size setting | Low | Medium | No |
-| 18 | Advanced filter language | Medium | High | No |
+| 18 | Advanced filter language | Medium-High | High | No |
 
 **Quick wins (start here):** #2 (almost-done highlight), #6 (one-click share), #3 (chain what's-next notification), #8 (objective countdown), #13 (do-not-disturb), #14 (quest log tooltip), #15 (/sq sync), #16 (failure reason), #17 (font size) — all low/very-low complexity, no protocol changes.
 
-**High-value medium lifts:** #9 (zone divergence), #11 (flyout settings), #18 (advanced filter language).
+**High-value medium lifts:** #9 (zone divergence), #11 (flyout settings), #18 (advanced filter language — includes label factory, error UX, and help window).
 
 **Biggest feature:** #4 (zone quest summary) — most planning effort required but highest pre-session value for organized groups.
