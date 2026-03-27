@@ -95,3 +95,43 @@ function SocialQuestTabUtils.BuildRemoteObjectives(pquest, localInfo)
     end
     return objs
 end
+
+------------------------------------------------------------------------
+-- Advanced filter language helpers (Feature #18)
+------------------------------------------------------------------------
+
+-- String filter: case-insensitive substring match.
+-- descriptor = { op = "=" | "!=", values = { ... } }
+function SocialQuestTabUtils.MatchesStringFilter(value, descriptor)
+    if not descriptor then return true end
+    local lower = (value or ""):lower()
+    local anyMatch = false
+    for _, v in ipairs(descriptor.values or {}) do
+        if lower:find(v:lower(), 1, true) then anyMatch = true; break end
+    end
+    return descriptor.op == "=" and anyMatch or not anyMatch
+end
+
+-- Numeric filter: exact, comparison, or range.
+-- Single: { op="="|"<"|">"|"<="|">=", val=N }
+-- Range:  { op="range", min=N, max=N }
+function SocialQuestTabUtils.MatchesNumericFilter(value, descriptor)
+    if not descriptor then return true end
+    local n = tonumber(value) or 0
+    if descriptor.op == "range" then return n >= descriptor.min and n <= descriptor.max
+    elseif descriptor.op == "="  then return n == descriptor.val
+    elseif descriptor.op == "<"  then return n <  descriptor.val
+    elseif descriptor.op == ">"  then return n >  descriptor.val
+    elseif descriptor.op == "<=" then return n <= descriptor.val
+    elseif descriptor.op == ">=" then return n >= descriptor.val
+    end
+    return true
+end
+
+-- Enum filter: canonical value exact match.
+-- descriptor = { op = "=" | "!=", value = canonicalString }
+function SocialQuestTabUtils.MatchesEnumFilter(value, descriptor)
+    if not descriptor then return true end
+    local matches = (value == descriptor.value)
+    return descriptor.op == "=" and matches or not matches
+end
