@@ -342,6 +342,14 @@ function PartyTab:BuildTree(filterTable)
                 players        = buildPlayerRowsForQuest(questID, localHasIt),
             }
 
+            -- Pre-compute shareability so Render's buildQuestCallbacks doesn't redo this work.
+            entry.hasShareableMembers = false
+            if entry.logIndex and AQL and AQL:IsQuestIdShareable(questID) then
+                for _, pl in ipairs(entry.players) do
+                    if pl.needsShare then entry.hasShareableMembers = true; break end
+                end
+            end
+
             if ci.knownStatus == AQL.ChainStatus.Known and ci.chainID then
                 local chainID = ci.chainID
                 if not zone.chains[chainID] then
@@ -396,6 +404,10 @@ function PartyTab:BuildTree(filterTable)
                     entry.chainInfo and entry.chainInfo.step, ft.step)          then return false end
             if ft.group  and not T.MatchesEnumFilter(mapGroup(entry), ft.group) then return false end
             if ft.type   and not T.MatchesTypeFilter(entry, ft.type)  then return false end
+            if ft.shareable and not T.MatchesEnumFilter(
+                    entry.hasShareableMembers and "yes" or "no", ft.shareable) then
+                return false
+            end
             if not playerMatches(entry.players) then return false end
             return true
         end
@@ -473,14 +485,8 @@ function PartyTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTabl
     --   2. Quest is shareable
     --   3. At least one party member has needsShare = true
     local function buildQuestCallbacks(entry)
+        if not entry.hasShareableMembers then return {} end
         local AQL = SocialQuest.AQL
-        if not entry.logIndex then return {} end
-        if not AQL:IsQuestIdShareable(entry.questID) then return {} end
-        local hasEligible = false
-        for _, p in ipairs(entry.players) do
-            if p.needsShare then hasEligible = true break end
-        end
-        if not hasEligible then return {} end
         return {
             onShare = function()
                 -- Safety check: re-verify shareability at click time.
