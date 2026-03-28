@@ -5,44 +5,183 @@
 PartyTab = {}
 
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
+local SQWowAPI = SocialQuestWowAPI
+
+-- Maps UnitRace() second return value (English race string) to Questie requiredRaces bitmask bits.
+-- "Scourge" is the English race file name for Undead in TBC.
+-- Goblin (256) included as a stub: follows the sequential raceKeys pattern (index 9 → bit 256).
+-- Post-Cataclysm allied races (Worgen, Pandaren, Nightborne, etc.) are intentionally absent:
+-- their bitmask values in the retail Questie DB are non-contiguous and unverified — including
+-- wrong values would produce incorrect eligibility results. Add them when retail support is
+-- implemented and the values are confirmed. Missing entries are gracefully skipped (nil check).
+local RACE_BITS = {
+    ["Human"]    = 1,
+    ["Orc"]      = 2,
+    ["Dwarf"]    = 4,
+    ["NightElf"] = 8,
+    ["Scourge"]  = 16,   -- UnitRace returns "Scourge" for Undead
+    ["Tauren"]   = 32,
+    ["Gnome"]    = 64,
+    ["Troll"]    = 128,
+    ["Goblin"]   = 256,  -- Cataclysm; stub for future retail support
+    ["BloodElf"] = 512,
+    ["Draenei"]  = 1024,
+}
+
+-- Maps UnitClass() second return value (English class token) to Questie requiredClasses bitmask bits.
+-- All 13 classes included. DK/Monk/DemonHunter/Evoker are stubs for future retail support:
+-- UnitClass never returns their tokens in TBC so these entries are unreachable and harmless.
+local CLASS_BITS = {
+    ["WARRIOR"]     = 1,
+    ["PALADIN"]     = 2,
+    ["HUNTER"]      = 4,
+    ["ROGUE"]       = 8,
+    ["PRIEST"]      = 16,
+    ["DEATHKNIGHT"] = 32,    -- WotLK; stub for retail support
+    ["SHAMAN"]      = 64,
+    ["MAGE"]        = 128,
+    ["WARLOCK"]     = 256,
+    ["MONK"]        = 512,   -- MoP; stub for retail support
+    ["DRUID"]       = 1024,
+    ["DEMONHUNTER"] = 2048,  -- Legion; stub for retail support
+    ["EVOKER"]      = 4096,  -- Dragonflight; stub for retail support
+}
 
 ------------------------------------------------------------------------
 -- Private helpers
 ------------------------------------------------------------------------
 
--- Returns true only when the quest can actually be shared with this player:
---   1. The quest is marked shareable by the WoW API.
---   2. The player has not already completed the quest.
---   3. If the quest is a known chain step with a previous step, that step
---      has been completed by the player.
--- Falls back gracefully when chain info is unavailable (no Questie).
--- NOTE: AQL is a hard dependency — the addon disables itself if AQL is missing,
--- so the `if not AQL then return false end` guard is a safety net only.
-local function isEligibleForShare(questID, playerData)
-    local AQL = SocialQuest.AQL
-    if not AQL then return false end
-
-    -- Check 1: quest is shareable via AQL.
-    if not AQL:IsQuestIdShareable(questID) then return false end
-
-    -- Check 2: player has not already completed this quest.
-    if playerData.completedQuests and playerData.completedQuests[questID] then
-        return false
+-- Scans "party1".."party4" to find the unit token for the given player name.
+-- Normalises realm suffix (strips -RealmName) for same-realm matching.
+-- Returns the token string ("party1", etc.) or nil if not matched (offline or unknown).
+local function resolveUnitToken(playerName)
+    local shortLookup = playerName:match("^([^%-]+)") or playerName
+    for i = 1, 4 do
+        local token = "party" .. i
+        local unitName = SQWowAPI.UnitName(token)
+        if unitName then
+            local shortUnit = unitName:match("^([^%-]+)") or unitName
+            if shortUnit == shortLookup or unitName == playerName then
+                return token
+            end
+        end
     end
+    return nil
+end
 
-    -- Check 3: chain prerequisite met (requires Questie/chain info).
-    local ci = AQL:GetChainInfo(questID)
-    if ci and ci.knownStatus == AQL.ChainStatus.Known and ci.step and ci.step > 1 then
-        local prevStep = ci.steps and ci.steps[ci.step - 1]
-        if prevStep and prevStep.questID then
-            if not (playerData.completedQuests and
-                    playerData.completedQuests[prevStep.questID]) then
-                return false
+-- Returns { eligible=true } or { eligible=false, reason={code=string, questID=N?} }.
+-- Check 1 (AQL:IsQuestIdShareable) is evaluated ONCE outside this function in
+-- buildPlayerRowsForQuest — do NOT repeat it here.
+-- unitToken: "party1".."party4" or nil (nil when player is offline; skips checks 2-5).
+-- Called only from the localHasIt==true branch after the shareable pre-check passes.
+local function isEligibleForShare(questID, playerData, unitToken)
+    local AQL = SocialQuest.AQL
+    local reqs = AQL:GetQuestRequirements(questID)
+
+    -- Checks 2-5 require a live unit token; skip for offline players.
+    if unitToken then
+        -- Check 2: wrong race.
+        if reqs and reqs.requiredRaces then
+            local _, raceEn = SQWowAPI.UnitRace(unitToken)
+            local raceBit = raceEn and RACE_BITS[raceEn]
+            if raceBit and bit.band(reqs.requiredRaces, raceBit) == 0 then
+                return { eligible = false, reason = { code = "wrong_race" } }
+            end
+        end
+
+        -- Check 3: wrong class.
+        -- CLASS_BITS includes all retail classes as stubs; DK/Monk/DH/Evoker never
+        -- match in TBC since UnitClass never returns those tokens there.
+        if reqs and reqs.requiredClasses then
+            local _, classToken = SQWowAPI.UnitClass(unitToken)
+            local classBit = classToken and CLASS_BITS[classToken]
+            if classBit and bit.band(reqs.requiredClasses, classBit) == 0 then
+                return { eligible = false, reason = { code = "wrong_class" } }
+            end
+        end
+
+        -- Check 4: level too low.
+        if reqs and reqs.requiredLevel then
+            local level = SQWowAPI.UnitLevel(unitToken)
+            if level and level < reqs.requiredLevel then
+                return { eligible = false, reason = { code = "level_too_low" } }
+            end
+        end
+
+        -- Check 5: level too high.
+        if reqs and reqs.requiredMaxLevel then
+            local level = SQWowAPI.UnitLevel(unitToken)
+            if level and level > reqs.requiredMaxLevel then
+                return { eligible = false, reason = { code = "level_too_high" } }
             end
         end
     end
 
-    return true
+    -- Check 6: quest log full (TBC cap is 25 quests).
+    local questCount = 0
+    if playerData.quests then
+        for _ in pairs(playerData.quests) do questCount = questCount + 1 end
+    end
+    if questCount >= 25 then
+        return { eligible = false, reason = { code = "quest_log_full" } }
+    end
+
+    -- Checks 7-11 require provider data; skip gracefully when reqs is nil.
+    if not reqs then
+        return { eligible = true }
+    end
+
+    -- Check 7: exclusive quest already completed by this player.
+    if reqs.exclusiveTo then
+        for _, exID in ipairs(reqs.exclusiveTo) do
+            if playerData.completedQuests and playerData.completedQuests[exID] then
+                return { eligible = false, reason = { code = "exclusive_quest" } }
+            end
+        end
+    end
+
+    -- Check 8: player already has the next step in the chain (active or completed).
+    if reqs.nextQuestInChain then
+        local nq = reqs.nextQuestInChain
+        if (playerData.quests and playerData.quests[nq]) or
+           (playerData.completedQuests and playerData.completedQuests[nq]) then
+            return { eligible = false, reason = { code = "already_advanced" } }
+        end
+    end
+
+    -- Check 9: preQuestGroup — ALL of these questIDs must be in completedQuests.
+    if reqs.preQuestGroup then
+        for _, preID in ipairs(reqs.preQuestGroup) do
+            if not (playerData.completedQuests and playerData.completedQuests[preID]) then
+                return { eligible = false, reason = { code = "needs_quest", questID = preID } }
+            end
+        end
+    end
+
+    -- Check 10: preQuestSingle — ANY ONE of these questIDs must be in completedQuests.
+    if reqs.preQuestSingle and #reqs.preQuestSingle > 0 then
+        local anyDone = false
+        for _, preID in ipairs(reqs.preQuestSingle) do
+            if playerData.completedQuests and playerData.completedQuests[preID] then
+                anyDone = true
+                break
+            end
+        end
+        if not anyDone then
+            return { eligible = false, reason = { code = "needs_quest", questID = reqs.preQuestSingle[1] } }
+        end
+    end
+
+    -- Check 11: breadcrumb quest already active or completed (player is past this breadcrumb).
+    if reqs.breadcrumbForQuestId then
+        local bq = reqs.breadcrumbForQuestId
+        if (playerData.quests and playerData.quests[bq]) or
+           (playerData.completedQuests and playerData.completedQuests[bq]) then
+            return { eligible = false, reason = { code = "already_advanced" } }
+        end
+    end
+
+    return { eligible = true }
 end
 
 -- Builds the ordered list of playerEntry rows for one questID.
@@ -51,6 +190,10 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
     local AQL     = SocialQuest.AQL
     if not AQL then return {} end
     local players = {}
+
+    -- Check 1: evaluate shareability ONCE for this quest, before the member loop.
+    -- If false, the localHasIt branch is skipped entirely for all members.
+    local shareable = localHasIt and AQL:IsQuestIdShareable(questID)
 
     -- Local player row (always first when local player has any stake).
     local myInfo = AQL:GetQuest(questID)
@@ -111,15 +254,17 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
                 chainLength    = pCI.knownStatus == AQL.ChainStatus.Known and pCI.length or nil,
                 dataProvider   = playerData.dataProvider,
             })
-        elseif localHasIt then
-            -- Party member lacks the quest; local player has it → "Needs it Shared".
+        elseif shareable then
+            -- Local player has the quest and it is shareable; show eligibility for this member.
+            local eligResult = isEligibleForShare(questID, playerData, resolveUnitToken(playerName))
             table.insert(players, {
                 name           = playerName,
                 isMe           = false,
                 hasSocialQuest = playerData.hasSocialQuest,
                 hasCompleted   = false,
                 isComplete     = false,
-                needsShare     = isEligibleForShare(questID, playerData),
+                needsShare     = eligResult.eligible,
+                ineligReason   = eligResult.reason,
                 objectives     = {},
                 dataProvider   = playerData.dataProvider,
             })
@@ -197,6 +342,14 @@ function PartyTab:BuildTree(filterTable)
                 players        = buildPlayerRowsForQuest(questID, localHasIt),
             }
 
+            -- Pre-compute shareability so Render's buildQuestCallbacks doesn't redo this work.
+            entry.hasShareableMembers = false
+            if entry.logIndex and AQL and AQL:IsQuestIdShareable(questID) then
+                for _, pl in ipairs(entry.players) do
+                    if pl.needsShare then entry.hasShareableMembers = true; break end
+                end
+            end
+
             if ci.knownStatus == AQL.ChainStatus.Known and ci.chainID then
                 local chainID = ci.chainID
                 if not zone.chains[chainID] then
@@ -251,6 +404,10 @@ function PartyTab:BuildTree(filterTable)
                     entry.chainInfo and entry.chainInfo.step, ft.step)          then return false end
             if ft.group  and not T.MatchesEnumFilter(mapGroup(entry), ft.group) then return false end
             if ft.type   and not T.MatchesTypeFilter(entry, ft.type)  then return false end
+            if ft.shareable and not T.MatchesEnumFilter(
+                    entry.hasShareableMembers and "yes" or "no", ft.shareable) then
+                return false
+            end
             if not playerMatches(entry.players) then return false end
             return true
         end
@@ -323,6 +480,25 @@ function PartyTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTabl
     local tree = self:BuildTree(filterTable)
     local y    = 0
 
+    -- Builds the callbacks table for a quest row. Adds onShare when:
+    --   1. Local player has the quest (logIndex non-nil)
+    --   2. Quest is shareable
+    --   3. At least one party member has needsShare = true
+    local function buildQuestCallbacks(entry)
+        if not entry.hasShareableMembers then return {} end
+        local AQL = SocialQuest.AQL
+        return {
+            onShare = function()
+                -- Safety check: re-verify shareability at click time.
+                if not AQL:IsQuestIdShareable(entry.questID) then return end
+                local prev = AQL:GetQuestLogSelection()
+                AQL:SetQuestLogSelection(entry.logIndex)
+                SQWowAPI.QuestLogPushQuest()
+                AQL:SetQuestLogSelection(prev)
+            end,
+        }
+    end
+
     local sortedZones = {}
     for _, zone in pairs(tree.zones) do
         table.insert(sortedZones, zone)
@@ -353,7 +529,7 @@ function PartyTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTabl
                 y = rowFactory.AddChainHeader(contentFrame, y, chain.title, QUEST_INDENT)
 
                 for _, entry in ipairs(chain.steps) do
-                    y = rowFactory.AddQuestRow(contentFrame, y, entry, QUEST_INDENT + 8, {})
+                    y = rowFactory.AddQuestRow(contentFrame, y, entry, QUEST_INDENT + 8, buildQuestCallbacks(entry))
                     local nameColumnWidth = 0
                     for _, player in ipairs(entry.players) do
                         local w = rowFactory.MeasureNameWidth(rowFactory.GetDisplayName(player))
@@ -367,7 +543,7 @@ function PartyTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTabl
             end
 
             for _, entry in ipairs(zone.quests) do
-                y = rowFactory.AddQuestRow(contentFrame, y, entry, QUEST_INDENT, {})
+                y = rowFactory.AddQuestRow(contentFrame, y, entry, QUEST_INDENT, buildQuestCallbacks(entry))
                 local nameColumnWidth = 0
                 for _, player in ipairs(entry.players) do
                     local w = rowFactory.MeasureNameWidth(rowFactory.GetDisplayName(player))

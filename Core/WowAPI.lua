@@ -10,6 +10,7 @@ function SocialQuestWowAPI.UnitName(unit)                         return UnitNam
 function SocialQuestWowAPI.UnitFullName(unit)                     return UnitFullName(unit)                     end
 function SocialQuestWowAPI.UnitLevel(unit)                        return UnitLevel(unit)                        end
 function SocialQuestWowAPI.UnitRace(unit)                         return UnitRace(unit)                         end
+function SocialQuestWowAPI.UnitClass(unit)                        return UnitClass(unit)                        end
 function SocialQuestWowAPI.UnitFactionGroup(unit)                 return UnitFactionGroup(unit)                 end
 function SocialQuestWowAPI.IsInRaid()                             return IsInRaid()                             end
 function SocialQuestWowAPI.IsInGroup(category)                    return IsInGroup(category)                    end
@@ -17,6 +18,7 @@ function SocialQuestWowAPI.IsInGuild()                            return IsInGui
 function SocialQuestWowAPI.GetNumGroupMembers()                   return GetNumGroupMembers()                   end
 function SocialQuestWowAPI.GetRaidRosterInfo(index)               return GetRaidRosterInfo(index)               end
 function SocialQuestWowAPI.SendChatMessage(text, chan, lang, tgt)  return SendChatMessage(text, chan, lang, tgt)  end
+function SocialQuestWowAPI.QuestLogPushQuest()                    QuestLogPushQuest()                           end
 function SocialQuestWowAPI.IsFriend(name)                         return C_FriendList.IsFriend(name)            end
 function SocialQuestWowAPI.GetNumFriends()                        return C_FriendList.GetNumFriends()           end
 function SocialQuestWowAPI.GetFriendInfoByIndex(index)            return C_FriendList.GetFriendInfoByIndex(index) end

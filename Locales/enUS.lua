@@ -269,6 +269,8 @@ L["filter.key.status"]       = "status"
 L["filter.key.status.desc"]  = "Quest status (complete, incomplete, failed)"
 L["filter.key.tracked"]      = "tracked"
 L["filter.key.tracked.desc"] = "Tracked on minimap (yes, no; Mine tab only)"
+L["filter.key.shareable"]      = "shareable"
+L["filter.key.shareable.desc"] = "Quest can be shared with a party member right now (Party tab only)"
 L["filter.val.yes"]          = "yes"
 L["filter.val.no"]           = "no"
 L["filter.val.complete"]     = "complete"
@@ -296,8 +298,10 @@ L["filter.err.INVALID_NUMBER"]   = "expected a number for '%s', got '%s'"
 L["filter.err.RANGE_REVERSED"]   = "invalid range: min (%s) must be <= max (%s)"
 L["filter.err.INVALID_ENUM"]     = "'%s' is not a valid value for '%s'"
 L["filter.err.label"]            = "Filter error: %s"
+L["filter.err.MIXED_AND_OR"]     = "cannot mix & and | in the same expression"
+L["filter.err.AND_KEY_MISMATCH"] = "all & fragments must use the same key"
 L["filter.help.title"]                = "SQ Filter Syntax"
-L["filter.help.intro"]                = "Type a filter expression and press Enter to apply it as a persistent label. Dismiss a label with [x]. Multiple filters AND together."
+L["filter.help.intro"]                = "Type a filter expression and press Enter to apply it as a persistent label. Dismiss a label with [x]. To AND filters together, apply them one at a time — each press of Enter adds a new label."
 L["filter.help.section.syntax"]       = "Syntax"
 L["filter.help.section.keys"]         = "Supported Keys"
 L["filter.help.section.examples"]     = "Examples"
@@ -323,3 +327,30 @@ L["filter.help.example.8"]        = "type=kill"
 L["filter.help.example.8.note"]   = "Show quests with at least one kill objective"
 L["filter.help.example.9"]        = "type=daily"
 L["filter.help.example.9.note"]   = "Show only daily quests"
+L["filter.help.example.10"]       = "tracked=yes"
+L["filter.help.example.10.note"]  = "Show only tracked quests (Mine tab only)"
+L["filter.help.example.11"]       = "group=no"
+L["filter.help.example.11.note"]  = "Show only solo quests (no group requirement)"
+L["filter.help.example.12"]      = "type=dungeon&gather"
+L["filter.help.example.12.note"] = "Show dungeon quests that also have gather objectives"
+L["filter.help.example.13"]      = "level>=55&<=62"
+L["filter.help.example.13.note"] = "Show quests in the level 55–62 range (same as level=55..62)"
+L["filter.help.example.14"]      = "title=dragon&slayer"
+L["filter.help.example.14.note"] = "Show quests with both 'dragon' and 'slayer' in the title"
+L["filter.help.example.15"]      = "shareable=yes"
+L["filter.help.example.15.note"] = "Show quests you can share with a party member right now (Party tab)"
+
+-- UI/RowFactory.lua — Share button label and tooltip
+L["Share"]         = true
+L["share.tooltip"] = "Share this quest with party members"
+
+-- UI/RowFactory.lua — Share eligibility reason labels
+-- Displayed as "[reason]" next to a party member's name when they cannot receive the shared quest.
+-- "needs_quest" is formatted dynamically as "needs: [Quest Title]" — no locale key for the template.
+L["share.reason.level_too_low"]    = true   -- player's level is below the quest's minimum
+L["share.reason.level_too_high"]   = true   -- player's level is above the quest's maximum
+L["share.reason.wrong_race"]       = true   -- player's race cannot take this quest
+L["share.reason.wrong_class"]      = true   -- player's class cannot take this quest
+L["share.reason.quest_log_full"]   = true   -- player already has 25 quests (TBC cap)
+L["share.reason.exclusive_quest"]  = true   -- player completed a mutually exclusive quest
+L["share.reason.already_advanced"] = true   -- player is already past this step in the chain

@@ -311,6 +311,36 @@ The panel is a standard `BasicFrameTemplate` frame registered in `UISpecialFrame
 
 ---
 
+### 19. Zone quest count in group frame headers
+
+**The gap:** Zone section headers in the group quest window show only the zone name. When scanning a tab with many zones, there is no at-a-glance indicator of how many quests are grouped under each header — the player must visually count rows or expand/collapse sections to gauge the density.
+
+**The idea:** Append a parenthetical quest count to each zone header label: "Elwynn Forest (3)", "Hellfire Peninsula (7)". A config toggle in `/sq config` → Social Quest Window enables this, defaulting to on. The count reflects the number of quests rendered under that zone after all active filters are applied — a filtered view showing 2 of 5 zone quests displays "(2)" not "(5)".
+
+**Implementation notes:** Add `db.window.zoneQuestCount` boolean (default `true`) to AceDB profile. Zone header text is assembled in each tab's `BuildTree` method. After accumulating the per-zone quest list, append `string.format(" (%d)", count)` to the zone name string before passing it to the header row, conditional on `db.window.zoneQuestCount`. Add a toggle to `/sq config` → Social Quest Window. No protocol changes; no locale changes required (the format is purely numeric).
+
+---
+
+### 20. Friend online/offline banners
+
+**The gap:** WoW's default UI shows friend login and logout notifications only as system chat messages, easily missed in busy chat. SocialQuest already has a well-established banner system for quest events and follow notifications, but it makes no use of social presence events.
+
+**The idea:** Display a banner notification when a friend logs in or out. Login format for a BattleTag friend: *"Joe (EvilWarlock 32 Warlock) Online"* — "Joe" is the BattleTag name and the parenthetical shows the character name, level, and class. For a regular (non-BattleTag) friend: *"EvilWarlock 32 Warlock Online"*. Logout banners follow the same format with "Offline" in place of "Online". Separate config toggles for login and logout banners, both defaulting to on.
+
+**Implementation notes:** Battle.net presence events `BN_FRIEND_ACCOUNT_ONLINE` and `BN_FRIEND_ACCOUNT_OFFLINE` fire when a BattleTag friend connects or disconnects; `BNGetFriendInfoByID(bnetIDAccount)` provides the BattleTag name, active character name, level, and class. For regular (non-BattleTag) friends, detecting login/logout requires diffing the friend list on `FRIENDLIST_UPDATE` since WoW raises no per-friend event — track connected status in a session table keyed by character name, diff on each `FRIENDLIST_UPDATE` fire; `GetFriendInfo(index)` provides name, level, class, and `connected` boolean. Verify at implementation time whether `BN_FRIEND_ACCOUNT_ONLINE` is available at Interface 20505 (TBC Anniversary runs on modern Battle.net infrastructure but BN_ API availability should be confirmed before relying on it). Banner color: use a new `friend` color key in `Colors.lua` — the existing follow tan is a candidate base or define a distinct social color. New toggles (`friendOnline`, `friendOffline`) in the General section of `/sq config`. No protocol changes.
+
+---
+
+### 21. Quest suggested level in group frame
+
+**The gap:** The group quest window shows quest titles but gives no indication of a quest's recommended level. Players levelling with a mixed-level group, or who have a backlog of quests from earlier zones, have no quick way to see which quests are appropriate to tackle next without cross-referencing the quest log.
+
+**The idea:** A config toggle (default off) that appends the quest's suggested level in square brackets after the title in the group quest window: *"Wanted: Arazzius the Cruel [62]"*. Applies to all three tabs. The bracketed level appears immediately after the quest title, before any chain step annotation.
+
+**Implementation notes:** Add `db.window.showQuestLevel` boolean (default `false`) to AceDB profile. Quest level is available via `AQL:GetQuestInfo(questID)` — verify the exact field name at implementation time (`questLevel`, `level`, or similar). The title string is constructed in each tab's `BuildTree` or in `RowFactory.AddQuestRow`. When `db.window.showQuestLevel` is true, append `string.format(" [%d]", questLevel)` to the title before it is passed to the row. If the quest level is nil (not in AQL cache), display the title unmodified. Add the toggle to `/sq config` → Social Quest Window alongside the zone count toggle (#19). No protocol changes; no locale changes required.
+
+---
+
 ## Summary
 
 | # | Feature | Complexity | Impact | Protocol change? |
@@ -333,8 +363,11 @@ The panel is a standard `BasicFrameTemplate` frame registered in `UISpecialFrame
 | 16 | Quest failure reason | Very low | Medium | No |
 | 17 | Font size setting | Low | Medium | No |
 | 18 | Advanced filter language | Medium-High | High | No |
+| 19 | Zone quest count in headers | Very low | Low | No |
+| 20 | Friend online/offline banners | Low | Medium | No |
+| 21 | Quest suggested level in window | Very low | Low | No |
 
-**Quick wins (start here):** #2 (almost-done highlight), #6 (one-click share), #3 (chain what's-next notification), #8 (objective countdown), #13 (do-not-disturb), #14 (quest log tooltip), #15 (/sq sync), #16 (failure reason), #17 (font size) — all low/very-low complexity, no protocol changes.
+**Quick wins (start here):** #2 (almost-done highlight), #6 (one-click share), #3 (chain what's-next notification), #8 (objective countdown), #13 (do-not-disturb), #14 (quest log tooltip), #15 (/sq sync), #16 (failure reason), #17 (font size), #19 (zone quest count), #21 (quest level display) — all low/very-low complexity, no protocol changes.
 
 **High-value medium lifts:** #9 (zone divergence), #11 (flyout settings), #18 (advanced filter language — includes label factory, error UX, and help window).
 

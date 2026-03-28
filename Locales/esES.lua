@@ -239,6 +239,8 @@ L["filter.key.status"]       = "estado"
 L["filter.key.status.desc"]  = "Estado de la misión (completa, incompleta, fallida)"
 L["filter.key.tracked"]      = "seguido"
 L["filter.key.tracked.desc"] = "Seguido en el minimapa (sí, no; solo pestaña Yo)"
+L["filter.key.shareable"]    = "compartible"
+L["filter.key.shareable.desc"] = true
 L["filter.val.yes"]          = "sí"
 L["filter.val.no"]           = "no"
 L["filter.val.complete"]     = "completa"
@@ -266,8 +268,10 @@ L["filter.err.INVALID_NUMBER"]   = "se esperaba un número para '%s', se recibi�
 L["filter.err.RANGE_REVERSED"]   = "rango no válido: el mínimo (%s) debe ser <= máximo (%s)"
 L["filter.err.INVALID_ENUM"]     = "'%s' no es un valor válido para '%s'"
 L["filter.err.label"]            = "Error de filtro: %s"
+L["filter.err.MIXED_AND_OR"] = true
+L["filter.err.AND_KEY_MISMATCH"] = true
 L["filter.help.title"]                = "Sintaxis de filtros SQ"
-L["filter.help.intro"]                = "Escribe una expresión de filtro y pulsa Enter para aplicarla como etiqueta persistente. Cierra una etiqueta con [x]. Los filtros múltiples se combinan con Y."
+L["filter.help.intro"]                = "Escribe una expresión de filtro y pulsa Enter para aplicarla como etiqueta persistente. Cierra una etiqueta con [x]. Para combinar filtros, aplícalos de uno en uno — cada Enter añade una nueva etiqueta (lógica Y)."
 L["filter.help.section.syntax"]       = "Sintaxis"
 L["filter.help.section.keys"]         = "Claves admitidas"
 L["filter.help.section.examples"]     = "Ejemplos"
@@ -293,3 +297,26 @@ L["filter.help.example.8"]            = "tipo=matar"
 L["filter.help.example.8.note"]       = "Mostrar misiones con al menos un objetivo de matar"
 L["filter.help.example.9"]            = "tipo=diaria"
 L["filter.help.example.9.note"]       = "Mostrar solo misiones diarias"
+L["filter.help.example.10"]           = "seguido=sí"
+L["filter.help.example.10.note"]      = "Mostrar solo misiones rastreadas (solo pestaña Mías)"
+L["filter.help.example.11"]           = "grupo=no"
+L["filter.help.example.11.note"]      = "Mostrar solo misiones en solitario (sin requisito de grupo)"
+L["filter.help.example.12"] = true
+L["filter.help.example.12.note"] = true
+L["filter.help.example.13"] = true
+L["filter.help.example.13.note"] = true
+L["filter.help.example.14"] = true
+L["filter.help.example.14.note"] = true
+L["filter.help.example.15"] = true
+L["filter.help.example.15.note"] = true
+
+-- UI/RowFactory.lua — Share button and eligibility reasons
+L["Share"]         = "Compartir"
+L["share.tooltip"] = "Compartir esta misión con los miembros del grupo"
+L["share.reason.level_too_low"]    = "nivel demasiado bajo"
+L["share.reason.level_too_high"]   = "nivel demasiado alto"
+L["share.reason.wrong_race"]       = "raza incorrecta"
+L["share.reason.wrong_class"]      = "clase incorrecta"
+L["share.reason.quest_log_full"]   = "diario de misiones lleno"
+L["share.reason.exclusive_quest"]  = "misión exclusiva aceptada"
+L["share.reason.already_advanced"] = "ya está más avanzado"

@@ -12,6 +12,12 @@
 
 >**Versioning Rule:** The major version number should never be changed by claude unless explicitly instructed to do so.  The first time add-on functionality is modified on any given day, the minor version number should be incremented and the revision number should be reset to 0. Any extra changes ocurring within the same days should increment the revision number only, unless explicitly instructed otherwise.
 
+>**Localization Standard:** All locale strings added to this addon must use natural, game-appropriate phrasing that matches how players actually speak in that language — never literal word-for-word translations of the English. Use the same in-game terminology WoW itself uses in each locale (e.g., the word for "quest log", class names, dungeon/raid terms). A native-language player reading the string should find it immediately recognizable. English (enUS) strings are always `= true`. When writing non-English translations, confirm the phrasing uses natural WoW vocabulary for that language, not dictionary translations. This is the same standard applied to all SocialQuest locale strings since v2.12.30.
+
+>**Unit Tests:** Before committing any code change and before bumping the version number, always run the full Lua unit test suite and confirm all tests pass. Run from the repo root: `lua tests/FilterParser_test.lua` and `lua tests/TabUtils_test.lua`. Both must pass (0 failures) before the change is considered done. If a Lua runtime is not available in the environment, note this explicitly and flag to the user that tests could not be verified.
+
+>**Multi-Version Design:** All new development must be designed with future support for Retail WoW and all other currently active WoW versions in mind — not only TBC. This does not mean implementing Retail support today; TBC is the only actively supported version. It means: (1) all WoW API calls route through `SQWowAPI` / `SQWowUI` wrappers so version-specific branching stays in one place; (2) new data structures, bitmask tables, and lookup tables include stubs for races/classes/features that don't exist in TBC but do in Retail (clearly commented as stubs); (3) avoid hardcoding assumptions that are TBC-specific (e.g., "only 10 races", "only 9 classes") when the pattern can accommodate future values at zero cost; (4) when a Retail API equivalent is unknown, add a comment `-- TODO: verify Retail API` rather than silently omitting the case.
+
 ---
 
 ## Architecture
@@ -199,6 +205,19 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 ---
 
 ## Version History
+
+### Version 2.15.0 (March 2026 — Improvements branch)
+- Feature: `&` same-key AND operator in the advanced filter language. A single filter label can now express multiple conditions on the same key: `type=dungeon&gather` (dungeon quests with gather objectives), `level>=55&<=62` (level range), `title=dragon&slayer` (title contains both words). The key is written once; operator is inherited by subsequent fragments when omitted. `&` and `|` may not be combined in the same expression (`MIXED_AND_OR` error). `compound_and` descriptor type added to `FilterParser`; all four `Matches*` helpers in `TabUtils` handle it recursively. `FilterState` and `HeaderLabel` unchanged.
+- Feature: `shareable` filter key (Party tab only). `shareable=yes` shows quests the local player can share with at least one party member right now — same condition as the [Share] button (local has it, AQL reports it shareable, at least one party member has `needsShare=true`). `entry.hasShareableMembers` pre-computed in `PartyTab:BuildTree`; `buildQuestCallbacks` reads the pre-computed value. Help window updated with three `&` examples and one `shareable` example across all 12 locales.
+
+### Version 2.14.2 (March 2026 — Improvements branch)
+- Polish: Share button now uses `UIPanelButtonTemplate` for the standard WoW button appearance (same style as quest log Accept/Decline/Share buttons). Removed bracket-wrapped text label; button now shows plain "Share" text via the template's built-in font string.
+
+### Version 2.14.1 (March 2026 — Improvements branch)
+- Bug fix: `[Share]` button did not appear in the Party tab. Root cause: `shareBtn:SetPoint` used `"RIGHT"` / `"RIGHT"` anchors, which position relative to the center of the content frame's right edge — the button rendered at the wrong vertical position (hidden off-screen). Fixed by changing to `"TOPRIGHT"` / `"TOPRIGHT"`, matching the badge anchor convention used by all other right-aligned row elements.
+
+### Version 2.14.0 (March 2026 — Improvements branch)
+- Feature: Share button + full quest eligibility. Party tab quest rows now show a `[Share]` button when the local player has the quest, it is shareable, and at least one party member needs it. Clicking calls `QuestLogPushQuest()` via `SQWowAPI` after selecting the quest in the log. Party member rows for ineligible players now show a specific reason label in muted amber (e.g. "level too low", "wrong class", "needs: [Quest Name]") instead of the misleading "Needs it Shared" label. Reason labels cover 7 cases: level_too_low, level_too_high, wrong_race, wrong_class, quest_log_full, exclusive_quest, already_advanced, plus dynamic "needs: questTitle" for prerequisite mismatches. Uses `AQL:GetQuestRequirements(questID)` (new in AQL 2.4.0) for tier-2 checks; degrades gracefully to tier-1-only (race/class/level/log-full) when no provider is available. New `SQWowAPI` wrappers: `QuestLogPushQuest`, `UnitClass`. New private helpers in `PartyTab.lua`: `resolveUnitToken`, updated `isEligibleForShare`. New locale keys in all 12 locale files.
 
 ### Version 2.13.0 (March 2026 — Improvements branch)
 - Bug fix: zone auto-filter broke in all non-starter subzones after the 2.12.31 sub-zone preference fix. In subzones like Goldshire (Elwynn Forest), `GetSubZoneText()` returned "Goldshire" which doesn't match any quest log zone header, so the filter showed no quests. Root cause: the fix unconditionally preferred `GetSubZoneText()` when non-empty. New approach: check whether the subzone name actually appears as a zone header in the active quest log (`AQL:GetQuestLogZones()`). Starter subzones (Northshire Valley, etc.) are the only subzones with quests scoped to their name, so the check correctly selects the subzone for starter zones and falls back to `GetRealZoneText()` everywhere else. Locale-safe: both `GetSubZoneText()` and AQL zone headers use the client language.

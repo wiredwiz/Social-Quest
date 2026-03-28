@@ -128,9 +128,13 @@ function RowFactory.AddChainHeader(contentFrame, y, chainTitle, indent)
 end
 
 -- Quest row.
--- Layout (left to right): [?] link | [v] checkmark (Mine only) | title | badge (right)
--- callbacks = { onTitleShiftClick = function(logIndex, isTracked) }
+-- Layout (left to right): [?] link | [v] checkmark (Mine only) | title | [Share] (Party only) | badge (right)
+-- callbacks = {
+--   onTitleShiftClick = function(logIndex, isTracked),  -- nil on Party/Shared tabs
+--   onShare           = function(),                      -- nil when quest is not shareable or no eligible members
+-- }
 --   onTitleShiftClick: nil on Party/Shared tabs (disables checkmark and shift-click).
+--   onShare: when present, renders a [Share] button right-aligned, left of badge. titleWidth shrinks 52px.
 --   NOTE: The link button calls SocialQuestGroupFrame.ShowWowheadUrl directly; no onLinkClick callback.
 function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     local C = SocialQuestColors
@@ -166,11 +170,13 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
         badgeText = C.chain .. L["(Group)"] .. C.reset
     end
     local badgeWidth = badgeText ~= "" and 80 or 0
+    -- Share button width (0 when no onShare callback).
+    local shareWidth = (callbacks and callbacks.onShare) and 52 or 0
 
     -- Quest title (FontString for reliable left-alignment).
     -- Template-less Buttons in TBC Classic do not expose GetFontString(), so we
     -- use a plain FontString for display and an invisible Button overlay for clicks.
-    local titleWidth = CONTENT_WIDTH - x - badgeWidth - 10
+    local titleWidth = CONTENT_WIDTH - x - badgeWidth - shareWidth - 10
 
     -- Build title string: title [Step X of Y] [timer].
     local titleText = questEntry.title or "Quest"
@@ -225,6 +231,24 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
         badge:SetText(badgeText)
     end
 
+    -- Share button (right-aligned, to the left of the badge).
+    -- UIPanelButtonTemplate gives the standard WoW button look (same as quest log Accept/Decline).
+    if callbacks and callbacks.onShare then
+        local shareBtn = CreateFrame("Button", nil, contentFrame, "UIPanelButtonTemplate")
+        shareBtn:SetSize(52, ROW_H + 2)
+        -- Position: right-aligned, shifted left by badge + 4px gap (when badge present).
+        local rightOffset = -(8 + badgeWidth + (badgeWidth > 0 and 4 or 0))
+        shareBtn:SetPoint("TOPRIGHT", contentFrame, "TOPRIGHT", rightOffset, -y + 1)
+        shareBtn:SetText(L["Share"])
+        shareBtn:SetScript("OnClick", callbacks.onShare)
+        shareBtn:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(L["share.tooltip"], 1, 1, 1)
+            GameTooltip:Show()
+        end)
+        shareBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    end
+
     return y + ROW_H + 2
 end
 
@@ -247,10 +271,12 @@ end
 -- Player row. Display priority (first matching wins):
 --   1. playerEntry.hasCompleted → "[Name] FINISHED" (green)
 --   2. playerEntry.needsShare   → "[Name] Needs it Shared" (grey)
+--   2b. playerEntry.ineligReason (needsShare=false, ineligReason~=nil) → "[Name] [reason]" (muted amber)
 --   3. hasSocialQuest==false and no objectives → "[Name] (no data)" (grey)
 --   4. otherwise → "[Name]" label (+ "Step X of Y" when step/chainLength set),
 --                  followed by objective rows.
 -- playerEntry fields: name, isMe, hasSocialQuest, hasCompleted, needsShare,
+--                     ineligReason (optional: {code, questID?} — set when ineligible),
 --                     isComplete (optional), objectives, step (optional), chainLength (optional).
 -- nameColumnWidth (optional): pixel width of the name column. When provided,
 -- in-progress objectives render as two-column bar rows (name left, bar right).
@@ -282,6 +308,24 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent, nameColum
         fs:SetWidth(CONTENT_WIDTH - x - 4)
         fs:SetJustifyH("LEFT")
         fs:SetText(C.unknown .. string.format(L["%s Needs it Shared"], displayName) .. C.reset)
+        return y + ROW_H + 2
+
+    elseif playerEntry.ineligReason then
+        -- Player is not eligible to receive the quest — show the specific reason in muted amber.
+        local reasonText
+        local code = playerEntry.ineligReason.code
+        if code == "needs_quest" then
+            local questTitle = SocialQuest.AQL:GetQuestTitle(playerEntry.ineligReason.questID or 0) or "?"
+            reasonText = "needs: " .. questTitle
+        else
+            reasonText = L["share.reason." .. code] or code
+        end
+        local amber = "|cFFCC8800"
+        local fs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
+        fs:SetWidth(CONTENT_WIDTH - x - 4)
+        fs:SetJustifyH("LEFT")
+        fs:SetText(amber .. displayName .. "|r " .. amber .. "[" .. reasonText .. "]|r")
         return y + ROW_H + 2
 
     elseif not playerEntry.hasSocialQuest

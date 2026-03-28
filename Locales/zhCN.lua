@@ -240,6 +240,8 @@ L["filter.key.status"]       = "状态"
 L["filter.key.status.desc"]  = "任务状态（完成, 未完成, 失败）"
 L["filter.key.tracked"]      = "追踪"
 L["filter.key.tracked.desc"] = "在小地图上追踪（是, 否；仅我的标签）"
+L["filter.key.shareable"] = true
+L["filter.key.shareable.desc"] = true
 L["filter.val.yes"]          = "是"
 L["filter.val.no"]           = "否"
 L["filter.val.complete"]     = "完成"
@@ -267,8 +269,10 @@ L["filter.err.INVALID_NUMBER"]   = "'%s' 需要数字，但收到 '%s'"
 L["filter.err.RANGE_REVERSED"]   = "无效范围：最小值 (%s) 必须 <= 最大值 (%s)"
 L["filter.err.INVALID_ENUM"]     = "'%s' 不是 '%s' 的有效值"
 L["filter.err.label"]            = "过滤错误：%s"
+L["filter.err.MIXED_AND_OR"] = true
+L["filter.err.AND_KEY_MISMATCH"] = true
 L["filter.help.title"]                = "SQ 过滤语法"
-L["filter.help.intro"]                = "输入过滤表达式并按 Enter 将其应用为持久标签。用 [x] 关闭标签。多个过滤条件以 AND 方式组合。"
+L["filter.help.intro"]                = "输入过滤表达式并按 Enter 将其应用为持久标签。用 [x] 关闭标签。若要组合多个条件，请逐一输入并按 Enter——每次 Enter 都会添加新标签（AND 逻辑）。"
 L["filter.help.section.syntax"]       = "语法"
 L["filter.help.section.keys"]         = "支持的键"
 L["filter.help.section.examples"]     = "示例"
@@ -294,3 +298,26 @@ L["filter.help.example.8"]            = "类型=击杀"
 L["filter.help.example.8.note"]       = "显示至少有一个击杀目标的任务"
 L["filter.help.example.9"]            = "类型=日常"
 L["filter.help.example.9.note"]       = "仅显示日常任务"
+L["filter.help.example.10"]           = "追踪=是"
+L["filter.help.example.10.note"]      = "仅显示已追踪任务（仅限「我的」标签页）"
+L["filter.help.example.11"]           = "组队=否"
+L["filter.help.example.11.note"]      = "仅显示单人任务（无组队需求）"
+L["filter.help.example.12"] = true
+L["filter.help.example.12.note"] = true
+L["filter.help.example.13"] = true
+L["filter.help.example.13.note"] = true
+L["filter.help.example.14"] = true
+L["filter.help.example.14.note"] = true
+L["filter.help.example.15"] = true
+L["filter.help.example.15.note"] = true
+
+-- UI/RowFactory.lua — Share button and eligibility reasons
+L["Share"]         = "分享"
+L["share.tooltip"] = "与队伍成员分享此任务"
+L["share.reason.level_too_low"]    = "等级过低"
+L["share.reason.level_too_high"]   = "等级过高"
+L["share.reason.wrong_race"]       = "种族不符"
+L["share.reason.wrong_class"]      = "职业不符"
+L["share.reason.quest_log_full"]   = "任务日志已满"
+L["share.reason.exclusive_quest"]  = "已接互斥任务"
+L["share.reason.already_advanced"] = "已超过此步骤"
