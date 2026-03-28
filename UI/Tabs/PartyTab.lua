@@ -69,39 +69,119 @@ local function resolveUnitToken(playerName)
     return nil
 end
 
--- Returns true only when the quest can actually be shared with this player:
---   1. The quest is marked shareable by the WoW API.
---   2. The player has not already completed the quest.
---   3. If the quest is a known chain step with a previous step, that step
---      has been completed by the player.
--- Falls back gracefully when chain info is unavailable (no Questie).
--- NOTE: AQL is a hard dependency — the addon disables itself if AQL is missing,
--- so the `if not AQL then return false end` guard is a safety net only.
-local function isEligibleForShare(questID, playerData)
+-- Returns { eligible=true } or { eligible=false, reason={code=string, questID=N?} }.
+-- Check 1 (AQL:IsQuestIdShareable) is evaluated ONCE outside this function in
+-- buildPlayerRowsForQuest — do NOT repeat it here.
+-- unitToken: "party1".."party4" or nil (nil when player is offline; skips checks 2-5).
+-- Called only from the localHasIt==true branch after the shareable pre-check passes.
+local function isEligibleForShare(questID, playerData, unitToken)
     local AQL = SocialQuest.AQL
-    if not AQL then return false end
+    local reqs = AQL:GetQuestRequirements(questID)
 
-    -- Check 1: quest is shareable via AQL.
-    if not AQL:IsQuestIdShareable(questID) then return false end
+    -- Checks 2-5 require a live unit token; skip for offline players.
+    if unitToken then
+        -- Check 2: wrong race.
+        if reqs and reqs.requiredRaces then
+            local _, raceEn = SQWowAPI.UnitRace(unitToken)
+            local raceBit = raceEn and RACE_BITS[raceEn]
+            if raceBit and bit.band(reqs.requiredRaces, raceBit) == 0 then
+                return { eligible = false, reason = { code = "wrong_race" } }
+            end
+        end
 
-    -- Check 2: player has not already completed this quest.
-    if playerData.completedQuests and playerData.completedQuests[questID] then
-        return false
-    end
+        -- Check 3: wrong class.
+        -- CLASS_BITS includes all retail classes as stubs; DK/Monk/DH/Evoker never
+        -- match in TBC since UnitClass never returns those tokens there.
+        if reqs and reqs.requiredClasses then
+            local _, classToken = SQWowAPI.UnitClass(unitToken)
+            local classBit = classToken and CLASS_BITS[classToken]
+            if classBit and bit.band(reqs.requiredClasses, classBit) == 0 then
+                return { eligible = false, reason = { code = "wrong_class" } }
+            end
+        end
 
-    -- Check 3: chain prerequisite met (requires Questie/chain info).
-    local ci = AQL:GetChainInfo(questID)
-    if ci and ci.knownStatus == AQL.ChainStatus.Known and ci.step and ci.step > 1 then
-        local prevStep = ci.steps and ci.steps[ci.step - 1]
-        if prevStep and prevStep.questID then
-            if not (playerData.completedQuests and
-                    playerData.completedQuests[prevStep.questID]) then
-                return false
+        -- Check 4: level too low.
+        if reqs and reqs.requiredLevel then
+            local level = SQWowAPI.UnitLevel(unitToken)
+            if level and level < reqs.requiredLevel then
+                return { eligible = false, reason = { code = "level_too_low" } }
+            end
+        end
+
+        -- Check 5: level too high.
+        if reqs and reqs.requiredMaxLevel then
+            local level = SQWowAPI.UnitLevel(unitToken)
+            if level and level > reqs.requiredMaxLevel then
+                return { eligible = false, reason = { code = "level_too_high" } }
             end
         end
     end
 
-    return true
+    -- Check 6: quest log full (TBC cap is 25 quests).
+    local questCount = 0
+    if playerData.quests then
+        for _ in pairs(playerData.quests) do questCount = questCount + 1 end
+    end
+    if questCount >= 25 then
+        return { eligible = false, reason = { code = "quest_log_full" } }
+    end
+
+    -- Checks 7-11 require provider data; skip gracefully when reqs is nil.
+    if not reqs then
+        return { eligible = true }
+    end
+
+    -- Check 7: exclusive quest already completed by this player.
+    if reqs.exclusiveTo then
+        for _, exID in ipairs(reqs.exclusiveTo) do
+            if playerData.completedQuests and playerData.completedQuests[exID] then
+                return { eligible = false, reason = { code = "exclusive_quest" } }
+            end
+        end
+    end
+
+    -- Check 8: player already has the next step in the chain (active or completed).
+    if reqs.nextQuestInChain then
+        local nq = reqs.nextQuestInChain
+        if (playerData.quests and playerData.quests[nq]) or
+           (playerData.completedQuests and playerData.completedQuests[nq]) then
+            return { eligible = false, reason = { code = "already_advanced" } }
+        end
+    end
+
+    -- Check 9: preQuestGroup — ALL of these questIDs must be in completedQuests.
+    if reqs.preQuestGroup then
+        for _, preID in ipairs(reqs.preQuestGroup) do
+            if not (playerData.completedQuests and playerData.completedQuests[preID]) then
+                return { eligible = false, reason = { code = "needs_quest", questID = preID } }
+            end
+        end
+    end
+
+    -- Check 10: preQuestSingle — ANY ONE of these questIDs must be in completedQuests.
+    if reqs.preQuestSingle and #reqs.preQuestSingle > 0 then
+        local anyDone = false
+        for _, preID in ipairs(reqs.preQuestSingle) do
+            if playerData.completedQuests and playerData.completedQuests[preID] then
+                anyDone = true
+                break
+            end
+        end
+        if not anyDone then
+            return { eligible = false, reason = { code = "needs_quest", questID = reqs.preQuestSingle[1] } }
+        end
+    end
+
+    -- Check 11: breadcrumb quest already active or completed (player is past this breadcrumb).
+    if reqs.breadcrumbForQuestId then
+        local bq = reqs.breadcrumbForQuestId
+        if (playerData.quests and playerData.quests[bq]) or
+           (playerData.completedQuests and playerData.completedQuests[bq]) then
+            return { eligible = false, reason = { code = "already_advanced" } }
+        end
+    end
+
+    return { eligible = true }
 end
 
 -- Builds the ordered list of playerEntry rows for one questID.
