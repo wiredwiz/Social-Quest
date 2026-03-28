@@ -241,7 +241,7 @@ local function createHelpFrame()
     end
     y = y + 4
     addLine(L["filter.help.type.note"], "GameFontNormalSmall", 1, 0.82, 0.2, 8)
-    y = y + 8
+    y = y + 28
 
     addLine(L["filter.help.section.examples"], "GameFontNormal", 1, 0.82, 0)
     local i = 1
