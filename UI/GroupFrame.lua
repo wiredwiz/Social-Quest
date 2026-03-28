@@ -134,6 +134,10 @@ local function buildKeyDefs()
           type="enum",
           enumMap={ [L["filter.val.yes"]]="yes", [L["filter.val.no"]]="no" },
           descKey="filter.key.tracked.desc" },
+        { canonical="shareable", names={L["filter.key.shareable"]},
+          type="enum",
+          enumMap={ [L["filter.val.yes"]]="yes", [L["filter.val.no"]]="no" },
+          descKey="filter.key.shareable.desc" },
     }
     _keyDefs = defs
     return defs
@@ -225,6 +229,7 @@ local function createHelpFrame()
     for _, line in ipairs({
         "key=value",  'key="value with spaces"',
         "key!=value  (or ~=)",  "key=val1|val2",
+        "key=val1&val2  (AND)",
         "key=yes  key=no",
         "key<N  key>N  key<=N  key>=N",  "key=N..M",
     }) do
