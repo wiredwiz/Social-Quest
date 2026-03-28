@@ -36,7 +36,8 @@ local function computeFilterState()
     end
 
     if db.window.autoFilterZone then
-        local zone = SQWowAPI.GetRealZoneText()
+        local subZone = SQWowAPI.GetSubZoneText()
+        local zone = (subZone and subZone ~= "") and subZone or SQWowAPI.GetRealZoneText()
         if zone and zone ~= "" then
             return {
                 filter = { zone = zone },

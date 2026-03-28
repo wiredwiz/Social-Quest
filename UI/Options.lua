@@ -297,20 +297,6 @@ function SocialQuestOptions:Initialize()
                 },
             },
 
-            flightPath = {
-                type  = "group",
-                name  = L["Flight Path Discovery"],
-                order = 8,
-                args  = {
-                    enabled = toggle(L["Announce flight path discoveries"],
-                        L["Broadcast to your party when you discover a new flight path."],
-                        { "flightPath", "enabled" }, 1),
-                    announceBanners = toggle(L["Show banner for party discoveries"],
-                        L["Display a banner notification when a party member discovers a new flight path."],
-                        { "flightPath", "announceBanners" }, 2),
-                },
-            },
-
             window = {
                 type  = "group",
                 name  = L["Social Quest Window"],
@@ -431,12 +417,6 @@ function SocialQuestOptions:Initialize()
                                 name = L["Test Chat Link"],
                                 desc = L["Print a local chat preview of a 'Quest turned in' message for quest 337 using a real WoW quest hyperlink. Verify the quest name appears as clickable gold text in the chat frame."],
                                 func = function() SocialQuestAnnounce:TestChatLink() end,
-                            },
-                            testFlightDiscovery = {
-                                type   = "execute",
-                                name   = L["Test Flight Discovery"],
-                                desc   = L["Display a demo flight path unlock banner using your character's starting city as the demo location."],
-                                func   = function() SocialQuestAnnounce:TestFlightDiscovery() end,
                             },
                             testFollowNotification = {
                                 type   = "execute",
