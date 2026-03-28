@@ -269,8 +269,17 @@ function MineTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTable
                     }
                     y = rowFactory.AddQuestRow(contentFrame, y, entry, QUEST_INDENT + 8, callbacks)
 
-                    for _, obj in ipairs(entry.objectives or {}) do
-                        y = rowFactory.AddObjectiveRow(contentFrame, y, obj, OBJ_INDENT + 8)
+                    local objs = entry.objectives or {}
+                    if #objs > 0 then
+                        y = rowFactory.AddPlayerRow(contentFrame, y, {
+                            name           = "",
+                            isMe           = true,
+                            hasSocialQuest = true,
+                            hasCompleted   = false,
+                            needsShare     = false,
+                            isComplete     = false,
+                            objectives     = objs,
+                        }, OBJ_INDENT + 8, 0)
                     end
 
                     for _, peer in ipairs(entry.players) do
@@ -294,8 +303,17 @@ function MineTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTable
                 }
                 y = rowFactory.AddQuestRow(contentFrame, y, entry, QUEST_INDENT, callbacks)
 
-                for _, obj in ipairs(entry.objectives or {}) do
-                    y = rowFactory.AddObjectiveRow(contentFrame, y, obj, OBJ_INDENT)
+                local objs = entry.objectives or {}
+                if #objs > 0 then
+                    y = rowFactory.AddPlayerRow(contentFrame, y, {
+                        name           = "",
+                        isMe           = true,
+                        hasSocialQuest = true,
+                        hasCompleted   = false,
+                        needsShare     = false,
+                        isComplete     = false,
+                        objectives     = objs,
+                    }, OBJ_INDENT, 0)
                 end
             end
         end
