@@ -225,6 +225,7 @@ local function createHelpFrame()
     for _, line in ipairs({
         "key=value",  'key="value with spaces"',
         "key!=value  (or ~=)",  "key=val1|val2",
+        "key=yes  key=no",
         "key<N  key>N  key<=N  key>=N",  "key=N..M",
     }) do
         addLine(line, "GameFontNormalSmall", 0.7, 0.9, 1, 8)
