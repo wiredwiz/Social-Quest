@@ -240,7 +240,7 @@ L["filter.key.status.desc"]  = "Estado de la misión (completa, incompleta, fall
 L["filter.key.tracked"]      = "seguido"
 L["filter.key.tracked.desc"] = "Seguido en el minimapa (sí, no; solo pestaña Yo)"
 L["filter.key.shareable"]    = "compartible"
-L["filter.key.shareable.desc"]=true
+L["filter.key.shareable.desc"] = true
 L["filter.val.yes"]          = "sí"
 L["filter.val.no"]           = "no"
 L["filter.val.complete"]     = "completa"
@@ -268,8 +268,8 @@ L["filter.err.INVALID_NUMBER"]   = "se esperaba un número para '%s', se recibi�
 L["filter.err.RANGE_REVERSED"]   = "rango no válido: el mínimo (%s) debe ser <= máximo (%s)"
 L["filter.err.INVALID_ENUM"]     = "'%s' no es un valor válido para '%s'"
 L["filter.err.label"]            = "Error de filtro: %s"
-L["filter.err.MIXED_AND_OR"]=true
-L["filter.err.AND_KEY_MISMATCH"]=true
+L["filter.err.MIXED_AND_OR"] = true
+L["filter.err.AND_KEY_MISMATCH"] = true
 L["filter.help.title"]                = "Sintaxis de filtros SQ"
 L["filter.help.intro"]                = "Escribe una expresión de filtro y pulsa Enter para aplicarla como etiqueta persistente. Cierra una etiqueta con [x]. Para combinar filtros, aplícalos de uno en uno — cada Enter añade una nueva etiqueta (lógica Y)."
 L["filter.help.section.syntax"]       = "Sintaxis"
@@ -301,14 +301,14 @@ L["filter.help.example.10"]           = "seguido=sí"
 L["filter.help.example.10.note"]      = "Mostrar solo misiones rastreadas (solo pestaña Mías)"
 L["filter.help.example.11"]           = "grupo=no"
 L["filter.help.example.11.note"]      = "Mostrar solo misiones en solitario (sin requisito de grupo)"
-L["filter.help.example.12"]=true
-L["filter.help.example.12.note"]=true
-L["filter.help.example.13"]=true
-L["filter.help.example.13.note"]=true
-L["filter.help.example.14"]=true
-L["filter.help.example.14.note"]=true
-L["filter.help.example.15"]=true
-L["filter.help.example.15.note"]=true
+L["filter.help.example.12"] = true
+L["filter.help.example.12.note"] = true
+L["filter.help.example.13"] = true
+L["filter.help.example.13.note"] = true
+L["filter.help.example.14"] = true
+L["filter.help.example.14.note"] = true
+L["filter.help.example.15"] = true
+L["filter.help.example.15.note"] = true
 
 -- UI/RowFactory.lua — Share button and eligibility reasons
 L["Share"]         = "Compartir"

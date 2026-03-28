@@ -240,8 +240,8 @@ L["filter.key.status"]       = "상태"
 L["filter.key.status.desc"]  = "퀘스트 상태 (완료, 미완료, 실패)"
 L["filter.key.tracked"]      = "추적중"
 L["filter.key.tracked.desc"] = "미니맵 추적 중 (예, 아니오; 내 탭 전용)"
-L["filter.key.shareable"]=true
-L["filter.key.shareable.desc"]=true
+L["filter.key.shareable"] = true
+L["filter.key.shareable.desc"] = true
 L["filter.val.yes"]          = "예"
 L["filter.val.no"]           = "아니오"
 L["filter.val.complete"]     = "완료"
@@ -269,8 +269,8 @@ L["filter.err.INVALID_NUMBER"]   = "'%s'에 숫자가 필요하지만 '%s'을(�
 L["filter.err.RANGE_REVERSED"]   = "잘못된 범위: 최솟값 (%s)은 최댓값 (%s) 이하여야 합니다"
 L["filter.err.INVALID_ENUM"]     = "'%s'은(는) '%s'에 유효한 값이 아닙니다"
 L["filter.err.label"]            = "필터 오류: %s"
-L["filter.err.MIXED_AND_OR"]=true
-L["filter.err.AND_KEY_MISMATCH"]=true
+L["filter.err.MIXED_AND_OR"] = true
+L["filter.err.AND_KEY_MISMATCH"] = true
 L["filter.help.title"]                = "SQ 필터 구문"
 L["filter.help.intro"]                = "필터 표현식을 입력하고 Enter를 눌러 고정 레이블로 적용합니다. [x]로 레이블을 닫습니다. 필터를 조합하려면 하나씩 입력하세요 — Enter를 누를 때마다 새 레이블이 추가됩니다(AND 조건)."
 L["filter.help.section.syntax"]       = "구문"
@@ -302,14 +302,14 @@ L["filter.help.example.10"]           = "추적중=예"
 L["filter.help.example.10.note"]      = "추적 중인 퀘스트만 표시 (내 퀘스트 탭 전용)"
 L["filter.help.example.11"]           = "그룹=아니오"
 L["filter.help.example.11.note"]      = "솔로 퀘스트만 표시 (그룹 불필요)"
-L["filter.help.example.12"]=true
-L["filter.help.example.12.note"]=true
-L["filter.help.example.13"]=true
-L["filter.help.example.13.note"]=true
-L["filter.help.example.14"]=true
-L["filter.help.example.14.note"]=true
-L["filter.help.example.15"]=true
-L["filter.help.example.15.note"]=true
+L["filter.help.example.12"] = true
+L["filter.help.example.12.note"] = true
+L["filter.help.example.13"] = true
+L["filter.help.example.13.note"] = true
+L["filter.help.example.14"] = true
+L["filter.help.example.14.note"] = true
+L["filter.help.example.15"] = true
+L["filter.help.example.15.note"] = true
 
 -- UI/RowFactory.lua — Share button and eligibility reasons
 L["Share"]         = "공유"
