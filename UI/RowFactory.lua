@@ -316,7 +316,7 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent, nameColum
         local reasonText
         local code = playerEntry.ineligReason.code
         if code == "needs_quest" then
-            local questTitle = SocialQuest.AQL:GetQuestTitle(playerEntry.ineligReason.questID) or "?"
+            local questTitle = SocialQuest.AQL:GetQuestTitle(playerEntry.ineligReason.questID or 0) or "?"
             reasonText = "needs: " .. questTitle
         else
             reasonText = L["share.reason." .. code] or code
