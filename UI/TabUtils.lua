@@ -153,7 +153,7 @@ function SocialQuestTabUtils.MatchesEnumFilter(value, descriptor)
         return true
     end
     local matches = (value == descriptor.value)
-    return descriptor.op == "=" and matches or not matches
+    if descriptor.op == "=" then return matches else return not matches end
 end
 
 -- Type filter: each value is an independent boolean predicate.
