@@ -204,6 +204,10 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.15.0 (March 2026 — Improvements branch)
+- Feature: `&` same-key AND operator in the advanced filter language. A single filter label can now express multiple conditions on the same key: `type=dungeon&gather` (dungeon quests with gather objectives), `level>=55&<=62` (level range), `title=dragon&slayer` (title contains both words). The key is written once; operator is inherited by subsequent fragments when omitted. `&` and `|` may not be combined in the same expression (`MIXED_AND_OR` error). `compound_and` descriptor type added to `FilterParser`; all four `Matches*` helpers in `TabUtils` handle it recursively. `FilterState` and `HeaderLabel` unchanged.
+- Feature: `shareable` filter key (Party tab only). `shareable=yes` shows quests the local player can share with at least one party member right now — same condition as the [Share] button (local has it, AQL reports it shareable, at least one party member has `needsShare=true`). `entry.hasShareableMembers` pre-computed in `PartyTab:BuildTree`; `buildQuestCallbacks` reads the pre-computed value. Help window updated with three `&` examples and one `shareable` example across all 12 locales.
+
 ### Version 2.14.2 (March 2026 — Improvements branch)
 - Polish: Share button now uses `UIPanelButtonTemplate` for the standard WoW button appearance (same style as quest log Accept/Decline/Share buttons). Removed bracket-wrapped text label; button now shows plain "Share" text via the template's built-in font string.
 

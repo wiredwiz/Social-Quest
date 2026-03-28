@@ -26,6 +26,8 @@ SocialQuestFilterParser:Initialize({
       enumMap={ ["complete"]="complete", ["incomplete"]="incomplete", ["failed"]="failed" } },
     { canonical="tracked",names={"tracked"},         type="enum",
       enumMap={ ["yes"]="yes", ["no"]="no" } },
+    { canonical="shareable",names={"shareable"},   type="enum",
+      enumMap={ ["yes"]="yes", ["no"]="no" } },
 })
 
 local pass, fail = 0, 0
@@ -226,6 +228,14 @@ assert_filter("status!= op",        r, "status", "!=")
 r = P:Parse("tracked=yes")
 assert_filter("tracked= yes",       r, "tracked", "=")
 assert_eq("tracked= value",         r and r.filter.descriptor.value, "yes")
+
+r = P:Parse("shareable=yes")
+assert_filter("shareable= yes",     r, "shareable", "=")
+assert_eq("shareable= value",       r and r.filter.descriptor.value, "yes")
+
+r = P:Parse("shareable=no")
+assert_filter("shareable= no",      r, "shareable", "=")
+assert_eq("shareable=no value",     r and r.filter.descriptor.value, "no")
 
 -- Operator variant: != and ~= produce identical results
 local r1, r2 = P:Parse("status!=complete"), P:Parse("status~=complete")
