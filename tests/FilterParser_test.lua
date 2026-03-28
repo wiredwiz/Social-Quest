@@ -294,6 +294,13 @@ assert_eq("& raw field", r and r.filter.raw, "level>=55&<=62")
 assert_error("MIXED_AND_OR |&", P:Parse("level>=55&<=62|58"), "MIXED_AND_OR")
 assert_error("MIXED_AND_OR &|", P:Parse("type=chain|group&solo"), "MIXED_AND_OR")
 
+-- & inside a quoted string must NOT split (quote-awareness test)
+r = P:Parse('title="a&b"')
+assert_filter('quoted & no split', r, "title", "=")
+assert_eq('quoted & value', r and r.filter.descriptor.values[1], "a&b")
+assert_nil('quoted & not compound', r and r.filter.descriptor.type)
+-- descriptor.type is nil for a plain string descriptor (no "compound_and" field)
+
 -- EMPTY_VALUE on trailing &
 assert_error("& trailing EMPTY_VALUE", P:Parse("level>=55&"), "EMPTY_VALUE")
 

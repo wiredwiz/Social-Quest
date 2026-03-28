@@ -107,6 +107,14 @@ local _opPatterns = {
     "^(%w+)%s*(<)%s*(.*)",  "^(%w+)%s*(>)%s*(.*)",
     "^(%w+)%s*(=)%s*(.*)",
 }
+
+-- Operator-only patterns for & fragment parsing (no leading key capture group).
+local _fragOpPatterns = {
+    "^(~=)%s*(.*)", "^(!=)%s*(.*)",
+    "^(<=)%s*(.*)", "^(>=)%s*(.*)",
+    "^(<)%s*(.*)",  "^(>)%s*(.*)",
+    "^(=)%s*(.*)",
+}
 local function extractKeyAndOp(text)
     for i, pat in ipairs(_opPatterns) do
         local k, op, rest = text:match(pat)
@@ -184,19 +192,13 @@ function SocialQuestFilterParser:Parse(text)
         parts[#parts+1] = firstResult
 
         -- Parse subsequent fragments: each is "op val" or "val" (inherit op).
-        local _fragOpPats = {
-            "^(~=)%s*(.*)", "^(!=)%s*(.*)",
-            "^(<=)%s*(.*)", "^(>=)%s*(.*)",
-            "^(<)%s*(.*)",  "^(>)%s*(.*)",
-            "^(=)%s*(.*)",
-        }
         for fi = 2, #fragments do
             local frag = fragments[fi]
             if not frag or frag == "" then
                 return makeError("EMPTY_VALUE", {op})
             end
             local fragOp, fragVal = nil, nil
-            for _, fpat in ipairs(_fragOpPats) do
+            for _, fpat in ipairs(_fragOpPatterns) do
                 fragOp, fragVal = frag:match(fpat)
                 if fragOp then break end
             end
