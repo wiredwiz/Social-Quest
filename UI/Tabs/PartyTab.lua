@@ -191,6 +191,10 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
     if not AQL then return {} end
     local players = {}
 
+    -- Check 1: evaluate shareability ONCE for this quest, before the member loop.
+    -- If false, the localHasIt branch is skipped entirely for all members.
+    local shareable = localHasIt and AQL:IsQuestIdShareable(questID)
+
     -- Local player row (always first when local player has any stake).
     local myInfo = AQL:GetQuest(questID)
     if myInfo then
@@ -250,15 +254,17 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
                 chainLength    = pCI.knownStatus == AQL.ChainStatus.Known and pCI.length or nil,
                 dataProvider   = playerData.dataProvider,
             })
-        elseif localHasIt then
-            -- Party member lacks the quest; local player has it → "Needs it Shared".
+        elseif shareable then
+            -- Local player has the quest and it is shareable; show eligibility for this member.
+            local eligResult = isEligibleForShare(questID, playerData, resolveUnitToken(playerName))
             table.insert(players, {
                 name           = playerName,
                 isMe           = false,
                 hasSocialQuest = playerData.hasSocialQuest,
                 hasCompleted   = false,
                 isComplete     = false,
-                needsShare     = isEligibleForShare(questID, playerData),
+                needsShare     = eligResult.eligible,
+                ineligReason   = eligResult.reason,
                 objectives     = {},
                 dataProvider   = playerData.dataProvider,
             })
@@ -462,6 +468,31 @@ function PartyTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTabl
     local tree = self:BuildTree(filterTable)
     local y    = 0
 
+    -- Builds the callbacks table for a quest row. Adds onShare when:
+    --   1. Local player has the quest (logIndex non-nil)
+    --   2. Quest is shareable
+    --   3. At least one party member has needsShare = true
+    local function buildQuestCallbacks(entry)
+        local AQL = SocialQuest.AQL
+        if not entry.logIndex then return {} end
+        if not AQL:IsQuestIdShareable(entry.questID) then return {} end
+        local hasEligible = false
+        for _, p in ipairs(entry.players) do
+            if p.needsShare then hasEligible = true break end
+        end
+        if not hasEligible then return {} end
+        return {
+            onShare = function()
+                -- Safety check: re-verify shareability at click time.
+                if not AQL:IsQuestIdShareable(entry.questID) then return end
+                local prev = AQL:GetQuestLogSelection()
+                AQL:SetQuestLogSelection(entry.logIndex)
+                SQWowAPI.QuestLogPushQuest()
+                AQL:SetQuestLogSelection(prev)
+            end,
+        }
+    end
+
     local sortedZones = {}
     for _, zone in pairs(tree.zones) do
         table.insert(sortedZones, zone)
@@ -492,7 +523,7 @@ function PartyTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTabl
                 y = rowFactory.AddChainHeader(contentFrame, y, chain.title, QUEST_INDENT)
 
                 for _, entry in ipairs(chain.steps) do
-                    y = rowFactory.AddQuestRow(contentFrame, y, entry, QUEST_INDENT + 8, {})
+                    y = rowFactory.AddQuestRow(contentFrame, y, entry, QUEST_INDENT + 8, buildQuestCallbacks(entry))
                     local nameColumnWidth = 0
                     for _, player in ipairs(entry.players) do
                         local w = rowFactory.MeasureNameWidth(rowFactory.GetDisplayName(player))
@@ -506,7 +537,7 @@ function PartyTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTabl
             end
 
             for _, entry in ipairs(zone.quests) do
-                y = rowFactory.AddQuestRow(contentFrame, y, entry, QUEST_INDENT, {})
+                y = rowFactory.AddQuestRow(contentFrame, y, entry, QUEST_INDENT, buildQuestCallbacks(entry))
                 local nameColumnWidth = 0
                 for _, player in ipairs(entry.players) do
                     local w = rowFactory.MeasureNameWidth(rowFactory.GetDisplayName(player))
