@@ -216,6 +216,10 @@ if ft.shareable then
 end
 ```
 
+### Tab-Mask Enforcement
+
+`GroupFrame` assembles `ft` (the filterTable) once per `Refresh()` before passing it to each tab's `BuildTree`. Keys with `tabMask` restrictions are **not added** to `ft` for non-matching tabs. Concretely: when building the filterTable for Mine or Shared tab renders, `ft.shareable` is never set — so the `if ft.shareable then` guard in `BuildTree` is never entered, and Mine/Shared entries are unaffected. This is consistent with how `tracked` (Mine only) and `player` (Party/Shared only) are already handled.
+
 ### Key Definition (`UI/GroupFrame.lua` — `buildKeyDefs`)
 
 ```lua
