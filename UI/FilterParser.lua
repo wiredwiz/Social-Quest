@@ -16,6 +16,37 @@ local function makeError(code, args)
     return { error = true, code = code, args = args or {} }
 end
 
+-- Split valueStr on unquoted & characters.
+-- Returns a table of fragment strings (trimmed), or nil if no unquoted & found.
+local function splitOnAmpersand(str)
+    local parts = {}
+    local current = {}
+    local inQ = false
+    local i = 1
+    local found = false
+    while i <= #str do
+        local c = str:sub(i, i)
+        if c == '"' then
+            inQ = not inQ
+            current[#current+1] = c
+        elseif c == '\\' and inQ and i+1 <= #str then
+            current[#current+1] = c
+            current[#current+1] = str:sub(i+1, i+1)
+            i = i + 1  -- extra increment; the i=i+1 at bottom will make it i+2 total
+        elseif c == '&' and not inQ then
+            parts[#parts+1] = table.concat(current):match("^%s*(.-)%s*$")
+            current = {}
+            found = true
+        else
+            current[#current+1] = c
+        end
+        i = i + 1
+    end
+    if not found then return nil end
+    parts[#parts+1] = table.concat(current):match("^%s*(.-)%s*$")
+    return parts
+end
+
 -- Parse one value token from str at pos (quoted or unquoted).
 -- Returns (value, nextPos) on success, or (nil, nil, errorResult) on unclosed quote.
 local function parseOneValue(str, pos)
@@ -127,6 +158,69 @@ function SocialQuestFilterParser:Parse(text)
 
     local normOp = (op == "~=" and "!=" or op)
 
+    -- ── compound_and: & splits the value into multiple fragments ──────
+    local fragments = splitOnAmpersand(valueStr)
+    if fragments then
+        -- Check for mixed & and | (unquoted | in the original valueStr).
+        local hasPipe = false
+        do
+            local p2, inQ2 = 1, false
+            while p2 <= #valueStr do
+                local c2 = valueStr:sub(p2, p2)
+                if c2 == '"' then inQ2 = not inQ2
+                elseif c2 == '\\' and inQ2 then p2 = p2 + 1
+                elseif c2 == '|' and not inQ2 then hasPipe = true; break
+                end
+                p2 = p2 + 1
+            end
+        end
+        if hasPipe then return makeError("MIXED_AND_OR", {}) end
+
+        local parts = {}
+
+        -- Parse first fragment: its value is fragments[1]; key and op already extracted.
+        local firstResult = SocialQuestFilterParser:_ParseFragment(keyDef, op, normOp, fragments[1])
+        if firstResult.error then return firstResult end
+        parts[#parts+1] = firstResult
+
+        -- Parse subsequent fragments: each is "op val" or "val" (inherit op).
+        local _fragOpPats = {
+            "^(~=)%s*(.*)", "^(!=)%s*(.*)",
+            "^(<=)%s*(.*)", "^(>=)%s*(.*)",
+            "^(<)%s*(.*)",  "^(>)%s*(.*)",
+            "^(=)%s*(.*)",
+        }
+        for fi = 2, #fragments do
+            local frag = fragments[fi]
+            if not frag or frag == "" then
+                return makeError("EMPTY_VALUE", {op})
+            end
+            local fragOp, fragVal = nil, nil
+            for _, fpat in ipairs(_fragOpPats) do
+                fragOp, fragVal = frag:match(fpat)
+                if fragOp then break end
+            end
+            if not fragOp then
+                fragOp = normOp
+                fragVal = frag
+            else
+                fragOp = (fragOp == "~=" and "!=" or fragOp)
+            end
+            local fragIsComp = (fragOp=="<" or fragOp==">" or fragOp=="<=" or fragOp==">=")
+            if fragIsComp and keyDef.type ~= "numeric" then
+                return makeError("TYPE_MISMATCH", {fragOp, keyDef.canonical})
+            end
+            local fragResult = SocialQuestFilterParser:_ParseFragment(keyDef, fragOp, fragOp, fragVal)
+            if fragResult.error then return fragResult end
+            parts[#parts+1] = fragResult
+        end
+
+        return { filter = { canonical=keyDef.canonical,
+                            descriptor={ type="compound_and", parts=parts },
+                            raw=text } }
+    end
+    -- ── End compound_and ──────────────────────────────────────────────
+
     if keyDef.type == "string" then
         local values, err = parseValues(valueStr, op)
         if err then return err end
@@ -172,4 +266,47 @@ function SocialQuestFilterParser:Parse(text)
     end
 
     return nil
+end
+
+-- Internal helper: parse a single value fragment for a given keyDef/op pair.
+-- Returns a descriptor table on success, or { error=true, ... } on failure.
+-- Does NOT produce a full filter result — callers wrap descriptors into compound_and.parts.
+function SocialQuestFilterParser:_ParseFragment(keyDef, rawOp, normOp, valueStr)
+    if not valueStr or valueStr:match("^%s*$") then
+        return makeError("EMPTY_VALUE", {rawOp})
+    end
+    if keyDef.type == "string" then
+        local values, err = parseValues(valueStr, rawOp)
+        if err then return err end
+        return { op=normOp, values=values }
+    end
+    if keyDef.type == "numeric" then
+        local values, err = parseValues(valueStr, rawOp)
+        if err then return err end
+        local v = values[1]
+        local minS, maxS = v:match("^(.-)%.%.(.+)$")
+        if minS then
+            local minN = tonumber(minS:match("^%s*(.-)%s*$"))
+            local maxN = tonumber(maxS:match("^%s*(.-)%s*$"))
+            if not minN then return makeError("INVALID_NUMBER", {keyDef.canonical, minS}) end
+            if not maxN then return makeError("INVALID_NUMBER", {keyDef.canonical, maxS}) end
+            if minN > maxN then return makeError("RANGE_REVERSED", {minN, maxN}) end
+            return { op="range", min=minN, max=maxN }
+        else
+            local n = tonumber(v)
+            if not n then return makeError("INVALID_NUMBER", {keyDef.canonical, v}) end
+            return { op=normOp, val=n }
+        end
+    end
+    if keyDef.type == "enum" then
+        local values, err = parseValues(valueStr, rawOp)
+        if err then return err end
+        local v = values[1]:lower()
+        local canonicalVal = keyDef.enumMap and keyDef.enumMap[v]
+        if not canonicalVal then
+            return makeError("INVALID_ENUM", {keyDef.canonical, values[1]})
+        end
+        return { op=normOp, value=canonicalVal }
+    end
+    return makeError("EMPTY_VALUE", {rawOp})
 end

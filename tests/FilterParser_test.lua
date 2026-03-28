@@ -242,5 +242,60 @@ local ie = P:Parse("type=dungeon")
 assert_eq("INVALID_ENUM canonical", ie and ie.args[1], "type")
 assert_eq("INVALID_ENUM value",     ie and ie.args[2], "dungeon")
 
+-- ── & operator (compound_and) ────────────────────────────────────────
+
+-- Helper: confirm a result is a compound_and with N parts
+local function assert_compound(label, result, canonical, nParts)
+    if result and result.filter
+       and result.filter.canonical == canonical
+       and result.filter.descriptor.type == "compound_and"
+       and #result.filter.descriptor.parts == nParts then
+        pass = pass + 1
+    else
+        fail = fail + 1
+        local got = result and result.filter and result.filter.descriptor.type or "nil"
+        print(string.format("FAIL [%s]: expected compound_and(%d) canonical=%s, got %s",
+            label, nParts, canonical, got))
+    end
+end
+
+-- Numeric & with explicit operators on both sides
+r = P:Parse("level>=55&<=62")
+assert_compound("numeric & 2-part", r, "level", 2)
+assert_eq("part1 op", r and r.filter.descriptor.parts[1].op, ">=")
+assert_eq("part1 val", r and r.filter.descriptor.parts[1].val, 55)
+assert_eq("part2 op", r and r.filter.descriptor.parts[2].op, "<=")
+assert_eq("part2 val", r and r.filter.descriptor.parts[2].val, 62)
+
+-- Enum & with inherited operator
+r = P:Parse("type=chain&group")
+assert_compound("enum & inherited op", r, "type", 2)
+assert_eq("enum part1 op", r and r.filter.descriptor.parts[1].op, "=")
+assert_eq("enum part1 val", r and r.filter.descriptor.parts[1].value, "chain")
+assert_eq("enum part2 op", r and r.filter.descriptor.parts[2].op, "=")
+assert_eq("enum part2 val", r and r.filter.descriptor.parts[2].value, "group")
+
+-- String & with inherited operator
+r = P:Parse("title=dragon&slayer")
+assert_compound("string & inherited op", r, "title", 2)
+assert_eq("string part1 val[1]", r and r.filter.descriptor.parts[1].values[1], "dragon")
+assert_eq("string part2 val[1]", r and r.filter.descriptor.parts[2].values[1], "slayer")
+
+-- Whitespace around &
+r = P:Parse("level >= 55 & <= 62")
+assert_compound("& whitespace tolerance", r, "level", 2)
+assert_eq("& ws part1 val", r and r.filter.descriptor.parts[1].val, 55)
+
+-- raw field preserved
+r = P:Parse("level>=55&<=62")
+assert_eq("& raw field", r and r.filter.raw, "level>=55&<=62")
+
+-- MIXED_AND_OR error
+assert_error("MIXED_AND_OR |&", P:Parse("level>=55&<=62|58"), "MIXED_AND_OR")
+assert_error("MIXED_AND_OR &|", P:Parse("type=chain|group&solo"), "MIXED_AND_OR")
+
+-- EMPTY_VALUE on trailing &
+assert_error("& trailing EMPTY_VALUE", P:Parse("level>=55&"), "EMPTY_VALUE")
+
 print(string.format("\nResults: %d passed, %d failed", pass, fail))
 if fail > 0 then os.exit(1) end
