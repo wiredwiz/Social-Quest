@@ -478,7 +478,9 @@ function SocialQuest:OnTaxiMapOpened()
     while true do
         local name = SQWowAPI.GetTaxiNodeInfo(i)
         if not name then break end
-        currentNodes[name] = true
+        if name ~= "" then
+            currentNodes[name] = true
+        end
         i = i + 1
     end
 
