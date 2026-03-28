@@ -21,7 +21,6 @@ function SocialQuestWowAPI.IsFriend(name)                         return C_Frien
 function SocialQuestWowAPI.GetNumFriends()                        return C_FriendList.GetNumFriends()           end
 function SocialQuestWowAPI.GetFriendInfoByIndex(index)            return C_FriendList.GetFriendInfoByIndex(index) end
 function SocialQuestWowAPI.TimerAfter(delay, fn)                   C_Timer.After(delay, fn)                      end
-function SocialQuestWowAPI.GetTaxiNodeInfo(index)                 return GetTaxiNodeInfo(index)                 end
 function SocialQuestWowAPI.GetRealZoneText()   return GetRealZoneText()   end
 function SocialQuestWowAPI.GetSubZoneText()     return GetSubZoneText()    end
 function SocialQuestWowAPI.IsInInstance()       return IsInInstance()       end

@@ -192,9 +192,6 @@ L["Test All Completed"]                    = "测试全部完成目标"
 L["Display a demo banner for the 'Everyone has completed' purple notification. No chat preview (this event never generates outbound chat directly)."] = "为「所有人都完成了」紫色通知显示演示横幅。无聊天预览（此事件从不直接产生外发聊天）。"
 L["Test Chat Link"]                        = "测试聊天链接"
 L["Print a local chat preview of a 'Quest turned in' message for quest 337 using a real WoW quest hyperlink. Verify the quest name appears as clickable gold text in the chat frame."] = "使用真实的WoW任务超链接为任务337的「任务已提交」消息打印本地聊天预览。确认任务名称在聊天框中显示为可点击的金色文本。"
-L["Test Flight Discovery"]                 = "测试飞行路径发现"
-L["Display a demo flight path unlock banner using your character's starting city as the demo location."] = "以你角色的起始城市作为演示地点，显示飞行路径解锁演示横幅。"
-
 -- UI/Options.lua — follow notification test button
 L["Test Follow Notification"]   = "Test Follow Notification"
 L["Display a demo follow notification banner showing the 'started following you' message."] = "Display a demo follow notification banner showing the 'started following you' message."

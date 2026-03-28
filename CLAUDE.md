@@ -200,9 +200,14 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.12.33 (March 2026 — Improvements branch)
+- Removed flight path discovery feature entirely. The TBC Classic API (`NumTaxiNodes`, `TaxiNodeName`, `TaxiNodeGetType`) only returns data while the flight map UI is open — it returns nothing at gossip time when the path is actually discovered. Since detection requires the player to explicitly open the flight map, the feature cannot reliably detect discoveries. Removed: `OnTaxiMapOpened`, `GetStartingNode`, `RACE_STARTING_NODES`, `getStartingNode`, `TAXIMAP_OPENED` event registration, `flightPath` AceDB profile defaults, `knownFlightNodes` char defaults, `SQ_FLIGHT` comm prefix, `SendFlightDiscovery`, `OnFlightDiscovery`, `TestFlightDiscovery`, `NumTaxiNodes`/`TaxiNodeName`/`TaxiNodeGetType` WowAPI wrappers, Flight Path Discovery config group, Test Flight Discovery debug button, and all related locale keys across 12 locale files.
+
+### Version 2.12.32 (March 2026 — Improvements branch)
+- Bug fix: flight path discovery detection now uses the correct TBC Classic taxi APIs. `GetTaxiNodeInfo` does not exist in TBC (Interface 20505) — it is a retail-only API. `OnTaxiMapOpened()` now uses `NumTaxiNodes()` / `TaxiNodeName(i)` / `TaxiNodeGetType(i)`. Only `REACHABLE` and `CURRENT` nodes are collected; `DISTANT` nodes (not yet discovered) are skipped, preventing them from polluting `currentNodes`, inflating `diffCount`, and triggering the silent-absorb branch.
+
 ### Version 2.12.31 (March 2026 — Improvements branch)
 - Bug fix: zone auto-filter now shows the correct zone name in starter areas (e.g. "Northshire Valley" instead of "Elwynn Forest"). `computeFilterState()` in `WindowFilter.lua` now prefers `GetSubZoneText()` when non-empty; falls back to `GetRealZoneText()` for normal open-world zones. Instance filter branch unchanged — `GetRealZoneText()` is correct inside dungeons/raids.
-- Bug fix: flight path discovery detection now correctly broadcasts new nodes to the party. `OnTaxiMapOpened()` loop skips empty-string entries from `GetTaxiNodeInfo()` rather than inserting them into `currentNodes`. Previously, empty strings inflated `diffCount`, triggering the "mid-game install / ambiguous" silent-absorb branch for single new discoveries.
 - Feature: Mine tab quest objectives now render as WoW-native `StatusBar` progress bars, matching the Party and Shared tabs. Uses `AddPlayerRow` with an empty name column (`nameColumnWidth = 0`) and a synthetic player entry, reusing the existing bar rendering code without duplication.
 
 ### Version 2.12.30 (March 2026 — AdvancedFilters branch)

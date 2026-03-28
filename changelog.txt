@@ -1,6 +1,21 @@
 SocialQuest Changelog
 =====================
 
+Version 2.12.33 (March 2026)
+- Removed flight path discovery feature. The TBC Classic taxi APIs only return
+  data while the flight map UI is open, not when the player talks to a flight
+  master. Since the discovery occurs at NPC gossip time but the API data is
+  unavailable until the player explicitly opens the map, reliable detection is
+  not possible. The feature has been removed entirely.
+
+Version 2.12.31 (March 2026)
+- Bug fix: zone auto-filter now shows the correct name in starter areas such as
+  Northshire Abbey. The filter now prefers GetSubZoneText() (e.g. "Northshire
+  Valley") over GetRealZoneText() (e.g. "Elwynn Forest") when a sub-zone name
+  is available. The instance filter branch is unchanged.
+- Feature: Mine tab quest objectives now render as progress bars matching the
+  Party and Shared tabs, instead of plain colored text.
+
 Version 2.12.18 (March 2026)
 - Feature: Advanced filter language. The search bar now accepts structured filter
   expressions entered by pressing Enter (e.g. level>=60, zone=Elwynn|Deadmines,

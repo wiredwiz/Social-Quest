@@ -667,23 +667,6 @@ function SocialQuestAnnounce:OnFollowStop(sender)
     displayBanner(msg, "follow")
 end
 
-------------------------------------------------------------------------
--- Flight path discovery notifications
-------------------------------------------------------------------------
-
-function SocialQuestAnnounce:OnFlightDiscovery(sender, nodeName)
-    local db = SocialQuest.db.profile
-    if not db.flightPath.announceBanners then return end
-    local msg = string.format(L["%s unlocked flight path: %s"], sender, nodeName)
-    displayBanner(msg, "accepted")  -- reuses the quest-accepted green color
-end
-
-function SocialQuestAnnounce:TestFlightDiscovery()
-    local nodeName = SocialQuest:GetStartingNode() or "Stormwind"
-    local msg = string.format(L["%s unlocked flight path: %s"], SQWowAPI.UnitName("player") or "You", nodeName)
-    displayBanner(msg, "accepted")
-end
-
 function SocialQuestAnnounce:TestFollowNotification()
     local msg = string.format(L["%s started following you."], "TestPlayer")
     displayBanner(msg, "follow")
