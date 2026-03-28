@@ -323,3 +323,18 @@ L["filter.help.example.8"]        = "type=kill"
 L["filter.help.example.8.note"]   = "Show quests with at least one kill objective"
 L["filter.help.example.9"]        = "type=daily"
 L["filter.help.example.9.note"]   = "Show only daily quests"
+
+-- UI/RowFactory.lua — Share button label and tooltip
+L["Share"]         = true
+L["share.tooltip"] = "Share this quest with party members"
+
+-- UI/RowFactory.lua — Share eligibility reason labels
+-- Displayed as "[reason]" next to a party member's name when they cannot receive the shared quest.
+-- "needs_quest" is formatted dynamically as "needs: [Quest Title]" — no locale key for the template.
+L["share.reason.level_too_low"]    = true   -- player's level is below the quest's minimum
+L["share.reason.level_too_high"]   = true   -- player's level is above the quest's maximum
+L["share.reason.wrong_race"]       = true   -- player's race cannot take this quest
+L["share.reason.wrong_class"]      = true   -- player's class cannot take this quest
+L["share.reason.quest_log_full"]   = true   -- player already has 25 quests (TBC cap)
+L["share.reason.exclusive_quest"]  = true   -- player completed a mutually exclusive quest
+L["share.reason.already_advanced"] = true   -- player is already past this step in the chain
