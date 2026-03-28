@@ -101,20 +101,23 @@ All field names above are confirmed against the TBC questKeys definition in `tbc
 
 ### Race bitmask (confirmed against `QuestieDB.raceKeys` in TBC)
 
-| Race | Bit |
-|---|---|
-| Human | 1 |
-| Orc | 2 |
-| Dwarf | 4 |
-| Night Elf | 8 |
-| Undead | 16 |
-| Tauren | 32 |
-| Gnome | 64 |
-| Troll | 128 |
-| Blood Elf | 512 |
-| Draenei | 1024 |
+| Race | Bit | In TBC? |
+|---|---|---|
+| Human | 1 | Yes |
+| Orc | 2 | Yes |
+| Dwarf | 4 | Yes |
+| Night Elf | 8 | Yes |
+| Undead | 16 | Yes |
+| Tauren | 32 | Yes |
+| Gnome | 64 | Yes |
+| Troll | 128 | Yes |
+| Goblin | 256 | No (Cataclysm) |
+| Blood Elf | 512 | Yes |
+| Draenei | 1024 | Yes |
 
 `requiredRaces = 0` (NONE) means no restriction — all races pass. Check is skipped when value is 0 or nil.
+
+Goblin (256) follows the sequential Questie raceKeys pattern (bit = 1 << (index-1), index 9). Post-Cataclysm allied races (Worgen, Pandaren, Nightborne, Highmountain Tauren, Void Elf, Lightforged Draenei, Zandalari Troll, Kul Tiran, Dark Iron Dwarf, Mag'har Orc, Mechagnome, Vulpera, Dracthyr) are **not** included in `RACE_BITS`. Their bitmask values in the retail Questie DB are not sequential from index 12 onward (WoW race IDs for these races are non-contiguous), and including wrong values would cause incorrect eligibility results. These entries should be added when retail support is implemented and the values are verified against the retail Questie DB. A missing entry gracefully falls through (check skipped, player treated as eligible — same behavior as the nil-provider path).
 
 ### Class bitmask (confirmed against `QuestieDB.classKeys`)
 
@@ -125,16 +128,18 @@ All field names above are confirmed against the TBC questKeys definition in `tbc
 | Hunter | 4 | Yes |
 | Rogue | 8 | Yes |
 | Priest | 16 | Yes |
-| Death Knight | 32 | No (retail) |
+| Death Knight | 32 | No (WotLK) |
 | Shaman | 64 | Yes |
 | Mage | 128 | Yes |
 | Warlock | 256 | Yes |
 | Monk | 512 | No (MoP) |
 | Druid | 1024 | Yes |
+| Demon Hunter | 2048 | No (Legion) |
+| Evoker | 4096 | No (Dragonflight) |
 
 `requiredClasses = 0` (NONE) means no restriction — all classes pass. Check is skipped when value is 0 or nil.
 
-Death Knight (32) and Monk (512) exist in Questie's bitmask table but no TBC player can have these classes. They are included in the spec for completeness. The `UnitClass` → bit lookup table in `PartyTab.lua` omits Death Knight and Monk, as `UnitClass` will never return those tokens in TBC.
+All 13 classes are included in the `CLASS_BITS` lookup table in `PartyTab.lua` as stubs for future retail support. In TBC, `UnitClass` will never return `"DEATHKNIGHT"`, `"MONK"`, `"DEMONHUNTER"`, or `"EVOKER"` — those entries are unreachable and harmless.
 
 ---
 
@@ -231,7 +236,9 @@ Both `needsShare` and `ineligReason` are stored in the playerEntry table. These 
 
 ## Locale Keys
 
-New keys added to all 12 locale files (enUS + 11 non-English):
+New keys added to all 12 locale files (enUS + 11 non-English).
+
+**Translation standard:** Translations must use natural, game-appropriate phrasing that matches how players actually speak in that language — not literal word-for-word translations of the English. Use the same in-game terminology WoW itself uses in that locale (e.g. the word for "quest log", class names, "level"). The goal is that a native-language player reading the reason label would find it immediately recognizable, not like a machine translation. This is the same standard applied to all SocialQuest locale strings in v2.12.30.
 
 | Key | enUS value |
 |---|---|

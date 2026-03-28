@@ -14,6 +14,8 @@
 
 >**Localization Standard:** All locale strings added to this addon must use natural, game-appropriate phrasing that matches how players actually speak in that language — never literal word-for-word translations of the English. Use the same in-game terminology WoW itself uses in each locale (e.g., the word for "quest log", class names, dungeon/raid terms). A native-language player reading the string should find it immediately recognizable. English (enUS) strings are always `= true`. When writing non-English translations, confirm the phrasing uses natural WoW vocabulary for that language, not dictionary translations. This is the same standard applied to all SocialQuest locale strings since v2.12.30.
 
+>**Multi-Version Design:** All new development must be designed with future support for Retail WoW and all other currently active WoW versions in mind — not only TBC. This does not mean implementing Retail support today; TBC is the only actively supported version. It means: (1) all WoW API calls route through `SQWowAPI` / `SQWowUI` wrappers so version-specific branching stays in one place; (2) new data structures, bitmask tables, and lookup tables include stubs for races/classes/features that don't exist in TBC but do in Retail (clearly commented as stubs); (3) avoid hardcoding assumptions that are TBC-specific (e.g., "only 10 races", "only 9 classes") when the pattern can accommodate future values at zero cost; (4) when a Retail API equivalent is unknown, add a comment `-- TODO: verify Retail API` rather than silently omitting the case.
+
 ---
 
 ## Architecture
