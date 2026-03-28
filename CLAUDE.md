@@ -204,6 +204,9 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.14.1 (March 2026 — Improvements branch)
+- Bug fix: `[Share]` button did not appear in the Party tab. Root cause: `shareBtn:SetPoint` used `"RIGHT"` / `"RIGHT"` anchors, which position relative to the center of the content frame's right edge — the button rendered at the wrong vertical position (hidden off-screen). Fixed by changing to `"TOPRIGHT"` / `"TOPRIGHT"`, matching the badge anchor convention used by all other right-aligned row elements.
+
 ### Version 2.14.0 (March 2026 — Improvements branch)
 - Feature: Share button + full quest eligibility. Party tab quest rows now show a `[Share]` button when the local player has the quest, it is shareable, and at least one party member needs it. Clicking calls `QuestLogPushQuest()` via `SQWowAPI` after selecting the quest in the log. Party member rows for ineligible players now show a specific reason label in muted amber (e.g. "level too low", "wrong class", "needs: [Quest Name]") instead of the misleading "Needs it Shared" label. Reason labels cover 7 cases: level_too_low, level_too_high, wrong_race, wrong_class, quest_log_full, exclusive_quest, already_advanced, plus dynamic "needs: questTitle" for prerequisite mismatches. Uses `AQL:GetQuestRequirements(questID)` (new in AQL 2.4.0) for tier-2 checks; degrades gracefully to tier-1-only (race/class/level/log-full) when no provider is available. New `SQWowAPI` wrappers: `QuestLogPushQuest`, `UnitClass`. New private helpers in `PartyTab.lua`: `resolveUnitToken`, updated `isEligibleForShare`. New locale keys in all 12 locale files.
 

@@ -237,7 +237,7 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
         shareBtn:SetSize(48, ROW_H - 2)
         -- Position: right-aligned, shifted left by badge + 4px gap (when badge present).
         local rightOffset = -(8 + badgeWidth + (badgeWidth > 0 and 4 or 0))
-        shareBtn:SetPoint("RIGHT", contentFrame, "RIGHT", rightOffset, -y + 1)
+        shareBtn:SetPoint("TOPRIGHT", contentFrame, "TOPRIGHT", rightOffset, -y + 1)
         shareBtn:SetText("[" .. L["Share"] .. "]")
         shareBtn:SetNormalFontObject("GameFontNormalSmall")
         shareBtn:SetHighlightFontObject("GameFontHighlightSmall")
