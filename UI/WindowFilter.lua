@@ -36,8 +36,25 @@ local function computeFilterState()
     end
 
     if db.window.autoFilterZone then
+        local zone
         local subZone = SQWowAPI.GetSubZoneText()
-        local zone = (subZone and subZone ~= "") and subZone or SQWowAPI.GetRealZoneText()
+        if subZone and subZone ~= "" then
+            -- Only use the subzone name if the quest log actually has a zone header
+            -- matching it. Starter subzones (e.g. Northshire Valley) are the only
+            -- subzones with quests scoped to their name; all other subzones have
+            -- quests filed under the parent zone. This check is locale-safe because
+            -- both GetSubZoneText() and AQL zone headers use the client language.
+            local AQL = SocialQuest.AQL
+            if AQL then
+                for _, z in ipairs(AQL:GetQuestLogZones()) do
+                    if z.name == subZone then
+                        zone = subZone
+                        break
+                    end
+                end
+            end
+        end
+        zone = zone or SQWowAPI.GetRealZoneText()
         if zone and zone ~= "" then
             return {
                 filter = { zone = zone },

@@ -200,6 +200,9 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.13.0 (March 2026 — Improvements branch)
+- Bug fix: zone auto-filter broke in all non-starter subzones after the 2.12.31 sub-zone preference fix. In subzones like Goldshire (Elwynn Forest), `GetSubZoneText()` returned "Goldshire" which doesn't match any quest log zone header, so the filter showed no quests. Root cause: the fix unconditionally preferred `GetSubZoneText()` when non-empty. New approach: check whether the subzone name actually appears as a zone header in the active quest log (`AQL:GetQuestLogZones()`). Starter subzones (Northshire Valley, etc.) are the only subzones with quests scoped to their name, so the check correctly selects the subzone for starter zones and falls back to `GetRealZoneText()` everywhere else. Locale-safe: both `GetSubZoneText()` and AQL zone headers use the client language.
+
 ### Version 2.12.33 (March 2026 — Improvements branch)
 - Removed flight path discovery feature entirely. The TBC Classic API (`NumTaxiNodes`, `TaxiNodeName`, `TaxiNodeGetType`) only returns data while the flight map UI is open — it returns nothing at gossip time when the path is actually discovered. Since detection requires the player to explicitly open the flight map, the feature cannot reliably detect discoveries. Removed: `OnTaxiMapOpened`, `GetStartingNode`, `RACE_STARTING_NODES`, `getStartingNode`, `TAXIMAP_OPENED` event registration, `flightPath` AceDB profile defaults, `knownFlightNodes` char defaults, `SQ_FLIGHT` comm prefix, `SendFlightDiscovery`, `OnFlightDiscovery`, `TestFlightDiscovery`, `NumTaxiNodes`/`TaxiNodeName`/`TaxiNodeGetType` WowAPI wrappers, Flight Path Discovery config group, Test Flight Discovery debug button, and all related locale keys across 12 locale files.
 
