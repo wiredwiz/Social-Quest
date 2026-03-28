@@ -223,7 +223,7 @@ local function createHelpFrame()
     end
 
     addLine(L["filter.help.intro"], "GameFontNormalSmall", 0.9, 0.9, 0.9)
-    y = y + 46
+    y = y + 23
 
     addLine(L["filter.help.section.syntax"], "GameFontNormal", 1, 0.82, 0)
     for _, line in ipairs({
