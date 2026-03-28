@@ -204,6 +204,9 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.14.2 (March 2026 — Improvements branch)
+- Polish: Share button now uses `UIPanelButtonTemplate` for the standard WoW button appearance (same style as quest log Accept/Decline/Share buttons). Removed bracket-wrapped text label; button now shows plain "Share" text via the template's built-in font string.
+
 ### Version 2.14.1 (March 2026 — Improvements branch)
 - Bug fix: `[Share]` button did not appear in the Party tab. Root cause: `shareBtn:SetPoint` used `"RIGHT"` / `"RIGHT"` anchors, which position relative to the center of the content frame's right edge — the button rendered at the wrong vertical position (hidden off-screen). Fixed by changing to `"TOPRIGHT"` / `"TOPRIGHT"`, matching the badge anchor convention used by all other right-aligned row elements.
 

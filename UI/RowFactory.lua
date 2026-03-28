@@ -232,15 +232,14 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     end
 
     -- Share button (right-aligned, to the left of the badge).
+    -- UIPanelButtonTemplate gives the standard WoW button look (same as quest log Accept/Decline).
     if callbacks and callbacks.onShare then
-        local shareBtn = CreateFrame("Button", nil, contentFrame)
-        shareBtn:SetSize(48, ROW_H - 2)
+        local shareBtn = CreateFrame("Button", nil, contentFrame, "UIPanelButtonTemplate")
+        shareBtn:SetSize(52, ROW_H + 2)
         -- Position: right-aligned, shifted left by badge + 4px gap (when badge present).
         local rightOffset = -(8 + badgeWidth + (badgeWidth > 0 and 4 or 0))
         shareBtn:SetPoint("TOPRIGHT", contentFrame, "TOPRIGHT", rightOffset, -y + 1)
-        shareBtn:SetText("[" .. L["Share"] .. "]")
-        shareBtn:SetNormalFontObject("GameFontNormalSmall")
-        shareBtn:SetHighlightFontObject("GameFontHighlightSmall")
+        shareBtn:SetText(L["Share"])
         shareBtn:SetScript("OnClick", callbacks.onShare)
         shareBtn:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
