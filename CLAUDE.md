@@ -200,6 +200,11 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.12.31 (March 2026 — Improvements branch)
+- Bug fix: zone auto-filter now shows the correct zone name in starter areas (e.g. "Northshire Valley" instead of "Elwynn Forest"). `computeFilterState()` in `WindowFilter.lua` now prefers `GetSubZoneText()` when non-empty; falls back to `GetRealZoneText()` for normal open-world zones. Instance filter branch unchanged — `GetRealZoneText()` is correct inside dungeons/raids.
+- Bug fix: flight path discovery detection now correctly broadcasts new nodes to the party. `OnTaxiMapOpened()` loop skips empty-string entries from `GetTaxiNodeInfo()` rather than inserting them into `currentNodes`. Previously, empty strings inflated `diffCount`, triggering the "mid-game install / ambiguous" silent-absorb branch for single new discoveries.
+- Feature: Mine tab quest objectives now render as WoW-native `StatusBar` progress bars, matching the Party and Shared tabs. Uses `AddPlayerRow` with an empty name column (`nameColumnWidth = 0`) and a synthetic player entry, reusing the existing bar rendering code without duplication.
+
 ### Version 2.12.30 (March 2026 — AdvancedFilters branch)
 - Feature: Full filter localization for 11 non-enUS locales (deDE, frFR, esES, esMX, zhCN, zhTW, ptBR, itIT, koKR, ruRU, jaJP). All `filter.*` keys previously falling back to enUS (`= true`) are now replaced with natural, game-appropriate translated strings — key names players type, enum values, key descriptions, error messages, and help window text. Single-letter aliases remain `= true` (English letters). WoW's own in-game terminology is used where applicable (e.g., German Verlies/Schlachtzug, French Donjon, Spanish Mazmorra/Banda, Korean 던전/공격대). esMX is identical to esES.
 
