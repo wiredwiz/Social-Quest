@@ -104,6 +104,12 @@ end
 -- descriptor = { op = "=" | "!=", values = { ... } }
 function SocialQuestTabUtils.MatchesStringFilter(value, descriptor)
     if not descriptor then return true end
+    if descriptor.type == "compound_and" then
+        for _, part in ipairs(descriptor.parts) do
+            if not SocialQuestTabUtils.MatchesStringFilter(value, part) then return false end
+        end
+        return true
+    end
     local lower = (value or ""):lower()
     local anyMatch = false
     for _, v in ipairs(descriptor.values or {}) do
@@ -117,6 +123,12 @@ end
 -- Range:  { op="range", min=N, max=N }
 function SocialQuestTabUtils.MatchesNumericFilter(value, descriptor)
     if not descriptor then return true end
+    if descriptor.type == "compound_and" then
+        for _, part in ipairs(descriptor.parts) do
+            if not SocialQuestTabUtils.MatchesNumericFilter(value, part) then return false end
+        end
+        return true
+    end
     if value == nil then return false end
     local n = tonumber(value)
     if not n then return false end
@@ -134,8 +146,14 @@ end
 -- descriptor = { op = "=" | "!=", value = canonicalString }
 function SocialQuestTabUtils.MatchesEnumFilter(value, descriptor)
     if not descriptor then return true end
+    if descriptor.type == "compound_and" then
+        for _, part in ipairs(descriptor.parts) do
+            if not SocialQuestTabUtils.MatchesEnumFilter(value, part) then return false end
+        end
+        return true
+    end
     local matches = (value == descriptor.value)
-    return descriptor.op == "=" and matches or not matches
+    if descriptor.op == "=" then return matches else return not matches end
 end
 
 -- Type filter: each value is an independent boolean predicate.
@@ -144,6 +162,12 @@ end
 -- AQL:GetQuestInfo() is called only for AQL-based and objective-type predicates.
 function SocialQuestTabUtils.MatchesTypeFilter(entry, descriptor)
     if not descriptor then return true end
+    if descriptor.type == "compound_and" then
+        for _, part in ipairs(descriptor.parts) do
+            if not SocialQuestTabUtils.MatchesTypeFilter(entry, part) then return false end
+        end
+        return true
+    end
     local AQL = SocialQuest.AQL
     local value = descriptor.value
     local matched = false
