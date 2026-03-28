@@ -5,10 +5,69 @@
 PartyTab = {}
 
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
+local SQWowAPI = SocialQuestWowAPI
+
+-- Maps UnitRace() second return value (English race string) to Questie requiredRaces bitmask bits.
+-- "Scourge" is the English race file name for Undead in TBC.
+-- Goblin (256) included as a stub: follows the sequential raceKeys pattern (index 9 → bit 256).
+-- Post-Cataclysm allied races (Worgen, Pandaren, Nightborne, etc.) are intentionally absent:
+-- their bitmask values in the retail Questie DB are non-contiguous and unverified — including
+-- wrong values would produce incorrect eligibility results. Add them when retail support is
+-- implemented and the values are confirmed. Missing entries are gracefully skipped (nil check).
+local RACE_BITS = {
+    ["Human"]    = 1,
+    ["Orc"]      = 2,
+    ["Dwarf"]    = 4,
+    ["NightElf"] = 8,
+    ["Scourge"]  = 16,   -- UnitRace returns "Scourge" for Undead
+    ["Tauren"]   = 32,
+    ["Gnome"]    = 64,
+    ["Troll"]    = 128,
+    ["Goblin"]   = 256,  -- Cataclysm; stub for future retail support
+    ["BloodElf"] = 512,
+    ["Draenei"]  = 1024,
+}
+
+-- Maps UnitClass() second return value (English class token) to Questie requiredClasses bitmask bits.
+-- All 13 classes included. DK/Monk/DemonHunter/Evoker are stubs for future retail support:
+-- UnitClass never returns their tokens in TBC so these entries are unreachable and harmless.
+local CLASS_BITS = {
+    ["WARRIOR"]     = 1,
+    ["PALADIN"]     = 2,
+    ["HUNTER"]      = 4,
+    ["ROGUE"]       = 8,
+    ["PRIEST"]      = 16,
+    ["DEATHKNIGHT"] = 32,    -- WotLK; stub for retail support
+    ["SHAMAN"]      = 64,
+    ["MAGE"]        = 128,
+    ["WARLOCK"]     = 256,
+    ["MONK"]        = 512,   -- MoP; stub for retail support
+    ["DRUID"]       = 1024,
+    ["DEMONHUNTER"] = 2048,  -- Legion; stub for retail support
+    ["EVOKER"]      = 4096,  -- Dragonflight; stub for retail support
+}
 
 ------------------------------------------------------------------------
 -- Private helpers
 ------------------------------------------------------------------------
+
+-- Scans "party1".."party4" to find the unit token for the given player name.
+-- Normalises realm suffix (strips -RealmName) for same-realm matching.
+-- Returns the token string ("party1", etc.) or nil if not matched (offline or unknown).
+local function resolveUnitToken(playerName)
+    local shortLookup = playerName:match("^([^%-]+)") or playerName
+    for i = 1, 4 do
+        local token = "party" .. i
+        local unitName = SQWowAPI.UnitName(token)
+        if unitName then
+            local shortUnit = unitName:match("^([^%-]+)") or unitName
+            if shortUnit == shortLookup or unitName == playerName then
+                return token
+            end
+        end
+    end
+    return nil
+end
 
 -- Returns true only when the quest can actually be shared with this player:
 --   1. The quest is marked shareable by the WoW API.
