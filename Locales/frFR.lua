@@ -239,6 +239,8 @@ L["filter.key.status"]       = "statut"
 L["filter.key.status.desc"]  = "Statut de la quête (complète, incomplète, échouée)"
 L["filter.key.tracked"]      = "suivi"
 L["filter.key.tracked.desc"] = "Suivi sur la minicarte (oui, non ; onglet Moi uniquement)"
+L["filter.key.shareable"]    = "partageable"
+L["filter.key.shareable.desc"]=true
 L["filter.val.yes"]          = "oui"
 L["filter.val.no"]           = "non"
 L["filter.val.complete"]     = "complète"
@@ -266,6 +268,8 @@ L["filter.err.INVALID_NUMBER"]   = "un nombre est attendu pour '%s', mais '%s' a
 L["filter.err.RANGE_REVERSED"]   = "plage invalide : le min (%s) doit être <= au max (%s)"
 L["filter.err.INVALID_ENUM"]     = "'%s' n'est pas une valeur valide pour '%s'"
 L["filter.err.label"]            = "Erreur de filtre : %s"
+L["filter.err.MIXED_AND_OR"]=true
+L["filter.err.AND_KEY_MISMATCH"]=true
 L["filter.help.title"]                = "Syntaxe des filtres SQ"
 L["filter.help.intro"]                = "Saisissez une expression de filtre et appuyez sur Entrée pour l'appliquer comme étiquette persistante. Fermez une étiquette avec [x]. Pour combiner des filtres, appliquez-les un par un — chaque appui sur Entrée ajoute une nouvelle étiquette (ET logique)."
 L["filter.help.section.syntax"]       = "Syntaxe"
@@ -297,6 +301,14 @@ L["filter.help.example.10"]           = "suivi=oui"
 L["filter.help.example.10.note"]      = "Afficher uniquement les quêtes suivies (onglet Mes quêtes uniquement)"
 L["filter.help.example.11"]           = "groupe=non"
 L["filter.help.example.11.note"]      = "Afficher uniquement les quêtes solo (sans prérequis de groupe)"
+L["filter.help.example.12"]=true
+L["filter.help.example.12.note"]=true
+L["filter.help.example.13"]=true
+L["filter.help.example.13.note"]=true
+L["filter.help.example.14"]=true
+L["filter.help.example.14.note"]=true
+L["filter.help.example.15"]=true
+L["filter.help.example.15.note"]=true
 
 -- UI/RowFactory.lua — Share button and eligibility reasons
 L["Share"]         = "Partager"

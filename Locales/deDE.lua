@@ -239,6 +239,8 @@ L["filter.key.status"]       = "Status"
 L["filter.key.status.desc"]  = "Queststatus (abgeschlossen, unvollständig, fehlgeschlagen)"
 L["filter.key.tracked"]      = "Verfolgt"
 L["filter.key.tracked.desc"] = "Auf der Minikarte verfolgt (Ja, Nein; nur Mein-Reiter)"
+L["filter.key.shareable"]    = "teilbar"
+L["filter.key.shareable.desc"]=true
 L["filter.val.yes"]          = "Ja"
 L["filter.val.no"]           = "Nein"
 L["filter.val.complete"]     = "abgeschlossen"
@@ -266,6 +268,8 @@ L["filter.err.INVALID_NUMBER"]   = "Zahl für '%s' erwartet, '%s' erhalten"
 L["filter.err.RANGE_REVERSED"]   = "ungültiger Bereich: Min (%s) muss <= Max (%s) sein"
 L["filter.err.INVALID_ENUM"]     = "'%s' ist kein gültiger Wert für '%s'"
 L["filter.err.label"]            = "Filterfehler: %s"
+L["filter.err.MIXED_AND_OR"]=true
+L["filter.err.AND_KEY_MISMATCH"]=true
 L["filter.help.title"]                = "SQ-Filtersyntax"
 L["filter.help.intro"]                = "Filterbedingung eingeben und Enter drücken, um sie als dauerhaftes Label anzuwenden. Label mit [x] schließen. Filter lassen sich kombinieren, indem sie einzeln eingegeben werden — jedes Enter fügt ein neues Label hinzu (UND-Verknüpfung)."
 L["filter.help.section.syntax"]       = "Syntax"
@@ -297,6 +301,14 @@ L["filter.help.example.10"]           = "Verfolgt=Ja"
 L["filter.help.example.10.note"]      = "Nur verfolgte Quests anzeigen (nur Mein-Reiter)"
 L["filter.help.example.11"]           = "Gruppe=Nein"
 L["filter.help.example.11.note"]      = "Nur Solo-Quests anzeigen (keine Gruppenanforderung)"
+L["filter.help.example.12"]=true
+L["filter.help.example.12.note"]=true
+L["filter.help.example.13"]=true
+L["filter.help.example.13.note"]=true
+L["filter.help.example.14"]=true
+L["filter.help.example.14.note"]=true
+L["filter.help.example.15"]=true
+L["filter.help.example.15.note"]=true
 
 -- UI/RowFactory.lua — Share button and eligibility reasons
 L["Share"]         = "Teilen"
