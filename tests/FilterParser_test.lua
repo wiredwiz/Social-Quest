@@ -235,7 +235,7 @@ assert_eq("shareable= value",       r and r.filter.descriptor.value, "yes")
 
 r = P:Parse("shareable=no")
 assert_filter("shareable= no",      r, "shareable", "=")
-assert_eq("shareable=no value",     r and r.filter.descriptor.value, "no")
+assert_eq("shareable= no value",     r and r.filter.descriptor.value, "no")
 
 -- Operator variant: != and ~= produce identical results
 local r1, r2 = P:Parse("status!=complete"), P:Parse("status~=complete")
