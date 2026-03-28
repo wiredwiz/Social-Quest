@@ -358,21 +358,6 @@ tab.
 
 
   ============================================================
-  FLIGHT PATH DISCOVERY
-  ============================================================
-
-  Announce flight path discoveries          (default: ON)
-      Broadcast to your party when you discover a new flight path node.
-      Prior discoveries are saved per-character so only truly new nodes are
-      announced. Handles first-run, mid-game install, and unknown-race edge
-      cases gracefully.
-
-  Show banner for party discoveries         (default: ON)
-      Display a banner notification when a party member discovers a new
-      flight path.
-
-
-  ============================================================
   DEBUG
   ============================================================
 
