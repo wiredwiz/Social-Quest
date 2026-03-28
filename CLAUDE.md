@@ -12,6 +12,8 @@
 
 >**Versioning Rule:** The major version number should never be changed by claude unless explicitly instructed to do so.  The first time add-on functionality is modified on any given day, the minor version number should be incremented and the revision number should be reset to 0. Any extra changes ocurring within the same days should increment the revision number only, unless explicitly instructed otherwise.
 
+>**Localization Standard:** All locale strings added to this addon must use natural, game-appropriate phrasing that matches how players actually speak in that language — never literal word-for-word translations of the English. Use the same in-game terminology WoW itself uses in each locale (e.g., the word for "quest log", class names, dungeon/raid terms). A native-language player reading the string should find it immediately recognizable. English (enUS) strings are always `= true`. When writing non-English translations, confirm the phrasing uses natural WoW vocabulary for that language, not dictionary translations. This is the same standard applied to all SocialQuest locale strings since v2.12.30.
+
 ---
 
 ## Architecture
