@@ -198,7 +198,10 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
     -- Local player row (always first when local player has any stake).
     local myInfo = AQL:GetQuest(questID)
     if myInfo then
-        local ci = myInfo.chainInfo
+        local chainResult  = myInfo.chainInfo
+        local localEngaged = AQL:_GetCurrentPlayerEngagedQuests()
+        local ci = chainResult and chainResult.knownStatus == AQL.ChainStatus.Known
+            and AQL:SelectBestChain(chainResult, localEngaged)
         table.insert(players, {
             name           = L["(You)"],
             isMe           = true,
@@ -207,8 +210,8 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
             needsShare     = false,
             isComplete     = myInfo.isComplete or false,
             objectives     = SocialQuestTabUtils.BuildLocalObjectives(myInfo),
-            step           = ci and ci.knownStatus == AQL.ChainStatus.Known and ci.step       or nil,
-            chainLength    = ci and ci.knownStatus == AQL.ChainStatus.Known and ci.length     or nil,
+            step           = ci and ci.step or nil,
+            chainLength    = ci and ci.length or nil,
         })
     elseif AQL:HasCompletedQuest(questID) then
         table.insert(players, {
@@ -240,8 +243,13 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
                 dataProvider   = playerData.dataProvider,
             })
         elseif hasQuest then
-            local pquest = playerData.quests[questID]
-            local pCI    = SocialQuestTabUtils.GetChainInfoForQuestID(questID)
+            local pquest      = playerData.quests[questID]
+            local pChainResult = SocialQuestTabUtils.GetChainInfoForQuestID(questID)
+            local pEngaged = {}
+            for aqid in pairs(playerData.completedQuests or {}) do pEngaged[aqid] = true end
+            for aqid in pairs(playerData.quests or {}) do pEngaged[aqid] = true end
+            local pCI = pChainResult and pChainResult.knownStatus == AQL.ChainStatus.Known
+                and AQL:SelectBestChain(pChainResult, pEngaged)
             table.insert(players, {
                 name           = playerName,
                 isMe           = false,
@@ -250,8 +258,8 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
                 needsShare     = false,
                 isComplete     = pquest.isComplete or false,
                 objectives     = SocialQuestTabUtils.BuildRemoteObjectives(pquest, myInfo),
-                step           = pCI.knownStatus == AQL.ChainStatus.Known and pCI.step   or nil,
-                chainLength    = pCI.knownStatus == AQL.ChainStatus.Known and pCI.length or nil,
+                step           = pCI and pCI.step or nil,
+                chainLength    = pCI and pCI.length or nil,
                 dataProvider   = playerData.dataProvider,
             })
         elseif shareable then
@@ -350,12 +358,15 @@ function PartyTab:BuildTree(filterTable)
                 end
             end
 
-            if ci.knownStatus == AQL.ChainStatus.Known and ci.chainID then
-                local chainID = ci.chainID
+            local buildEngaged = AQL:_GetCurrentPlayerEngagedQuests()
+            local ciEntry = ci and ci.knownStatus == AQL.ChainStatus.Known
+                and AQL:SelectBestChain(ci, buildEngaged)
+            if ciEntry and ciEntry.chainID then
+                local chainID = ciEntry.chainID
                 if not zone.chains[chainID] then
                     zone.chains[chainID] = { title = entry.title, steps = {} }
                 end
-                if ci.step == 1 then
+                if ciEntry.step == 1 then
                     zone.chains[chainID].title = entry.title
                 end
                 table.insert(zone.chains[chainID].steps, entry)
@@ -366,12 +377,17 @@ function PartyTab:BuildTree(filterTable)
     end
 
     -- Sort chain steps ascending.
+    local sortEngaged = AQL:_GetCurrentPlayerEngagedQuests()
     for _, zone in pairs(tree.zones) do
         for _, chain in pairs(zone.chains) do
             table.sort(chain.steps, function(a, b)
-                local aS = a.chainInfo and a.chainInfo.step or 0
-                local bS = b.chainInfo and b.chainInfo.step or 0
-                return aS < bS
+                local aResult = a.chainInfo
+                local bResult = b.chainInfo
+                local aci = aResult and aResult.knownStatus == AQL.ChainStatus.Known
+                    and AQL:SelectBestChain(aResult, sortEngaged)
+                local bci = bResult and bResult.knownStatus == AQL.ChainStatus.Known
+                    and AQL:SelectBestChain(bResult, sortEngaged)
+                return (aci and aci.step or 0) < (bci and bci.step or 0)
             end)
         end
     end
@@ -400,8 +416,12 @@ function PartyTab:BuildTree(filterTable)
             if ft.zone   and not T.MatchesStringFilter(entry.zone,  ft.zone)   then return false end
             if ft.title  and not T.MatchesStringFilter(entry.title, ft.title)  then return false end
             if ft.level  and not T.MatchesNumericFilter(entry.level, ft.level) then return false end
-            if ft.step   and not T.MatchesNumericFilter(
-                    entry.chainInfo and entry.chainInfo.step, ft.step)          then return false end
+            local chainStep = nil
+            if entry.chainInfo and entry.chainInfo.knownStatus == AQL.ChainStatus.Known then
+                local sci = AQL:SelectBestChain(entry.chainInfo, sortEngaged)
+                chainStep = sci and sci.step
+            end
+            if ft.step   and not T.MatchesNumericFilter(chainStep, ft.step)     then return false end
             if ft.group  and not T.MatchesEnumFilter(mapGroup(entry), ft.group) then return false end
             if ft.type   and not T.MatchesTypeFilter(entry, ft.type)  then return false end
             if ft.shareable and not T.MatchesEnumFilter(

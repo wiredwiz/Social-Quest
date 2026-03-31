@@ -27,14 +27,27 @@ function SharedTab:BuildTree(filterTable)
     local questEngaged = {}
 
     local function addEngagement(questID, playerName, isLocal, qdata)
-        local ci = SocialQuestTabUtils.GetChainInfoForQuestID(questID)
-        if ci.knownStatus == AQL.ChainStatus.Known and ci.chainID then
-            local cid = ci.chainID
+        local chainResult = SocialQuestTabUtils.GetChainInfoForQuestID(questID)
+        local engaged
+        if isLocal then
+            engaged = AQL:_GetCurrentPlayerEngagedQuests()
+        else
+            engaged = {}
+            local pd = SocialQuestGroupData.PlayerQuests[playerName]
+            if pd then
+                for aqid in pairs(pd.completedQuests or {}) do engaged[aqid] = true end
+                for aqid in pairs(pd.quests or {}) do engaged[aqid] = true end
+            end
+        end
+        local ciEntry = chainResult and chainResult.knownStatus == AQL.ChainStatus.Known
+            and AQL:SelectBestChain(chainResult, engaged)
+        if ciEntry and ciEntry.chainID then
+            local cid = ciEntry.chainID
             if not chainEngaged[cid] then chainEngaged[cid] = {} end
             chainEngaged[cid][playerName] = {
                 questID     = questID,
-                step        = ci.step,
-                chainLength = ci.length,
+                step        = ciEntry.step,
+                chainLength = ciEntry.length,
                 isLocal     = isLocal,
                 qdata       = qdata,
             }
@@ -100,8 +113,8 @@ function SharedTab:BuildTree(filterTable)
                         local ci = SocialQuestTabUtils.GetChainInfoForQuestID(eng.questID)
 
                         -- Update chain title: prefer step 1 (deterministic regardless of pairs order).
-                        -- `ci` was computed two lines above for this same questID.
-                        if localInfo and localInfo.title and ci.step == 1 then
+                        -- eng.step was resolved in addEngagement via SelectBestChain.
+                        if localInfo and localInfo.title and eng.step == 1 then
                             zone.chains[chainID].title = localInfo.title
                         elseif localInfo and localInfo.title and
                             zone.chains[chainID].title == "Chain " .. chainID then
@@ -168,10 +181,15 @@ function SharedTab:BuildTree(filterTable)
                 end
 
                 -- Sort steps ascending. Inside the guard: zone.chains[chainID] only exists here.
+                local sortEngaged = AQL:_GetCurrentPlayerEngagedQuests()
                 table.sort(zone.chains[chainID].steps, function(a, b)
-                    local aS = a.chainInfo and a.chainInfo.step or 0
-                    local bS = b.chainInfo and b.chainInfo.step or 0
-                    return aS < bS
+                    local aResult = a.chainInfo
+                    local bResult = b.chainInfo
+                    local aci = aResult and aResult.knownStatus == AQL.ChainStatus.Known
+                        and AQL:SelectBestChain(aResult, sortEngaged)
+                    local bci = bResult and bResult.knownStatus == AQL.ChainStatus.Known
+                        and AQL:SelectBestChain(bResult, sortEngaged)
+                    return (aci and aci.step or 0) < (bci and bci.step or 0)
                 end)
             end
         end
@@ -243,6 +261,7 @@ function SharedTab:BuildTree(filterTable)
     local ft = filterTable
     if ft then
         local T = SocialQuestTabUtils
+        local sortEngaged = AQL:_GetCurrentPlayerEngagedQuests()
 
         local function mapGroup(entry)
             local sg = entry.suggestedGroup or 0
@@ -263,8 +282,12 @@ function SharedTab:BuildTree(filterTable)
             if ft.zone   and not T.MatchesStringFilter(entry.zone,  ft.zone)   then return false end
             if ft.title  and not T.MatchesStringFilter(entry.title, ft.title)  then return false end
             if ft.level  and not T.MatchesNumericFilter(entry.level, ft.level) then return false end
-            if ft.step   and not T.MatchesNumericFilter(
-                    entry.chainInfo and entry.chainInfo.step, ft.step)          then return false end
+            local chainStep = nil
+            if entry.chainInfo and entry.chainInfo.knownStatus == AQL.ChainStatus.Known then
+                local sci = AQL:SelectBestChain(entry.chainInfo, sortEngaged)
+                chainStep = sci and sci.step
+            end
+            if ft.step   and not T.MatchesNumericFilter(chainStep, ft.step)     then return false end
             if ft.group  and not T.MatchesEnumFilter(mapGroup(entry), ft.group) then return false end
             if ft.type   and not T.MatchesTypeFilter(entry, ft.type)  then return false end
             if not playerMatches(entry.players) then return false end
