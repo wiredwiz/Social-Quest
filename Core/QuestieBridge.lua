@@ -175,7 +175,7 @@ end
 function QuestieBridge:_ScheduleHydration()
     if self._pendingHydration then return end
     self._pendingHydration = true
-    C_Timer.After(0, function()
+    SQWowAPI.TimerAfter(0, function()
         self._pendingHydration = false
         self:_EnsurePartyStubs()
         local qc = _GetQuestieComms()
@@ -260,7 +260,7 @@ function QuestieBridge:_ScheduleQuestieRequest()
     self._pendingRequest = true
 
     -- First send: t+1s. Works when Questie is already initialized (live group join).
-    C_Timer.After(1, function()
+    SQWowAPI.TimerAfter(1, function()
         local hasSM = Questie and Questie.SendMessage ~= nil
         local inParty = UnitInParty and UnitInParty("player")
         local inRaid  = UnitInRaid  and UnitInRaid("player")
@@ -269,13 +269,13 @@ function QuestieBridge:_ScheduleQuestieRequest()
         if hasSM then
             Questie:SendMessage("QC_ID_REQUEST_FULL_QUESTLIST")
         end
-        C_Timer.After(4, function()
+        SQWowAPI.TimerAfter(4, function()
             if QuestieBridge._active then QuestieBridge:_ScheduleHydration() end
         end)
     end)
 
     -- Second send: t+5s. Works after reload where Questie needs ~3-4s to initialize.
-    C_Timer.After(5, function()
+    SQWowAPI.TimerAfter(5, function()
         self._pendingRequest = false
         local inParty = UnitInParty and UnitInParty("player")
         local inRaid  = UnitInRaid  and UnitInRaid("player")
@@ -284,17 +284,17 @@ function QuestieBridge:_ScheduleQuestieRequest()
         if Questie and Questie.SendMessage then
             Questie:SendMessage("QC_ID_REQUEST_FULL_QUESTLIST")
         end
-        C_Timer.After(4, function()
+        SQWowAPI.TimerAfter(4, function()
             if QuestieBridge._active then QuestieBridge:_ScheduleHydration() end
         end)
-        C_Timer.After(8, function()
+        SQWowAPI.TimerAfter(8, function()
             if QuestieBridge._active then QuestieBridge:_ScheduleHydration() end
         end)
     end)
 
     -- Third send: t+10s. Fallback if UnitInParty("player") was nil at t+1s/t+5s on reload.
     -- By t+10s the party API is always stable; GetGroupType() will return non-nil.
-    C_Timer.After(10, function()
+    SQWowAPI.TimerAfter(10, function()
         if not QuestieBridge._active then return end
         local inParty = UnitInParty and UnitInParty("player")
         local inRaid  = UnitInRaid  and UnitInRaid("player")
@@ -303,10 +303,10 @@ function QuestieBridge:_ScheduleQuestieRequest()
         if Questie and Questie.SendMessage then
             Questie:SendMessage("QC_ID_REQUEST_FULL_QUESTLIST")
         end
-        C_Timer.After(4, function()
+        SQWowAPI.TimerAfter(4, function()
             if QuestieBridge._active then QuestieBridge:_ScheduleHydration() end
         end)
-        C_Timer.After(10, function()
+        SQWowAPI.TimerAfter(10, function()
             if QuestieBridge._active then QuestieBridge:_ScheduleHydration() end
         end)
     end)
