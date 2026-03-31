@@ -46,6 +46,21 @@ function SocialQuestTabUtils.GetChainInfoForQuestID(questID)
     return result
 end
 
+-- Returns the local player's engaged quest set: { [questID] = true, ... }.
+-- Compatible with AQL 2.x and 3.0: uses _GetCurrentPlayerEngagedQuests when present
+-- (private method available in some AQL builds), otherwise falls back to the public
+-- GetAllQuests + GetCompletedQuests API which both versions expose.
+function SocialQuestTabUtils.GetLocalEngagedSet()
+    local AQL = SocialQuest.AQL
+    if AQL._GetCurrentPlayerEngagedQuests then
+        return AQL:_GetCurrentPlayerEngagedQuests()
+    end
+    local engaged = {}
+    for qid in pairs(AQL:GetAllQuests()) do engaged[qid] = true end
+    for qid in pairs(AQL:GetCompletedQuests()) do engaged[qid] = true end
+    return engaged
+end
+
 -- Picks the best chain entry from a GetChainInfo result for the given engaged set.
 -- Compatible with both AQL 3.0+ (wrapper with chains array) and AQL 2.x (bare ChainInfo).
 -- Returns nil when chainResult is nil or knownStatus != Known.

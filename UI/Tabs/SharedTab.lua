@@ -30,7 +30,7 @@ function SharedTab:BuildTree(filterTable)
         local chainResult = SocialQuestTabUtils.GetChainInfoForQuestID(questID)
         local engaged
         if isLocal then
-            engaged = AQL:_GetCurrentPlayerEngagedQuests()
+            engaged = SocialQuestTabUtils.GetLocalEngagedSet()
         else
             engaged = {}
             local pd = SocialQuestGroupData.PlayerQuests[playerName]
@@ -180,7 +180,7 @@ function SharedTab:BuildTree(filterTable)
                 end
 
                 -- Sort steps ascending. Inside the guard: zone.chains[chainID] only exists here.
-                local sortEngaged = AQL:_GetCurrentPlayerEngagedQuests()
+                local sortEngaged = SocialQuestTabUtils.GetLocalEngagedSet()
                 table.sort(zone.chains[chainID].steps, function(a, b)
                     local aResult = a.chainInfo
                     local bResult = b.chainInfo
@@ -258,7 +258,7 @@ function SharedTab:BuildTree(filterTable)
     local ft = filterTable
     if ft then
         local T = SocialQuestTabUtils
-        local sortEngaged = AQL:_GetCurrentPlayerEngagedQuests()
+        local sortEngaged = SocialQuestTabUtils.GetLocalEngagedSet()
 
         local function mapGroup(entry)
             local sg = entry.suggestedGroup or 0

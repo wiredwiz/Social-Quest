@@ -57,7 +57,7 @@ function MineTab:BuildTree(filterTable)  -- filterTable.search, filterTable.auto
         }
 
         local chainResult = questInfo.chainInfo
-        local engaged = AQL:_GetCurrentPlayerEngagedQuests()
+        local engaged = SocialQuestTabUtils.GetLocalEngagedSet()
         local ci = SocialQuestTabUtils.SelectChain(chainResult, engaged)
         if ci and ci.chainID then
             local chainID = ci.chainID
@@ -103,7 +103,7 @@ function MineTab:BuildTree(filterTable)  -- filterTable.search, filterTable.auto
     end
 
     -- Sort chain steps ascending by step number.
-    local sortEngaged = AQL:_GetCurrentPlayerEngagedQuests()
+    local sortEngaged = SocialQuestTabUtils.GetLocalEngagedSet()
     for _, zone in pairs(tree.zones) do
         for _, chain in pairs(zone.chains) do
             table.sort(chain.steps, function(a, b)
