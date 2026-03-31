@@ -1,6 +1,13 @@
 SocialQuest Changelog
 =====================
 
+Version 2.15.0 (March 2026)
+- Added a share button and sharing eligability detection to the party tab.
+  Now it better detects who is eligable for a quest and if they aren't, tells
+  you why.  The share button will share the quest with the party as you would
+  expect
+- Added a new "Shareable" filter key for the advanced quest list filtering.
+
 Version 2.12.33 (March 2026)
 - Removed flight path discovery feature. The TBC Classic taxi APIs only return
   data while the flight map UI is open, not when the player talks to a flight
