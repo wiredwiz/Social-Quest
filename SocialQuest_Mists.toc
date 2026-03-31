@@ -1,6 +1,6 @@
 ## Interface: 50503
 ## Title: SocialQuest
-## Notes: Social quest coordination for WoW Burning Crusade Anniversary.
+## Notes: Social quest coordination for WoW Mists of Pandaria Classic.
 ## Author: Thad Ryker
 ## Version: 2.16.0
 ## Category: Quests

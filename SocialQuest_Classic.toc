@@ -1,6 +1,6 @@
 ## Interface: 11508
 ## Title: SocialQuest
-## Notes: Social quest coordination for WoW Burning Crusade Anniversary.
+## Notes: Social quest coordination for WoW Classic.
 ## Author: Thad Ryker
 ## Version: 2.16.0
 ## Category: Quests
