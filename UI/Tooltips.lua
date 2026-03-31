@@ -61,7 +61,7 @@ function SocialQuestTooltips:Initialize()
                 end
             end
         )
-    else
+    elseif ItemRefTooltip then
         -- TBC / Classic / Mists: hook SetHyperlink on ItemRefTooltip.
         hooksecurefunc(ItemRefTooltip, "SetHyperlink", function(self, link)
             if not link then return end
