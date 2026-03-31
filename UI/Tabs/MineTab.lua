@@ -79,7 +79,8 @@ function MineTab:BuildTree(filterTable)  -- filterTable.search, filterTable.auto
                         local pEngaged = {}
                         for aqid in pairs(playerData.completedQuests or {}) do pEngaged[aqid] = true end
                         for aqid in pairs(playerData.quests) do pEngaged[aqid] = true end
-                        local pCI = AQL:SelectBestChain(pChainResult, pEngaged)
+                        local pCI = pChainResult and pChainResult.knownStatus == AQL.ChainStatus.Known
+                            and AQL:SelectBestChain(pChainResult, pEngaged)
                         if pCI and pCI.chainID == chainID and pCI.step ~= ci.step then
                             table.insert(entry.players, {
                                 name           = playerName,
@@ -146,7 +147,7 @@ function MineTab:BuildTree(filterTable)  -- filterTable.search, filterTable.auto
             if ft.level  and not T.MatchesNumericFilter(entry.level, ft.level) then return false end
             local chainStep = nil
             if entry.chainInfo and entry.chainInfo.knownStatus == AQL.ChainStatus.Known then
-                local sci = AQL:SelectBestChain(entry.chainInfo, AQL:_GetCurrentPlayerEngagedQuests())
+                local sci = AQL:SelectBestChain(entry.chainInfo, sortEngaged)
                 chainStep = sci and sci.step
             end
             if ft.step   and not T.MatchesNumericFilter(chainStep, ft.step)     then return false end
