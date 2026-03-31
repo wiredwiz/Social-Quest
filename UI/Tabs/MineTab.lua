@@ -56,9 +56,11 @@ function MineTab:BuildTree(filterTable)  -- filterTable.search, filterTable.auto
             players        = {},
         }
 
-        local ci = questInfo.chainInfo
-        if ci and ci.knownStatus == AQL.ChainStatus.Known and ci.chainID then
-            -- Place in chain group.
+        local chainResult = questInfo.chainInfo
+        local engaged = AQL:_GetCurrentPlayerEngagedQuests()
+        local ci = chainResult and chainResult.knownStatus == AQL.ChainStatus.Known
+            and AQL:SelectBestChain(chainResult, engaged)
+        if ci and ci.chainID then
             local chainID = ci.chainID
             if not zone.chains[chainID] then
                 -- chainID is always the questID of step 1; resolve its title for a
@@ -73,22 +75,24 @@ function MineTab:BuildTree(filterTable)  -- filterTable.search, filterTable.auto
             for playerName, playerData in pairs(SocialQuestGroupData.PlayerQuests) do
                 if playerData.quests then
                     for pQuestID in pairs(playerData.quests) do
-                        local pCI = SocialQuestTabUtils.GetChainInfoForQuestID(pQuestID)
-                        if pCI.knownStatus == AQL.ChainStatus.Known
-                            and pCI.chainID == chainID
-                            and pCI.step    ~= ci.step then
+                        local pChainResult = SocialQuestTabUtils.GetChainInfoForQuestID(pQuestID)
+                        local pEngaged = {}
+                        for aqid in pairs(playerData.completedQuests or {}) do pEngaged[aqid] = true end
+                        for aqid in pairs(playerData.quests) do pEngaged[aqid] = true end
+                        local pCI = AQL:SelectBestChain(pChainResult, pEngaged)
+                        if pCI and pCI.chainID == chainID and pCI.step ~= ci.step then
                             table.insert(entry.players, {
-                                name         = playerName,
-                                isMe         = false,
+                                name           = playerName,
+                                isMe           = false,
                                 hasSocialQuest = playerData.hasSocialQuest,
-                                step         = pCI.step,
-                                chainLength  = pCI.length,
-                                objectives   = {},
-                                isComplete   = playerData.quests[pQuestID] and
-                                               playerData.quests[pQuestID].isComplete or false,
-                                hasCompleted = false,
-                                needsShare   = false,
-                                dataProvider = playerData.dataProvider,
+                                step           = pCI.step,
+                                chainLength    = pCI.length,
+                                objectives     = {},
+                                isComplete     = playerData.quests[pQuestID] and
+                                                 playerData.quests[pQuestID].isComplete or false,
+                                hasCompleted   = false,
+                                needsShare     = false,
+                                dataProvider   = playerData.dataProvider,
                             })
                         end
                     end
@@ -100,12 +104,17 @@ function MineTab:BuildTree(filterTable)  -- filterTable.search, filterTable.auto
     end
 
     -- Sort chain steps ascending by step number.
+    local sortEngaged = AQL:_GetCurrentPlayerEngagedQuests()
     for _, zone in pairs(tree.zones) do
         for _, chain in pairs(zone.chains) do
             table.sort(chain.steps, function(a, b)
-                local aStep = a.chainInfo and a.chainInfo.step or 0
-                local bStep = b.chainInfo and b.chainInfo.step or 0
-                return aStep < bStep
+                local aResult = a.chainInfo
+                local bResult = b.chainInfo
+                local aci = aResult and aResult.knownStatus == AQL.ChainStatus.Known
+                    and AQL:SelectBestChain(aResult, sortEngaged)
+                local bci = bResult and bResult.knownStatus == AQL.ChainStatus.Known
+                    and AQL:SelectBestChain(bResult, sortEngaged)
+                return (aci and aci.step or 0) < (bci and bci.step or 0)
             end)
         end
     end
@@ -135,8 +144,12 @@ function MineTab:BuildTree(filterTable)  -- filterTable.search, filterTable.auto
             if ft.zone   and not T.MatchesStringFilter(entry.zone,  ft.zone)   then return false end
             if ft.title  and not T.MatchesStringFilter(entry.title, ft.title)  then return false end
             if ft.level  and not T.MatchesNumericFilter(entry.level, ft.level) then return false end
-            if ft.step   and not T.MatchesNumericFilter(
-                    entry.chainInfo and entry.chainInfo.step, ft.step)          then return false end
+            local chainStep = nil
+            if entry.chainInfo and entry.chainInfo.knownStatus == AQL.ChainStatus.Known then
+                local sci = AQL:SelectBestChain(entry.chainInfo, AQL:_GetCurrentPlayerEngagedQuests())
+                chainStep = sci and sci.step
+            end
+            if ft.step   and not T.MatchesNumericFilter(chainStep, ft.step)     then return false end
             if ft.group  and not T.MatchesEnumFilter(mapGroup(entry), ft.group) then return false end
             if ft.type   and not T.MatchesTypeFilter(entry, ft.type)  then return false end
             if ft.status then

@@ -29,18 +29,21 @@ function SocialQuestTabUtils.GetZoneForQuestID(questID)
     return L["Other Quests"]
 end
 
--- Returns chainInfo for any questID; queries the provider for remote quests
--- not present in the local quest log.
+-- Returns the GetChainInfo wrapper { knownStatus, chains } for questID.
+-- Queries AQL cache first; falls back to the active Chain provider for remote quests.
+-- Callers must use AQL:SelectBestChain(result, engagedSet) to pick a chain entry.
 function SocialQuestTabUtils.GetChainInfoForQuestID(questID)
     local AQL = SocialQuest.AQL
-    local ci  = AQL:GetChainInfo(questID)
-    if ci.knownStatus == AQL.ChainStatus.Known then return ci end
-    local provider = AQL.provider
+    local result = AQL:GetChainInfo(questID)
+    if result.knownStatus == AQL.ChainStatus.Known then return result end
+    local provider = AQL.providers and AQL.providers[AQL.Capability.Chain]
     if provider then
-        local ok, result = pcall(provider.GetChainInfo, provider, questID)
-        if ok and result and result.knownStatus == AQL.ChainStatus.Known then return result end
+        local ok, provResult = pcall(provider.GetChainInfo, provider, questID)
+        if ok and provResult and provResult.knownStatus == AQL.ChainStatus.Known then
+            return provResult
+        end
     end
-    return ci
+    return result
 end
 
 -- Builds objective rows for the local player from an AQL questInfo snapshot.

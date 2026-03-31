@@ -180,10 +180,15 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
 
     -- Build title string: title [Step X of Y] [timer].
     local titleText = questEntry.title or "Quest"
-    local ci = questEntry.chainInfo
-    if ci and ci.knownStatus == SocialQuest.AQL.ChainStatus.Known then
-        titleText = titleText
-            .. string.format(L[" (Step %s of %s)"], tostring(ci.step or "?"), tostring(ci.length or "?"))
+    local chainResult = questEntry.chainInfo
+    if chainResult and chainResult.knownStatus == SocialQuest.AQL.ChainStatus.Known then
+        local AQL = SocialQuest.AQL
+        local engaged = AQL:_GetCurrentPlayerEngagedQuests()
+        local ci = AQL:SelectBestChain(chainResult, engaged)
+        if ci then
+            titleText = titleText
+                .. string.format(L[" (Step %s of %s)"], tostring(ci.step or "?"), tostring(ci.length or "?"))
+        end
     end
     local timeStr = formatTimeRemaining(questEntry.timerSeconds, questEntry.snapshotTime)
     if timeStr then

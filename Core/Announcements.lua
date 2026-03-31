@@ -44,12 +44,16 @@ local CHAIN_STEP_EVENTS = {
 -- Appends " (Step N)" to msg when the quest is a known chain step.
 -- Returns msg unchanged when: event is not in CHAIN_STEP_EVENTS, chainInfo is nil,
 -- knownStatus != "known", or step is nil. Never errors on nil inputs.
-local function appendChainStep(msg, eventType, chainInfo)
+local function appendChainStep(msg, eventType, chainResult)
     if not CHAIN_STEP_EVENTS[eventType] then return msg end
-    if not chainInfo or chainInfo.knownStatus ~= SocialQuest.AQL.ChainStatus.Known or not chainInfo.step then
+    if not chainResult or chainResult.knownStatus ~= SocialQuest.AQL.ChainStatus.Known then
         return msg
     end
-    return msg .. " " .. string.format(L["(Step %s)"], chainInfo.step)
+    local AQL = SocialQuest.AQL
+    local engaged = AQL:_GetCurrentPlayerEngagedQuests()
+    local ci = AQL:SelectBestChain(chainResult, engaged)
+    if not ci or not ci.step then return msg end
+    return msg .. " " .. string.format(L["(Step %s)"], ci.step)
 end
 
 local function startThrottleTicker()
