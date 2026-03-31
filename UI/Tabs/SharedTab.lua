@@ -28,17 +28,7 @@ function SharedTab:BuildTree(filterTable)
 
     local function addEngagement(questID, playerName, isLocal, qdata)
         local chainResult = SocialQuestTabUtils.GetChainInfoForQuestID(questID)
-        local engaged
-        if isLocal then
-            engaged = AQL:_GetCurrentPlayerEngagedQuests()
-        else
-            engaged = {}
-            local pd = SocialQuestGroupData.PlayerQuests[playerName]
-            if pd then
-                for aqid in pairs(pd.completedQuests or {}) do engaged[aqid] = true end
-                for aqid in pairs(pd.quests or {}) do engaged[aqid] = true end
-            end
-        end
+        local engaged = SocialQuestTabUtils.BuildEngagedSet(isLocal and nil or playerName)
         local ciEntry = SocialQuestTabUtils.SelectChain(chainResult, engaged)
         if ciEntry and ciEntry.chainID then
             local cid = ciEntry.chainID

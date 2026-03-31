@@ -244,10 +244,7 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
         elseif hasQuest then
             local pquest      = playerData.quests[questID]
             local pChainResult = SocialQuestTabUtils.GetChainInfoForQuestID(questID)
-            local pEngaged = {}
-            for aqid in pairs(playerData.completedQuests or {}) do pEngaged[aqid] = true end
-            for aqid in pairs(playerData.quests or {}) do pEngaged[aqid] = true end
-            local pCI = SocialQuestTabUtils.SelectChain(pChainResult, pEngaged)
+            local pCI = SocialQuestTabUtils.SelectChain(pChainResult, SocialQuestTabUtils.BuildEngagedSet(playerName))
             table.insert(players, {
                 name           = playerName,
                 isMe           = false,

@@ -44,13 +44,12 @@ local CHAIN_STEP_EVENTS = {
 -- Appends " (Step N)" to msg when the quest is a known chain step.
 -- Returns msg unchanged when: event is not in CHAIN_STEP_EVENTS, chainInfo is nil,
 -- knownStatus != "known", or step is nil. Never errors on nil inputs.
-local function appendChainStep(msg, eventType, chainResult)
+local function appendChainStep(msg, eventType, chainResult, sender)
     if not CHAIN_STEP_EVENTS[eventType] then return msg end
     if not chainResult or chainResult.knownStatus ~= SocialQuest.AQL.ChainStatus.Known then
         return msg
     end
-    local AQL = SocialQuest.AQL
-    local engaged = AQL:_GetCurrentPlayerEngagedQuests()
+    local engaged = SocialQuestTabUtils.BuildEngagedSet(sender)  -- nil = local player
     local ci = SocialQuestTabUtils.SelectChain(chainResult, engaged)
     if not ci or not ci.step then return msg end
     return msg .. " " .. string.format(L["(Step %s)"], ci.step)
@@ -475,7 +474,7 @@ function SocialQuestAnnounce:OnRemoteQuestEvent(sender, eventType, questID, cach
 
     local msg = formatQuestBannerMsg(sender, eventType, title)
     if msg then
-        msg = appendChainStep(msg, eventType, chainInfo)
+        msg = appendChainStep(msg, eventType, chainInfo, sender)
         SocialQuest:Debug("Banner", "Banner: " .. eventType .. " from " .. sender .. " \xe2\x80\x94 " .. (title or "?"))
         displayBanner(msg, eventType)
     end
