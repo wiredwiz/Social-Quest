@@ -117,12 +117,12 @@ local function isEligibleForShare(questID, playerData, unitToken)
         end
     end
 
-    -- Check 6: quest log full (TBC cap is 25 quests).
+    -- Check 6: quest log full.
     local questCount = 0
     if playerData.quests then
         for _ in pairs(playerData.quests) do questCount = questCount + 1 end
     end
-    if questCount >= 25 then
+    if questCount >= SQWowAPI.MAX_QUEST_LOG_ENTRIES then
         return { eligible = false, reason = { code = "quest_log_full" } }
     end
 
@@ -506,7 +506,7 @@ function PartyTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTabl
                 if not AQL:IsQuestIdShareable(entry.questID) then return end
                 local prev = AQL:GetQuestLogSelection()
                 AQL:SetQuestLogSelection(entry.logIndex)
-                SQWowAPI.QuestLogPushQuest()
+                SQWowAPI.QuestLogPushQuest(entry.questID)
                 AQL:SetQuestLogSelection(prev)
             end,
         }
