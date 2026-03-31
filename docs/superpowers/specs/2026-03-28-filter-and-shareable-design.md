@@ -128,7 +128,7 @@ L["filter.err.AND_KEY_MISMATCH"]= "all & fragments must use the same key"
 L["filter.help.example.12"]      = "type=dungeon&gather"
 L["filter.help.example.12.note"] = "Show dungeon quests that also have gather objectives"
 L["filter.help.example.13"]      = "level>=55&<=62"
-L["filter.help.example.13.note"] = "Show quests in the level 55–62 range"
+L["filter.help.example.13.note"] = "Show quests in the level 55–62 range (same as level=55..62)"
 L["filter.help.example.14"]      = "title=dragon&slayer"
 L["filter.help.example.14.note"] = "Show quests with both 'dragon' and 'slayer' in the title"
 ```
