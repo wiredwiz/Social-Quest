@@ -51,13 +51,24 @@ local function addGroupProgressToTooltip(tooltip, questID)
 end
 
 function SocialQuestTooltips:Initialize()
-    -- Hook the quest hyperlink tooltip.
-    -- Quest links use a different hook point. We hook SetHyperlink instead.
-    hooksecurefunc(ItemRefTooltip, "SetHyperlink", function(self, link)
-        if not link then return end
-        local questID = tonumber(link:match("quest:(%d+)"))
-        if questID then
-            addGroupProgressToTooltip(self, questID)
-        end
-    end)
+    if SocialQuestWowAPI.IS_RETAIL and TooltipDataProcessor and Enum.TooltipDataType then
+        -- Retail: use the native tooltip data processor API.
+        TooltipDataProcessor.AddTooltipPostCall(
+            Enum.TooltipDataType.Quest,
+            function(tooltip, data)
+                if data and data.id then
+                    addGroupProgressToTooltip(tooltip, data.id)
+                end
+            end
+        )
+    else
+        -- TBC / Classic / Mists: hook SetHyperlink on ItemRefTooltip.
+        hooksecurefunc(ItemRefTooltip, "SetHyperlink", function(self, link)
+            if not link then return end
+            local questID = tonumber(link:match("quest:(%d+)"))
+            if questID then
+                addGroupProgressToTooltip(self, questID)
+            end
+        end)
+    end
 end
