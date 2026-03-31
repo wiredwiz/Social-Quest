@@ -182,8 +182,7 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     local titleText = questEntry.title or "Quest"
     local chainResult = questEntry.chainInfo
     if chainResult and chainResult.knownStatus == SocialQuest.AQL.ChainStatus.Known then
-        local AQL = SocialQuest.AQL
-        local engaged = AQL:_GetCurrentPlayerEngagedQuests()
+        local engaged = SocialQuestTabUtils.BuildEngagedSet(nil)
         local ci = SocialQuestTabUtils.SelectChain(chainResult, engaged)
         if ci then
             titleText = titleText
