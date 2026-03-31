@@ -31,7 +31,7 @@ end
 
 -- Returns the GetChainInfo wrapper { knownStatus, chains } for questID.
 -- Queries AQL cache first; falls back to the active Chain provider for remote quests.
--- Callers must use AQL:SelectBestChain(result, engagedSet) to pick a chain entry.
+-- Callers should use SocialQuestTabUtils.SelectChain(result, engagedSet) to pick a chain entry.
 function SocialQuestTabUtils.GetChainInfoForQuestID(questID)
     local AQL = SocialQuest.AQL
     local result = AQL:GetChainInfo(questID)
@@ -44,6 +44,21 @@ function SocialQuestTabUtils.GetChainInfoForQuestID(questID)
         end
     end
     return result
+end
+
+-- Picks the best chain entry from a GetChainInfo result for the given engaged set.
+-- Compatible with both AQL 3.0+ (wrapper with chains array) and AQL 2.x (bare ChainInfo).
+-- Returns nil when chainResult is nil or knownStatus != Known.
+function SocialQuestTabUtils.SelectChain(chainResult, engaged)
+    if not chainResult or chainResult.knownStatus ~= SocialQuest.AQL.ChainStatus.Known then
+        return nil
+    end
+    -- AQL 2.x returned a bare ChainInfo directly (no chains array, no SelectBestChain).
+    if not chainResult.chains then
+        return chainResult
+    end
+    -- AQL 3.0+: wrapper; SelectBestChain picks the best entry for this player's engaged set.
+    return SocialQuest.AQL:SelectBestChain(chainResult, engaged)
 end
 
 -- Builds objective rows for the local player from an AQL questInfo snapshot.

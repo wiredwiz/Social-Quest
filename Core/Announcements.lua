@@ -51,7 +51,7 @@ local function appendChainStep(msg, eventType, chainResult)
     end
     local AQL = SocialQuest.AQL
     local engaged = AQL:_GetCurrentPlayerEngagedQuests()
-    local ci = AQL:SelectBestChain(chainResult, engaged)
+    local ci = SocialQuestTabUtils.SelectChain(chainResult, engaged)
     if not ci or not ci.step then return msg end
     return msg .. " " .. string.format(L["(Step %s)"], ci.step)
 end

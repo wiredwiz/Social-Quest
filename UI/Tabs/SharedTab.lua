@@ -39,8 +39,7 @@ function SharedTab:BuildTree(filterTable)
                 for aqid in pairs(pd.quests or {}) do engaged[aqid] = true end
             end
         end
-        local ciEntry = chainResult and chainResult.knownStatus == AQL.ChainStatus.Known
-            and AQL:SelectBestChain(chainResult, engaged)
+        local ciEntry = SocialQuestTabUtils.SelectChain(chainResult, engaged)
         if ciEntry and ciEntry.chainID then
             local cid = ciEntry.chainID
             if not chainEngaged[cid] then chainEngaged[cid] = {} end
@@ -185,10 +184,8 @@ function SharedTab:BuildTree(filterTable)
                 table.sort(zone.chains[chainID].steps, function(a, b)
                     local aResult = a.chainInfo
                     local bResult = b.chainInfo
-                    local aci = aResult and aResult.knownStatus == AQL.ChainStatus.Known
-                        and AQL:SelectBestChain(aResult, sortEngaged)
-                    local bci = bResult and bResult.knownStatus == AQL.ChainStatus.Known
-                        and AQL:SelectBestChain(bResult, sortEngaged)
+                    local aci = SocialQuestTabUtils.SelectChain(aResult, sortEngaged)
+                    local bci = SocialQuestTabUtils.SelectChain(bResult, sortEngaged)
                     return (aci and aci.step or 0) < (bci and bci.step or 0)
                 end)
             end
@@ -283,10 +280,8 @@ function SharedTab:BuildTree(filterTable)
             if ft.title  and not T.MatchesStringFilter(entry.title, ft.title)  then return false end
             if ft.level  and not T.MatchesNumericFilter(entry.level, ft.level) then return false end
             local chainStep = nil
-            if entry.chainInfo and entry.chainInfo.knownStatus == AQL.ChainStatus.Known then
-                local sci = AQL:SelectBestChain(entry.chainInfo, sortEngaged)
-                chainStep = sci and sci.step
-            end
+            local sci = SocialQuestTabUtils.SelectChain(entry.chainInfo, sortEngaged)
+            chainStep = sci and sci.step
             if ft.step   and not T.MatchesNumericFilter(chainStep, ft.step)     then return false end
             if ft.group  and not T.MatchesEnumFilter(mapGroup(entry), ft.group) then return false end
             if ft.type   and not T.MatchesTypeFilter(entry, ft.type)  then return false end

@@ -184,7 +184,7 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     if chainResult and chainResult.knownStatus == SocialQuest.AQL.ChainStatus.Known then
         local AQL = SocialQuest.AQL
         local engaged = AQL:_GetCurrentPlayerEngagedQuests()
-        local ci = AQL:SelectBestChain(chainResult, engaged)
+        local ci = SocialQuestTabUtils.SelectChain(chainResult, engaged)
         if ci then
             titleText = titleText
                 .. string.format(L[" (Step %s of %s)"], tostring(ci.step or "?"), tostring(ci.length or "?"))

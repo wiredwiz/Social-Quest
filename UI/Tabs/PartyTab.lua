@@ -200,8 +200,7 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
     if myInfo then
         local chainResult  = myInfo.chainInfo
         local localEngaged = AQL:_GetCurrentPlayerEngagedQuests()
-        local ci = chainResult and chainResult.knownStatus == AQL.ChainStatus.Known
-            and AQL:SelectBestChain(chainResult, localEngaged)
+        local ci = SocialQuestTabUtils.SelectChain(chainResult, localEngaged)
         table.insert(players, {
             name           = L["(You)"],
             isMe           = true,
@@ -248,8 +247,7 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
             local pEngaged = {}
             for aqid in pairs(playerData.completedQuests or {}) do pEngaged[aqid] = true end
             for aqid in pairs(playerData.quests or {}) do pEngaged[aqid] = true end
-            local pCI = pChainResult and pChainResult.knownStatus == AQL.ChainStatus.Known
-                and AQL:SelectBestChain(pChainResult, pEngaged)
+            local pCI = SocialQuestTabUtils.SelectChain(pChainResult, pEngaged)
             table.insert(players, {
                 name           = playerName,
                 isMe           = false,
@@ -359,8 +357,7 @@ function PartyTab:BuildTree(filterTable)
             end
 
             local buildEngaged = AQL:_GetCurrentPlayerEngagedQuests()
-            local ciEntry = ci and ci.knownStatus == AQL.ChainStatus.Known
-                and AQL:SelectBestChain(ci, buildEngaged)
+            local ciEntry = SocialQuestTabUtils.SelectChain(ci, buildEngaged)
             if ciEntry and ciEntry.chainID then
                 local chainID = ciEntry.chainID
                 if not zone.chains[chainID] then
@@ -383,10 +380,8 @@ function PartyTab:BuildTree(filterTable)
             table.sort(chain.steps, function(a, b)
                 local aResult = a.chainInfo
                 local bResult = b.chainInfo
-                local aci = aResult and aResult.knownStatus == AQL.ChainStatus.Known
-                    and AQL:SelectBestChain(aResult, sortEngaged)
-                local bci = bResult and bResult.knownStatus == AQL.ChainStatus.Known
-                    and AQL:SelectBestChain(bResult, sortEngaged)
+                local aci = SocialQuestTabUtils.SelectChain(aResult, sortEngaged)
+                local bci = SocialQuestTabUtils.SelectChain(bResult, sortEngaged)
                 return (aci and aci.step or 0) < (bci and bci.step or 0)
             end)
         end
@@ -417,10 +412,8 @@ function PartyTab:BuildTree(filterTable)
             if ft.title  and not T.MatchesStringFilter(entry.title, ft.title)  then return false end
             if ft.level  and not T.MatchesNumericFilter(entry.level, ft.level) then return false end
             local chainStep = nil
-            if entry.chainInfo and entry.chainInfo.knownStatus == AQL.ChainStatus.Known then
-                local sci = AQL:SelectBestChain(entry.chainInfo, sortEngaged)
-                chainStep = sci and sci.step
-            end
+            local sci = SocialQuestTabUtils.SelectChain(entry.chainInfo, sortEngaged)
+            chainStep = sci and sci.step
             if ft.step   and not T.MatchesNumericFilter(chainStep, ft.step)     then return false end
             if ft.group  and not T.MatchesEnumFilter(mapGroup(entry), ft.group) then return false end
             if ft.type   and not T.MatchesTypeFilter(entry, ft.type)  then return false end
