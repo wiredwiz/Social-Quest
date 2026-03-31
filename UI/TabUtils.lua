@@ -61,6 +61,22 @@ function SocialQuestTabUtils.SelectChain(chainResult, engaged)
     return SocialQuest.AQL:SelectBestChain(chainResult, engaged)
 end
 
+-- Builds an engaged quest set (active + completed) for a named player,
+-- or the local player when playerName is nil.
+-- Returns {} (empty, safe to iterate) when the player is not in PlayerQuests.
+function SocialQuestTabUtils.BuildEngagedSet(playerName)
+    local AQL = SocialQuest.AQL
+    if not playerName then
+        return AQL:_GetCurrentPlayerEngagedQuests()
+    end
+    local pdata = SocialQuestGroupData.PlayerQuests[playerName]
+    if not pdata then return {} end
+    local engaged = {}
+    for qid in pairs(pdata.quests or {}) do engaged[qid] = true end
+    for qid in pairs(pdata.completedQuests or {}) do engaged[qid] = true end
+    return engaged
+end
+
 -- Builds objective rows for the local player from an AQL questInfo snapshot.
 function SocialQuestTabUtils.BuildLocalObjectives(questInfo)
     local objs = {}
