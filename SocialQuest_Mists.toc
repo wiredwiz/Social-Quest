@@ -1,0 +1,57 @@
+## Interface: 50503
+## Title: SocialQuest
+## Notes: Social quest coordination for WoW Burning Crusade Anniversary.
+## Author: Thad Ryker
+## Version: 2.16.0
+## Category: Quests
+## IconTexture: Interface\AddOns\SocialQuest\Logo.png
+## Dependencies: Ace3, AbsoluteQuestLog
+## SavedVariables: SocialQuestDB
+
+# Embedded Libraries
+Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
+Libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
+
+# Color definitions
+Util\Colors.lua
+
+# Localization
+Locales\enUS.lua
+Locales\deDE.lua
+Locales\frFR.lua
+Locales\esES.lua
+Locales\esMX.lua
+Locales\zhCN.lua
+Locales\zhTW.lua
+Locales\ptBR.lua
+Locales\itIT.lua
+Locales\koKR.lua
+Locales\ruRU.lua
+Locales\jaJP.lua
+
+# Core abstraction layer — after locales, before all game-logic modules
+Core\WowAPI.lua
+Core\WowUI.lua
+
+# Main modules
+SocialQuest.lua
+Core\GroupComposition.lua
+Core\GroupData.lua
+Core\Communications.lua
+Core\Announcements.lua
+Core\BridgeRegistry.lua
+Core\QuestieBridge.lua
+
+# UI modules
+UI\TabUtils.lua
+UI\RowFactory.lua
+UI\FilterParser.lua
+UI\FilterState.lua
+UI\HeaderLabel.lua
+UI\Tabs\MineTab.lua
+UI\Tabs\PartyTab.lua
+UI\Tabs\SharedTab.lua
+UI\WindowFilter.lua
+UI\Options.lua
+UI\Tooltips.lua
+UI\GroupFrame.lua

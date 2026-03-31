@@ -5,6 +5,12 @@
 
 SocialQuestWowAPI = {}
 
+local _toc = select(4, GetBuildInfo())
+SocialQuestWowAPI.IS_CLASSIC_ERA = _toc >= 11000 and _toc < 20000
+SocialQuestWowAPI.IS_TBC         = _toc >= 20000 and _toc < 30000
+SocialQuestWowAPI.IS_MOP         = _toc >= 50000 and _toc < 60000
+SocialQuestWowAPI.IS_RETAIL      = _toc >= 100000
+
 function SocialQuestWowAPI.GetTime()                              return GetTime()                              end
 function SocialQuestWowAPI.UnitName(unit)                         return UnitName(unit)                         end
 function SocialQuestWowAPI.UnitFullName(unit)                     return UnitFullName(unit)                     end
