@@ -159,7 +159,7 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
     local myInfo = AQL:GetQuest(questID)
     if myInfo then
         local chainResult  = myInfo.chainInfo
-        local localEngaged = AQL:_GetCurrentPlayerEngagedQuests()
+        local localEngaged = SocialQuestTabUtils.BuildEngagedSet(nil)
         local ci = SocialQuestTabUtils.SelectChain(chainResult, localEngaged)
         table.insert(players, {
             name           = L["(You)"],
@@ -313,7 +313,7 @@ function PartyTab:BuildTree(filterTable)
                 end
             end
 
-            local buildEngaged = AQL:_GetCurrentPlayerEngagedQuests()
+            local buildEngaged = SocialQuestTabUtils.BuildEngagedSet(nil)
             local ciEntry = SocialQuestTabUtils.SelectChain(ci, buildEngaged)
             if ciEntry and ciEntry.chainID then
                 local chainID = ciEntry.chainID
@@ -331,7 +331,7 @@ function PartyTab:BuildTree(filterTable)
     end
 
     -- Sort chain steps ascending.
-    local sortEngaged = AQL:_GetCurrentPlayerEngagedQuests()
+    local sortEngaged = SocialQuestTabUtils.BuildEngagedSet(nil)
     for _, zone in pairs(tree.zones) do
         for _, chain in pairs(zone.chains) do
             table.sort(chain.steps, function(a, b)

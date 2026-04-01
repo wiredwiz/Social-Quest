@@ -67,7 +67,15 @@ end
 function SocialQuestTabUtils.BuildEngagedSet(playerName)
     local AQL = SocialQuest.AQL
     if not playerName then
-        return AQL:_GetCurrentPlayerEngagedQuests()
+        -- _GetCurrentPlayerEngagedQuests is a private method present in some AQL builds.
+        -- Fall back to public API for AQL 2.x/3.0 compatibility.
+        if AQL._GetCurrentPlayerEngagedQuests then
+            return AQL:_GetCurrentPlayerEngagedQuests()
+        end
+        local engaged = {}
+        for qid in pairs(AQL:GetAllQuests()) do engaged[qid] = true end
+        for qid in pairs(AQL:GetCompletedQuests()) do engaged[qid] = true end
+        return engaged
     end
     local pdata = SocialQuestGroupData.PlayerQuests[playerName]
     if not pdata then return {} end

@@ -206,6 +206,10 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.17.1 (March 2026 — Improvements branch)
+- Bug fix (port from AQL3Compat): `BuildEngagedSet(nil)` in `TabUtils.lua` now nil-checks `_GetCurrentPlayerEngagedQuests` before calling it, falling back to `AQL:GetAllQuests()` + `AQL:GetCompletedQuests()`. Eight remaining standalone `AQL:_GetCurrentPlayerEngagedQuests()` direct calls in `MineTab.lua`, `PartyTab.lua`, and `SharedTab.lua` replaced with `SocialQuestTabUtils.BuildEngagedSet(nil)`.
+- Bug fix (port from AQL3Compat): SocialQuest group members incorrectly shown as Questie bridge users due to a race condition where the joining player's `SQ_INIT` PARTY broadcast arrived before `GROUP_ROSTER_UPDATE` created their `PlayerQuests` stub. `OnInitReceived` dropped the message; the Questie bridge then hydrated them at t+4s. Fix: `Communications.lua` creates the stub via `OnMemberJoined` for non-whisper SQ_INIT when the sender has no existing entry.
+
 ### Version 2.17.0 (March 2026 — Improvements branch)
 - Feature: Multi-version WoW support infrastructure. `Core/WowAPI.lua` now derives `IS_CLASSIC_ERA`, `IS_TBC`, `IS_MOP`, `IS_RETAIL` booleans from `GetBuildInfo()` at load time. Three companion TOC files added: `SocialQuest_Classic.toc` (Interface 11508), `SocialQuest_Mists.toc` (Interface 50503), `SocialQuest_Mainline.toc` (Interface 120001). `QuestLogPushQuest` routes to `C_QuestLog.PushQuestToParty(questID)` on Retail; call site updated to pass `entry.questID`. `GetRaidRosterInfo` routes to `C_RaidRoster.GetRaidRosterInfo` on Retail. `MAX_QUEST_LOG_ENTRIES` constant (35 Retail / 25 others) replaces hardcoded `25` in the quest-log-full check. `RACE_ID` and `CLASS_ID` numeric reference tables added for documentation purposes.
 - Refactor: `RACE_BITS` and `CLASS_BITS` lookup tables removed from `PartyTab.lua`. Race/class eligibility now uses the numeric raceID/classID (third return from `UnitRace`/`UnitClass`) with `2^(id-1)` — correct for all WoW versions and Retail allied races, no maintenance required.
