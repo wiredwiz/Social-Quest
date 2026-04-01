@@ -206,6 +206,9 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.16.2 (March 2026 — Improvements branch)
+- Bug fix: SocialQuest group members incorrectly shown as Questie bridge users. Root cause: a race condition where the joining player's `SQ_INIT` PARTY broadcast arrived before `GROUP_ROSTER_UPDATE` created their `PlayerQuests` stub. `OnInitReceived` called `IsInGroup` which checks stub existence — the stub was missing — so the SQ_INIT was silently dropped. The Questie bridge then hydrated the player at t+4s with no SQ data to displace, leaving them tagged as a bridge user. Fix: in `OnCommReceived`, for non-whisper distributions (PARTY/RAID/INSTANCE_CHAT), create the stub via `OnMemberJoined` before calling `OnInitReceived` when none exists. Whisper SQ_INIT retains the existing guard.
+
 ### Version 2.16.1 (March 2026 — Improvements branch)
 - Bug fix: all direct calls to `AQL:_GetCurrentPlayerEngagedQuests()` replaced with `SocialQuestTabUtils.GetLocalEngagedSet()`. The new helper checks whether the private method exists on the AQL object before calling it; if absent (AQL 2.x builds or runtime version mismatches), it falls back to the public `AQL:GetAllQuests()` + `AQL:GetCompletedQuests()` API. Affected files: `Announcements.lua`, `RowFactory.lua`, `MineTab.lua`, `PartyTab.lua`, `SharedTab.lua` (10 callsites total).
 

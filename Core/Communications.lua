@@ -281,6 +281,14 @@ function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
         local _sqN = 0
         for _ in pairs(payload.quests or {}) do _sqN = _sqN + 1 end
         SocialQuest:Debug("Comm", "Received SQ_INIT from " .. sender .. " (" .. _sqN .. " quests, dist=" .. distribution .. ")")
+        -- SQ_INIT via a group channel may arrive before GROUP_ROSTER_UPDATE creates
+        -- the stub for the sender.  Create it now so OnInitReceived does not silently
+        -- drop the message and leave the player showing as a bridge user.
+        -- Whisper SQ_INIT intentionally keeps the existing guard — it should only
+        -- arrive as a response to our SQ_REQUEST, meaning the sender is already known.
+        if distribution ~= "WHISPER" and not SocialQuestGroupData:IsInGroup(sender) then
+            SocialQuestGroupData:OnMemberJoined(sender, nil)
+        end
         SocialQuestGroupData:OnInitReceived(sender, payload)
 
         -- Raid/BG broadcasts: schedule a jittered whisper response so that up to
