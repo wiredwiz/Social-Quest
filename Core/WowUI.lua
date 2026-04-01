@@ -13,6 +13,10 @@ function SocialQuestWowUI.AddRaidNotice(msg, colorInfo)
     RaidNotice_AddMessage(RaidWarningFrame, msg, colorInfo)
 end
 
+-- Tab frame template name. "TabButtonTemplate" was removed in Retail (Dragonflight+);
+-- "PanelTabButtonTemplate" is the Retail equivalent.
+SocialQuestWowUI.TabButtonTemplate = SocialQuestWowAPI.IS_RETAIL and "PanelTabButtonTemplate" or "TabButtonTemplate"
+
 -- Tab sizing. PanelTemplates_TabResize was reworked in the Dragonflight UI redesign.
 -- absoluteSize and tabWidth are optional; pass nil to omit.
 function SocialQuestWowUI.TabResize(tab, padding, absoluteSize, tabWidth)

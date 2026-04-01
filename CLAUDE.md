@@ -206,6 +206,9 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.17.2 (March 2026 — Improvements branch)
+- Bug fix: `GroupFrame.lua:318` crashed on Retail with "Couldn't find inherited node 'TabButtonTemplate'" — `TabButtonTemplate` was removed in Retail. Added `SocialQuestWowUI.TabButtonTemplate` constant to `Core/WowUI.lua` that returns `"PanelTabButtonTemplate"` on Retail and `"TabButtonTemplate"` on all other versions. `GroupFrame.lua` `makeTab` now uses `SQWowUI.TabButtonTemplate`.
+
 ### Version 2.17.1 (March 2026 — Improvements branch)
 - Bug fix (port from AQL3Compat): `BuildEngagedSet(nil)` in `TabUtils.lua` now nil-checks `_GetCurrentPlayerEngagedQuests` before calling it, falling back to `AQL:GetAllQuests()` + `AQL:GetCompletedQuests()`. Eight remaining standalone `AQL:_GetCurrentPlayerEngagedQuests()` direct calls in `MineTab.lua`, `PartyTab.lua`, and `SharedTab.lua` replaced with `SocialQuestTabUtils.BuildEngagedSet(nil)`.
 - Bug fix (port from AQL3Compat): SocialQuest group members incorrectly shown as Questie bridge users due to a race condition where the joining player's `SQ_INIT` PARTY broadcast arrived before `GROUP_ROSTER_UPDATE` created their `PlayerQuests` stub. `OnInitReceived` dropped the message; the Questie bridge then hydrated them at t+4s. Fix: `Communications.lua` creates the stub via `OnMemberJoined` for non-whisper SQ_INIT when the sender has no existing entry.
