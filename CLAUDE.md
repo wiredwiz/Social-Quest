@@ -206,6 +206,9 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.17.3 (April 2026 — Improvements branch)
+- Bug fix: Party communication completely broken — banners never fired for other players and quest data never appeared in Party/Shared tabs. Root cause: `GetActiveChannel()` in `Communications.lua` and `currentGroupType()` in `GroupComposition.lua` both checked `IsInGroup(PARTY_CATEGORY_INSTANCE)` before `IsInGroup(PARTY_CATEGORY_HOME)`. If `LE_PARTY_CATEGORY_INSTANCE` is nil in the WoW environment (possible on TBC), `IsInGroup(nil)` degrades to `IsInGroup()` which returns truthy for any group including a home party — so a normal party was classified as a Battleground and messages were sent to `INSTANCE_CHAT` instead of `PARTY`. Both checks now nil-guard `PARTY_CATEGORY_INSTANCE` before using it.
+
 ### Version 2.17.2 (March 2026 — Improvements branch)
 - Bug fix: `GroupFrame.lua:318` crashed on Retail with "Couldn't find inherited node 'TabButtonTemplate'" — `TabButtonTemplate` was removed in Retail. Added `SocialQuestWowUI.TabButtonTemplate` constant to `Core/WowUI.lua` that returns `"PanelTabButtonTemplate"` on Retail and `"TabButtonTemplate"` on all other versions. `GroupFrame.lua` `makeTab` now uses `SQWowUI.TabButtonTemplate`.
 

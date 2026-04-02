@@ -36,7 +36,8 @@ SocialQuestGroupComposition.GroupType = GroupType
 local function currentGroupType()
     if SQWowAPI.IsInRaid() then
         return GroupType.Raid
-    elseif SQWowAPI.IsInGroup(SQWowAPI.PARTY_CATEGORY_INSTANCE) then
+    elseif SQWowAPI.PARTY_CATEGORY_INSTANCE
+       and SQWowAPI.IsInGroup(SQWowAPI.PARTY_CATEGORY_INSTANCE) then
         return GroupType.Battleground
     elseif SQWowAPI.IsInGroup(SQWowAPI.PARTY_CATEGORY_HOME) then
         return GroupType.Party

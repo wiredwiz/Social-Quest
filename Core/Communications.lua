@@ -234,7 +234,8 @@ end
 function SocialQuestComm:GetActiveChannel()
     if SQWowAPI.IsInRaid() then
         return "RAID"
-    elseif SQWowAPI.IsInGroup(SQWowAPI.PARTY_CATEGORY_INSTANCE) then
+    elseif SQWowAPI.PARTY_CATEGORY_INSTANCE
+       and SQWowAPI.IsInGroup(SQWowAPI.PARTY_CATEGORY_INSTANCE) then
         return "INSTANCE_CHAT"
     elseif SQWowAPI.IsInGroup(SQWowAPI.PARTY_CATEGORY_HOME) then
         return "PARTY"
