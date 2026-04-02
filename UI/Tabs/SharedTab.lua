@@ -27,7 +27,7 @@ function SharedTab:BuildTree(filterTable)
     local questEngaged = {}
 
     local function addEngagement(questID, playerName, isLocal, qdata)
-        local chainResult = SocialQuestTabUtils.GetChainInfoForQuestID(questID)
+        local chainResult = AQL:GetChainInfo(questID)
         local engaged = SocialQuestTabUtils.BuildEngagedSet(isLocal and nil or playerName)
         local ciEntry = SocialQuestTabUtils.SelectChain(chainResult, engaged)
         if ciEntry and ciEntry.chainID then
@@ -94,12 +94,13 @@ function SharedTab:BuildTree(filterTable)
                 -- Prefer step 1's title as the chain label (deterministic across pairs() order).
 
                 -- One questEntry per distinct questID in the chain.
-                local addedQuestIDs = {}
+                local addedQuestIDs   = {}
+                local chainStepEntries = {}
                 for playerName, eng in pairs(engaged) do
                     if not addedQuestIDs[eng.questID] then
                         addedQuestIDs[eng.questID] = true
                         local localInfo = AQL:GetQuest(eng.questID)
-                        local ci = SocialQuestTabUtils.GetChainInfoForQuestID(eng.questID)
+                        local ci = AQL:GetChainInfo(eng.questID)
 
                         -- Update chain title: prefer step 1 (deterministic regardless of pairs order).
                         -- eng.step was resolved in addEngagement via SelectBestChain.
@@ -165,7 +166,16 @@ function SharedTab:BuildTree(filterTable)
                             end
                         end
 
-                        table.insert(zone.chains[chainID].steps, entry)
+                        if not chainStepEntries[chainID] then chainStepEntries[chainID] = {} end
+                        local existing = chainStepEntries[chainID][eng.step]
+                        if existing then
+                            for _, p in ipairs(entry.players) do
+                                table.insert(existing.players, p)
+                            end
+                        else
+                            chainStepEntries[chainID][eng.step] = entry
+                            table.insert(zone.chains[chainID].steps, entry)
+                        end
                     end
                 end
 

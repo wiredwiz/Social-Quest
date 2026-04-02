@@ -99,12 +99,29 @@ function SocialQuest:OnEnable()
     -- Register AceComm prefixes.
     SocialQuestComm:Initialize()
 
+    -- Raw CHAT_MSG_ADDON debug listener, independent of AceComm.
+    -- Fires for every CHAT_MSG_ADDON that WoW delivers (prefix must be registered
+    -- for the event to fire at all; unregistered prefixes go to CHAT_MSG_ADDON_FILTERED).
+    -- This tells us whether the event fires at the WoW level before AceComm touches it.
+    if not self._rawCommFrame then
+        self._rawCommFrame = CreateFrame("Frame")
+        self._rawCommFrame:RegisterEvent("CHAT_MSG_ADDON")
+        self._rawCommFrame:SetScript("OnEvent", function(_, _, prefix, _, dist, sender)
+            if not (prefix and prefix:sub(1, 3) == "SQ_") then return end
+            if not SocialQuest.db or not SocialQuest.db.profile.debug.enabled then return end
+            SQWowUI.AddChatMessage(
+                "|cFF00FF88[SQ][CHAT_MSG_ADDON]|r prefix=" .. prefix ..
+                " dist=" .. tostring(dist) ..
+                " sender=" .. tostring(sender)
+            )
+        end)
+    end
+
     -- Register tooltips hook.
     SocialQuestTooltips:Initialize()
 
     -- Register WoW events (non-quest; quest events come via AQL callbacks).
     self:RegisterEvent("GROUP_ROSTER_UPDATE",   "OnGroupRosterUpdate")
-    self:RegisterEvent("PLAYER_LOGIN",          "OnPlayerLogin")
     self:RegisterEvent("PLAYER_ENTERING_WORLD", "OnPlayerEnteringWorld")
     self:RegisterEvent("AUTOFOLLOW_BEGIN",        "OnAutoFollowBegin")
     self:RegisterEvent("AUTOFOLLOW_END",          "OnAutoFollowEnd")
@@ -155,6 +172,12 @@ function SocialQuest:OnEnable()
             DBIcon:Register("SocialQuest", launcher, self.db.profile.minimap)
         end
     end
+
+    -- Bootstrap group state now. On Retail, GROUP_ROSTER_UPDATE fires before
+    -- OnEnable registers for it, and PLAYER_LOGIN has already passed by the time
+    -- we could register OnPlayerLogin — so neither event-driven path runs.
+    -- Calling directly here ensures we always detect an existing group on load/reload.
+    SocialQuestGroupComposition:OnGroupRosterUpdate()
 
 end
 
@@ -337,11 +360,6 @@ function SocialQuest:OnGroupRosterUpdate()
     SocialQuestGroupComposition:OnGroupRosterUpdate()
 end
 
--- Re-sync quest data with group after a UI reload (PLAYER_LOGIN fires on /reload).
-function SocialQuest:OnPlayerLogin()
-    SocialQuestGroupComposition:OnPlayerLogin()
-end
-
 -- PLAYER_LEAVING_WORLD fires before WoW calls CloseAllWindows() on a zone transition.
 -- Snapshot the SQ window open state now, while the frame is still shown, so we can
 -- restore it after the loading screen.
@@ -507,6 +525,76 @@ SocialQuest:RegisterChatCommand("sq", function(input)
     local cmd = strtrim(input or "")
     if cmd == "config" then
         LibStub("AceConfigDialog-3.0"):Open("SocialQuest")
+    elseif cmd == "diagnose" then
+        local lines = {}
+        local p = function(s) lines[#lines + 1] = tostring(s) end
+        p("IsInRaid: " .. tostring(SQWowAPI.IsInRaid()))
+        p("PARTY_CATEGORY_HOME: " .. tostring(SQWowAPI.PARTY_CATEGORY_HOME))
+        p("PARTY_CATEGORY_INSTANCE: " .. tostring(SQWowAPI.PARTY_CATEGORY_INSTANCE))
+        p("IsInGroup(HOME): " .. tostring(SQWowAPI.IsInGroup(SQWowAPI.PARTY_CATEGORY_HOME)))
+        p("IsInGroup(INSTANCE): " .. tostring(SQWowAPI.IsInGroup(SQWowAPI.PARTY_CATEGORY_INSTANCE)))
+        p("IsInGroup(nil): " .. tostring(SQWowAPI.IsInGroup(nil)))
+        p("GetActiveChannel: " .. tostring(SocialQuestComm:GetActiveChannel()))
+        p("GetNumGroupMembers: " .. tostring(SQWowAPI.GetNumGroupMembers()))
+        local selfName, selfRealm = SQWowAPI.UnitFullName("player")
+        p("UnitFullName(player): " .. tostring(selfName) .. " / " .. tostring(selfRealm))
+        p("UnitName(player): " .. tostring(SQWowAPI.UnitName("player")))
+        local memberCount = SQWowAPI.GetNumGroupMembers()
+        for i = 1, math.min(memberCount, 5) do
+            local n, r = SQWowAPI.UnitName("party" .. i)
+            p("party" .. i .. ": name=" .. tostring(n) .. " realm=" .. tostring(r))
+        end
+        local ms = SocialQuestGroupComposition.memberSet or {}
+        local msCount = 0
+        for k in pairs(ms) do msCount = msCount + 1; p("memberSet: " .. k) end
+        if msCount == 0 then p("memberSet: (empty)") end
+        local pqCount = 0
+        for k, v in pairs(SocialQuestGroupData.PlayerQuests) do
+            pqCount = pqCount + 1
+            p("PlayerQuests: " .. k .. " hasSQ=" .. tostring(v.hasSocialQuest) .. " dp=" .. tostring(v.dataProvider))
+        end
+        if pqCount == 0 then p("PlayerQuests: (empty)") end
+        p("debug.enabled: " .. tostring(SocialQuest.db.profile.debug.enabled))
+        p("party.transmit: " .. tostring(SocialQuest.db.profile.party.transmit))
+        p("zoneSuppress: " .. tostring(SQWowAPI.GetTime() < (SocialQuest.zoneTransitionSuppressUntil or 0)))
+        if C_ChatInfo and C_ChatInfo.IsAddonMessagePrefixRegistered then
+            local prefixes = { "SQ_INIT","SQ_UPDATE","SQ_OBJECTIVE","SQ_REQUEST","SQ_FOLLOW_START","SQ_FOLLOW_STOP","SQ_REQ_COMPLETED","SQ_RESP_COMPLETE" }
+            for _, pfx in ipairs(prefixes) do
+                p("prefix " .. pfx .. ": " .. tostring(C_ChatInfo.IsAddonMessagePrefixRegistered(pfx)))
+            end
+        else
+            p("C_ChatInfo.IsAddonMessagePrefixRegistered: not available")
+        end
+
+        local text = table.concat(lines, "\n")
+
+        -- Show in a copyable popup EditBox (supports Ctrl+A / Ctrl+C).
+        local f = CreateFrame("Frame", "SQDiagFrame", UIParent, "BasicFrameTemplateWithInset")
+        f:SetSize(480, 340)
+        f:SetPoint("CENTER")
+        f:SetFrameStrata("DIALOG")
+        f:SetMovable(true)
+        f:EnableMouse(true)
+        f:RegisterForDrag("LeftButton")
+        f:SetScript("OnDragStart", f.StartMoving)
+        f:SetScript("OnDragStop", f.StopMovingOrSizing)
+        f:SetScript("OnKeyDown", function(_, key)
+            if key == "ESCAPE" then f:Hide() end
+        end)
+        f:SetPropagateKeyboardInput(false)
+        if f.TitleText then f.TitleText:SetText("SQ Diagnose — Ctrl+A then Ctrl+C to copy") end
+
+        local eb = CreateFrame("EditBox", nil, f)
+        eb:SetMultiLine(true)
+        eb:SetFontObject(ChatFontNormal)
+        eb:SetWidth(440)
+        eb:SetPoint("TOPLEFT", f, "TOPLEFT", 12, -28)
+        eb:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -12, 10)
+        eb:SetAutoFocus(true)
+        eb:SetText(text)
+        eb:HighlightText()
+        eb:SetScript("OnEscapePressed", function() f:Hide() end)
+        f:Show()
     else
         SocialQuestGroupFrame:Toggle()
     end

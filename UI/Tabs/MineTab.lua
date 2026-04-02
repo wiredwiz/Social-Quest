@@ -74,7 +74,7 @@ function MineTab:BuildTree(filterTable)  -- filterTable.search, filterTable.auto
             for playerName, playerData in pairs(SocialQuestGroupData.PlayerQuests) do
                 if playerData.quests then
                     for pQuestID in pairs(playerData.quests) do
-                        local pChainResult = SocialQuestTabUtils.GetChainInfoForQuestID(pQuestID)
+                        local pChainResult = AQL:GetChainInfo(pQuestID)
                         local pCI = SocialQuestTabUtils.SelectChain(pChainResult, SocialQuestTabUtils.BuildEngagedSet(playerName))
                         if pCI and pCI.chainID == chainID and pCI.step ~= ci.step then
                             table.insert(entry.players, {

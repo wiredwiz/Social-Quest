@@ -29,23 +29,6 @@ function SocialQuestTabUtils.GetZoneForQuestID(questID)
     return L["Other Quests"]
 end
 
--- Returns the GetChainInfo wrapper { knownStatus, chains } for questID.
--- Queries AQL cache first; falls back to the active Chain provider for remote quests.
--- Callers should use SocialQuestTabUtils.SelectChain(result, engagedSet) to pick a chain entry.
-function SocialQuestTabUtils.GetChainInfoForQuestID(questID)
-    local AQL = SocialQuest.AQL
-    local result = AQL:GetChainInfo(questID)
-    if result.knownStatus == AQL.ChainStatus.Known then return result end
-    local provider = AQL.providers and AQL.providers[AQL.Capability.Chain]
-    if provider then
-        local ok, provResult = pcall(provider.GetChainInfo, provider, questID)
-        if ok and provResult and provResult.knownStatus == AQL.ChainStatus.Known then
-            return provResult
-        end
-    end
-    return result
-end
-
 -- Picks the best chain entry from a GetChainInfo result for the given engaged set.
 -- Compatible with both AQL 3.0+ (wrapper with chains array) and AQL 2.x (bare ChainInfo).
 -- Returns nil when chainResult is nil or knownStatus != Known.
@@ -216,7 +199,7 @@ function SocialQuestTabUtils.MatchesTypeFilter(entry, descriptor)
 
     -- group/timed/solo/chain: read from entry fields directly (no AQL call needed).
     -- suggestedGroup and timerSeconds are denormalized onto every entry by each tab's
-    -- BuildTree; chainInfo is populated from GetChainInfoForQuestID by each tab.
+    -- BuildTree; chainInfo is populated from AQL:GetChainInfo by each tab.
     if value == "group" then
         matched = (entry.suggestedGroup or 0) >= 2
     elseif value == "solo" then

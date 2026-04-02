@@ -16,6 +16,8 @@
 
 >**Unit Tests:** Before committing any code change and before bumping the version number, always run the full Lua unit test suite and confirm all tests pass. Run from the repo root: `lua tests/FilterParser_test.lua` and `lua tests/TabUtils_test.lua`. Both must pass (0 failures) before the change is considered done. If a Lua runtime is not available in the environment, note this explicitly and flag to the user that tests could not be verified.
 
+>**AQL is the sole source of truth for all quest data. NEVER bypass AQL to fix quest API issues.** SocialQuest must never call WoW quest APIs directly to work around AQL failures — always fix the root cause in AQL (`AbsoluteQuestLog`). Any quest title, info, objectives, chain, or history lookup must go through AQL's public API. Adding `SQWowAPI` wrappers that duplicate AQL's quest resolution is forbidden.
+
 >**Multi-Version Design:** All new development must be designed with future support for Retail WoW and all other currently active WoW versions in mind — not only TBC. This does not mean implementing Retail support today; TBC is the only actively supported version. It means: (1) all WoW API calls route through `SQWowAPI` / `SQWowUI` wrappers so version-specific branching stays in one place; (2) new data structures, bitmask tables, and lookup tables include stubs for races/classes/features that don't exist in TBC but do in Retail (clearly commented as stubs); (3) avoid hardcoding assumptions that are TBC-specific (e.g., "only 10 races", "only 9 classes") when the pattern can accommodate future values at zero cost; (4) when a Retail API equivalent is unknown, add a comment `-- TODO: verify Retail API` rather than silently omitting the case.
 
 ---
@@ -206,8 +208,29 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.17.9 (April 2026 — Improvements branch)
+- Refactor (Retail): `SocialQuestTabUtils.GetChainInfoForQuestID` removed. All call sites in
+  PartyTab and SharedTab replaced with direct `AQL:GetChainInfo(questID)` calls. The provider
+  fallthrough logic is now handled inside `AQL:GetChainInfo` itself (AQL 3.2.6), making the
+  SocialQuest wrapper redundant. Party tab and Shared tab step deduplication replaced: the
+  previous title+zone heuristic merge (2.17.8) is superseded by step-number keying
+  `chainStepEntries[chainID][stepNum]` — since AQL now returns the same chainID and step for
+  all Retail variant questIDs of the same logical quest, the key is unambiguous and O(1).
+
+### Version 2.17.8 (April 2026 — Improvements branch)
+- Bug fix (Retail): Party tab duplicated same-quest entries when two players had different race/class variant questIDs for the same logical quest (e.g. questID 28763 and 28766 for "Beating Them Back!"). Both were correctly grouped under the same `chainID` after AQL 3.2.4 fixes, but still appeared as two separate step entries under the same chain header — each with only one player's progress rows. Fix: when inserting an entry into `zone.chains[chainID].steps` (or `zone.quests`), check if an entry with the same title AND zone already exists. If so, merge the new entry's `players` array into the existing entry instead of adding a duplicate. Title+zone matching prevents false positives from unrelated quests with coincidentally identical names in different zones. Same merge applied to ungrouped quests in `zone.quests`.
+
+### Version 2.17.7 (April 2026 — Improvements branch)
+- Diagnostic: two additions to pinpoint why SQ addon messages are not received on Retail. (1) Raw independent `CHAT_MSG_ADDON` frame registered in `OnEnable` — fires for every SQ-prefixed message that WoW delivers, completely bypassing AceComm. When `debug.enabled` is true, prints `[SQ][CHAT_MSG_ADDON] prefix= dist= sender=` directly to chat. If this fires, WoW delivered the event; if not, prefix registration is failing and messages go to `CHAT_MSG_ADDON_FILTERED` instead. (2) `/sq diagnose` now reports `C_ChatInfo.IsAddonMessagePrefixRegistered` status for all 8 SQ prefixes (Retail only).
+
+### Version 2.17.6 (April 2026 — Improvements branch)
+- Bug fix: SQ party communication completely broken on Retail — `memberSet` and `PlayerQuests` always empty despite being in a party. Root cause: on Retail, `GROUP_ROSTER_UPDATE` fires before `OnEnable` registers for it. The existing fallback (`PLAYER_LOGIN` → `OnPlayerLogin` → `OnGroupRosterUpdate`) also never fires because `PLAYER_LOGIN` has already been consumed by the time `OnEnable` registers for it. Result: group state was never bootstrapped; `memberSet` stays empty; all send/receive paths silently fail because no stubs exist. Fix: call `SocialQuestGroupComposition:OnGroupRosterUpdate()` directly at the end of `OnEnable()`. This runs immediately after all initialization, correctly detects any existing group, and works regardless of prior event ordering. Removed dead `PLAYER_LOGIN` event registration and `OnPlayerLogin` handler from both `SocialQuest.lua` and `GroupComposition.lua`.
+
+### Version 2.17.5 (April 2026 — Improvements branch)
+- Diagnostic: added `/sq diagnose` slash command. Prints runtime group state unconditionally (no debug.enabled gate): IsInRaid, PARTY_CATEGORY_HOME/INSTANCE values, IsInGroup results for both categories, GetActiveChannel result, GetNumGroupMembers, UnitFullName/UnitName for player, UnitName for each party slot, GroupComposition.memberSet contents, PlayerQuests keys with hasSocialQuest/dataProvider, debug.enabled, party.transmit, and zone-suppress status. Used to pinpoint which layer of the send/receive pipeline is failing on Retail.
+
 ### Version 2.17.4 (April 2026 — Improvements branch)
-- Bug fix: SQ_UPDATE (and all other AceComm prefixes) were sent but never received. Root cause: `SocialQuestComm:Initialize()` called `LibStub("AceComm-3.0"):RegisterComm(prefix, callback)` — the library object — instead of `SocialQuest:RegisterComm(prefix, callback)` — the embedded addon. AceComm stores callbacks in `self.AceComm_registered[prefix]` on whichever object `RegisterComm` is called on. The `CHAT_MSG_ADDON` event dispatches only through `SocialQuest.AceComm_registered`, so all callbacks registered on the library object were invisible to the dispatcher. Receive was silently dropped for every prefix. Fixed by registering all prefixes through `SocialQuest:RegisterComm` so the callbacks land in the correct dispatch table.
+- Diagnostic attempt: SQ_UPDATE and all other AceComm prefixes not received on Retail. Attempted fix was a no-op: changing `LibStub("AceComm-3.0"):RegisterComm(prefix, callback)` to `SocialQuest:RegisterComm(prefix, callback)` — both write to the same `AceComm.callbacks.events` table (the library mixin copies its callback table to the addon object at embed time), so receive behavior was unchanged. Root cause at this point was still unidentified; the actual cause was found in 2.17.8 (`AQL:GetQuestTitle`/`AQL:GetQuestInfo` calling non-existent `GetQuestInfo` WoW global on Retail).
 
 ### Version 2.17.3 (April 2026 — Improvements branch)
 - Bug fix: Party communication completely broken — banners never fired for other players and quest data never appeared in Party/Shared tabs. Root cause: `GetActiveChannel()` in `Communications.lua` and `currentGroupType()` in `GroupComposition.lua` both checked `IsInGroup(PARTY_CATEGORY_INSTANCE)` before `IsInGroup(PARTY_CATEGORY_HOME)`. If `LE_PARTY_CATEGORY_INSTANCE` is nil in the WoW environment (possible on TBC), `IsInGroup(nil)` degrades to `IsInGroup()` which returns truthy for any group including a home party — so a normal party was classified as a Battleground and messages were sent to `INSTANCE_CHAT` instead of `PARTY`. Both checks now nil-guard `PARTY_CATEGORY_INSTANCE` before using it.

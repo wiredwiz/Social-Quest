@@ -173,9 +173,3 @@ function SocialQuestGroupComposition:OnGroupRosterUpdate()
     self.lastGroupType   = groupType
 end
 
--- On login/reload, memberSet is empty. Running the diff against empty
--- state fires OnSelfJoinedGroup then OnMemberJoined for each current
--- member — the correct bootstrap behavior.
-function SocialQuestGroupComposition:OnPlayerLogin()
-    self:OnGroupRosterUpdate()
-end
