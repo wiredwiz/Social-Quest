@@ -208,6 +208,9 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.17.10 (April 2026 — Improvements branch)
+- Bug fix: `chainStepEntries` declared at wrong scope in `PartyTab:BuildTree` — shared across all zones, so a chainID appearing in multiple zones caused Zone B to silently merge players into Zone A's entry and drop the step from Zone B's chain. Fixed by replacing `local chainStepEntries = {}` (before the questID loop) with `local chainStepEntriesByZone = {}`, initializing a per-zone sub-table on first use inside the loop. Added nil guard on `ciEntry.step` before using it as a table key, falling back to an unconditional `table.insert` when step is nil.
+
 ### Version 2.17.9 (April 2026 — Improvements branch)
 - Refactor (Retail): `SocialQuestTabUtils.GetChainInfoForQuestID` removed. All call sites in
   PartyTab and SharedTab replaced with direct `AQL:GetChainInfo(questID)` calls. The provider

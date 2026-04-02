@@ -264,9 +264,9 @@ function PartyTab:BuildTree(filterTable)
         end
     end
 
-    local tree            = { zones = {} }
-    local orderIdx        = 0
-    local chainStepEntries = {}
+    local tree                = { zones = {} }
+    local orderIdx            = 0
+    local chainStepEntriesByZone = {}
 
     for questID in pairs(allQuestIDs) do
         local zoneName = SocialQuestTabUtils.GetZoneForQuestID(questID)
@@ -314,6 +314,9 @@ function PartyTab:BuildTree(filterTable)
                 end
             end
 
+            if not chainStepEntriesByZone[zoneName] then chainStepEntriesByZone[zoneName] = {} end
+            local chainStepEntries = chainStepEntriesByZone[zoneName]
+
             local buildEngaged = SocialQuestTabUtils.BuildEngagedSet(nil)
             local ciEntry = SocialQuestTabUtils.SelectChain(ci, buildEngaged)
             if ciEntry and ciEntry.chainID then
@@ -324,16 +327,20 @@ function PartyTab:BuildTree(filterTable)
                 if ciEntry.step == 1 then
                     zone.chains[chainID].title = entry.title
                 end
-                if not chainStepEntries[chainID] then chainStepEntries[chainID] = {} end
-                local existing = chainStepEntries[chainID][ciEntry.step]
-                if existing then
-                    -- Variant questID for an already-recorded step: merge players only.
-                    for _, p in ipairs(entry.players) do
-                        table.insert(existing.players, p)
+                if ciEntry.step then
+                    if not chainStepEntries[chainID] then chainStepEntries[chainID] = {} end
+                    local existing = chainStepEntries[chainID][ciEntry.step]
+                    if existing then
+                        -- Variant questID for an already-recorded step: merge players only.
+                        for _, p in ipairs(entry.players) do
+                            table.insert(existing.players, p)
+                        end
+                    else
+                        -- First questID seen at this step: record and insert.
+                        chainStepEntries[chainID][ciEntry.step] = entry
+                        table.insert(zone.chains[chainID].steps, entry)
                     end
                 else
-                    -- First questID seen at this step: record and insert.
-                    chainStepEntries[chainID][ciEntry.step] = entry
                     table.insert(zone.chains[chainID].steps, entry)
                 end
             else
