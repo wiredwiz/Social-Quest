@@ -206,6 +206,9 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.17.4 (April 2026 — Improvements branch)
+- Bug fix: SQ_UPDATE (and all other AceComm prefixes) were sent but never received. Root cause: `SocialQuestComm:Initialize()` called `LibStub("AceComm-3.0"):RegisterComm(prefix, callback)` — the library object — instead of `SocialQuest:RegisterComm(prefix, callback)` — the embedded addon. AceComm stores callbacks in `self.AceComm_registered[prefix]` on whichever object `RegisterComm` is called on. The `CHAT_MSG_ADDON` event dispatches only through `SocialQuest.AceComm_registered`, so all callbacks registered on the library object were invisible to the dispatcher. Receive was silently dropped for every prefix. Fixed by registering all prefixes through `SocialQuest:RegisterComm` so the callbacks land in the correct dispatch table.
+
 ### Version 2.17.3 (April 2026 — Improvements branch)
 - Bug fix: Party communication completely broken — banners never fired for other players and quest data never appeared in Party/Shared tabs. Root cause: `GetActiveChannel()` in `Communications.lua` and `currentGroupType()` in `GroupComposition.lua` both checked `IsInGroup(PARTY_CATEGORY_INSTANCE)` before `IsInGroup(PARTY_CATEGORY_HOME)`. If `LE_PARTY_CATEGORY_INSTANCE` is nil in the WoW environment (possible on TBC), `IsInGroup(nil)` degrades to `IsInGroup()` which returns truthy for any group including a home party — so a normal party was classified as a Battleground and messages were sent to `INSTANCE_CHAT` instead of `PARTY`. Both checks now nil-guard `PARTY_CATEGORY_INSTANCE` before using it.
 

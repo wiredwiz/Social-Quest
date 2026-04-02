@@ -35,9 +35,8 @@ local pendingResponses = {}
 
 -- Called from SocialQuest:OnEnable().
 function SocialQuestComm:Initialize()
-    local AceComm = LibStub("AceComm-3.0")
     for _, prefix in ipairs(PREFIXES) do
-        AceComm:RegisterComm(prefix, function(pfx, msg, dist, sender)
+        SocialQuest:RegisterComm(prefix, function(pfx, msg, dist, sender)
             SocialQuestComm:OnCommReceived(pfx, msg, dist, sender)
         end)
     end
