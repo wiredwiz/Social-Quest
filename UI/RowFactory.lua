@@ -343,39 +343,58 @@ function RowFactory.AddObjectiveRow(contentFrame, y, objectiveEntry, indent)
     return y + fs:GetStringHeight() + 2
 end
 
+-- Two-column status row: player name in left column, status text left-aligned at
+-- bar start (x + nameColumnWidth + 4). Falls back to a single left-aligned string
+-- when nameColumnWidth is nil (e.g. Mine tab peer rows called without a name column).
+-- color: a WoW color escape sequence string (e.g. C.unknown or GetUIColor("completed")).
+local function renderStatusRow(contentFrame, y, x, nameColumnWidth, displayName, statusText, color)
+    local C = SocialQuestColors
+    if nameColumnWidth then
+        local barX = x + nameColumnWidth + 4
+        local nameFs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        nameFs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
+        nameFs:SetSize(nameColumnWidth, ROW_H)
+        nameFs:SetJustifyH("LEFT")
+        nameFs:SetJustifyV("MIDDLE")
+        nameFs:SetText(C.white .. displayName .. C.reset)
+        local statusFs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        statusFs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", barX, -y)
+        statusFs:SetWidth(CONTENT_WIDTH - barX - 4)
+        statusFs:SetJustifyH("LEFT")
+        statusFs:SetJustifyV("MIDDLE")
+        statusFs:SetText(color .. statusText .. C.reset)
+    else
+        local fs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
+        fs:SetWidth(CONTENT_WIDTH - x - 4)
+        fs:SetJustifyH("LEFT")
+        fs:SetText(C.white .. displayName .. C.reset .. " " .. color .. statusText .. C.reset)
+    end
+    return y + ROW_H + 2
+end
+
 -- Player row. Display priority (first matching wins):
---   1. playerEntry.hasCompleted → "[Name] FINISHED" (green)
---   2. playerEntry.needsShare   → "[Name] Needs it Shared" (grey)
---   2b. playerEntry.ineligReason (needsShare=false, ineligReason~=nil) → "[Name] [reason]" (muted amber)
---   3. hasSocialQuest==false and no objectives → "[Name] (no data)" (grey)
---   4. otherwise → "[Name]" label (+ "Step X of Y" when step/chainLength set),
---                  followed by objective rows.
--- playerEntry fields: name, isMe, hasSocialQuest, hasCompleted, needsShare,
---                     ineligReason (optional: {code, questID?} — set when ineligible),
---                     isComplete (optional), objectives, step (optional), chainLength (optional).
--- nameColumnWidth (optional): pixel width of the name column. When provided,
--- in-progress objectives render as two-column bar rows (name left, bar right).
--- When nil, falls back to plain single-column text layout.
+--   1. playerEntry.hasCompleted       → two-column: name | "Finished" (green)
+--   2. playerEntry.isComplete         → two-column: name | "Complete" (green)
+--   3. playerEntry.needsShare         → "[Name] Needs it Shared" (grey)
+--   3b. playerEntry.ineligReason      → "[Name] [reason]" (muted amber)
+--   4. hasSocialQuest + isNoObjective → two-column: name | "In Progress" (dimmed)
+--   5. !hasSocialQuest + no objectives → "[Name] (no data)" (grey)
+--   6. otherwise                      → name label + objective bar rows
+-- renderStatusRow provides two-column layout when nameColumnWidth is set;
+-- falls back to single left-aligned string when nameColumnWidth is nil.
 function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent, nameColumnWidth)
     local C    = SocialQuestColors
     local x    = indent or 0
     local displayName = RowFactory.GetDisplayName(playerEntry)
 
     if playerEntry.hasCompleted then
-        local fs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
-        fs:SetWidth(CONTENT_WIDTH - x - 4)
-        fs:SetJustifyH("LEFT")
-        fs:SetText(SocialQuestColors.GetUIColor("completed") .. string.format(L["%s FINISHED"], displayName) .. C.reset)
-        return y + ROW_H + 2
+        return renderStatusRow(contentFrame, y, x, nameColumnWidth, displayName,
+            L["Finished"], SocialQuestColors.GetUIColor("completed"))
 
     elseif playerEntry.isComplete then
-        local fs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
-        fs:SetWidth(CONTENT_WIDTH - x - 4)
-        fs:SetJustifyH("LEFT")
-        fs:SetText(C.white .. displayName .. C.reset .. " " .. SocialQuestColors.GetUIColor("completed") .. L["Complete"] .. C.reset)
-        return y + ROW_H + 2
+        return renderStatusRow(contentFrame, y, x, nameColumnWidth, displayName,
+            L["Complete"], SocialQuestColors.GetUIColor("completed"))
 
     elseif playerEntry.needsShare then
         local fs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
