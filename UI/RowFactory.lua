@@ -301,8 +301,9 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     if badgeText ~= "" then
         local badge = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         badge:SetPoint("TOPRIGHT", contentFrame, "TOPRIGHT", -8, -y)
-        badge:SetWidth(badgeWidth)
+        badge:SetSize(badgeWidth, ROW_H)
         badge:SetJustifyH("RIGHT")
+        badge:SetJustifyV("MIDDLE")
         badge:SetText(badgeText)
     end
 
