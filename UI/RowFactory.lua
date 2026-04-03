@@ -359,7 +359,7 @@ local function renderStatusRow(contentFrame, y, x, nameColumnWidth, displayName,
         nameFs:SetText(C.white .. displayName .. C.reset)
         local statusFs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         statusFs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", barX, -y)
-        statusFs:SetWidth(CONTENT_WIDTH - barX - 4)
+        statusFs:SetSize(CONTENT_WIDTH - barX - 4, ROW_H)
         statusFs:SetJustifyH("LEFT")
         statusFs:SetJustifyV("MIDDLE")
         statusFs:SetText(color .. statusText .. C.reset)
