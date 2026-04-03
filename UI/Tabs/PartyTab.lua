@@ -267,6 +267,31 @@ function PartyTab:BuildTree(filterTable)
     local tree                = { zones = {} }
     local orderIdx            = 0
     local chainStepEntriesByZone = {}
+    local questsByTitleByZone    = {}   -- zoneName → {title → entry} for ungrouped quest dedup
+
+    -- Merges source players into target, deduplicating by player name.
+    -- When a player appears in both lists, the entry with real quest data is
+    -- preferred over a "needsShare" placeholder row (which is only added when
+    -- the local player has a shareable quest and the remote player lacks it by
+    -- exact-ID lookup — the variant case produces this false placeholder).
+    local function mergePlayers(target, source)
+        local byName = {}
+        for i, p in ipairs(target) do
+            byName[p.name] = i
+        end
+        for _, p in ipairs(source) do
+            local idx = byName[p.name]
+            if idx then
+                -- Player already present. Prefer the entry with real quest data.
+                if target[idx].needsShare and not p.needsShare then
+                    target[idx] = p
+                end
+            else
+                table.insert(target, p)
+                byName[p.name] = #target
+            end
+        end
+    end
 
     for questID in pairs(allQuestIDs) do
         local zoneName = SocialQuestTabUtils.GetZoneForQuestID(questID)
@@ -344,7 +369,32 @@ function PartyTab:BuildTree(filterTable)
                     table.insert(zone.chains[chainID].steps, entry)
                 end
             else
-                table.insert(zone.quests, entry)
+                -- Ungrouped quest: group by title to merge Retail variant questIDs.
+                -- (Non-chain quests with the same title are the same logical quest.)
+                if not questsByTitleByZone[zoneName] then
+                    questsByTitleByZone[zoneName] = {}
+                end
+                local titleKey  = entry.title
+                local existing  = questsByTitleByZone[zoneName][titleKey]
+                if existing then
+                    mergePlayers(existing.players, entry.players)
+                    -- Recompute hasShareableMembers — dedup may have removed needsShare rows.
+                    existing.hasShareableMembers = false
+                    for _, pl in ipairs(existing.players) do
+                        if pl.needsShare then existing.hasShareableMembers = true; break end
+                    end
+                    -- Prefer the local player's entry data (logIndex, questID) for interactions.
+                    if entry.logIndex and not existing.logIndex then
+                        existing.questID    = entry.questID
+                        existing.logIndex   = entry.logIndex
+                        existing.isComplete = entry.isComplete
+                        existing.isFailed   = entry.isFailed
+                        existing.isTracked  = entry.isTracked
+                    end
+                else
+                    questsByTitleByZone[zoneName][titleKey] = entry
+                    table.insert(zone.quests, entry)
+                end
             end
         end
     end
