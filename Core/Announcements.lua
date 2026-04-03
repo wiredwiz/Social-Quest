@@ -340,32 +340,49 @@ checkAllCompleted = function(questID, localHasCompleted)
 
     local AQL = SocialQuest.AQL
 
-    -- Title of the triggering quest. Used to match variant questIDs for remote players:
-    -- GroupData stores qdata.title (resolved from AQL) but not the full fingerprint,
-    -- so title comparison is the correct cross-source alias detection method.
+    -- Title of the triggering quest. Used as the primary method to match variant
+    -- questIDs across players (same logical quest, different numeric IDs on Retail).
     local triggerTitle = AQL and AQL:GetQuestTitle(questID)
 
-    -- Local player: engaged if they just completed objectives or have the quest active.
-    local localActive  = AQL and AQL:GetQuest(questID) ~= nil
+    -- Local player engagement.
+    -- Primary: direct questID lookup (works when local has the exact same questID).
+    -- Fallback: title-based scan of all local quests (handles Retail variant questIDs
+    -- where the local player has questID_A but the trigger arrived with questID_B).
+    local localQuest = AQL and AQL:GetQuest(questID)
+    if not localQuest and triggerTitle and AQL then
+        for _, q in pairs(AQL:GetAllQuests()) do
+            if q.title == triggerTitle then
+                localQuest = q
+                break
+            end
+        end
+    end
+    local localActive  = localQuest ~= nil
     local localEngaged = localHasCompleted or localActive
-    local localQuest   = AQL and AQL:GetQuest(questID)
     local localDone    = localHasCompleted
                       or (localQuest and localQuest.isComplete)
                       or (AQL and AQL:HasCompletedQuest(questID))
+    SocialQuest:Debug("Banner", "checkAllCompleted questID=" .. questID
+        .. " title=" .. (triggerTitle or "nil")
+        .. " localEngaged=" .. tostring(localEngaged)
+        .. " localDone=" .. tostring(localDone))
     if localEngaged and not localDone then
         SocialQuest:Debug("Banner", "All completed suppressed: local player engaged but not done")
         return
     end
 
     -- Remote players: check engagement and objective completion.
-    -- "Engaged" = has any quest whose title matches the triggering quest.
-    -- This handles Retail variant questIDs (same title, different numeric ID).
+    -- Priority order for finding a player's quest:
+    --   1. Title match in entry.quests (primary; handles Retail variant questIDs)
+    --   2. Direct questID match in entry.quests (fallback when title is nil or unresolved)
+    --   3. Direct questID in completedQuests (turned in before we checked)
+    --   4. Title match in completedQuests via AQL lookup (fallback)
     local anyEngaged = localEngaged
     for _, entry in pairs(PlayerQuests) do
-        -- Find this player's variant of the quest by title match.
         local matchedQuestData = nil
         local hasCompleted     = false
 
+        -- 1. Title match.
         if entry.quests and triggerTitle then
             for _, qdata in pairs(entry.quests) do
                 if qdata.title and qdata.title == triggerTitle then
@@ -375,18 +392,29 @@ checkAllCompleted = function(questID, localHasCompleted)
             end
         end
 
-        -- Also check completedQuests (quest turned in before we checked).
-        -- Title must be resolved via AQL for each completed questID.
-        if not matchedQuestData and triggerTitle and entry.completedQuests then
-            for remoteQuestID in pairs(entry.completedQuests) do
-                if AQL and AQL:GetQuestTitle(remoteQuestID) == triggerTitle then
-                    hasCompleted = true
-                    break
+        -- 2. Direct questID match (fallback when triggerTitle is nil or qdata.title is nil).
+        if not matchedQuestData and entry.quests then
+            matchedQuestData = entry.quests[questID]
+        end
+
+        -- 3 & 4. completedQuests: direct questID first, then title-based.
+        if not matchedQuestData and entry.completedQuests then
+            if entry.completedQuests[questID] then
+                hasCompleted = true
+            elseif triggerTitle then
+                for remoteQuestID in pairs(entry.completedQuests) do
+                    if AQL and AQL:GetQuestTitle(remoteQuestID) == triggerTitle then
+                        hasCompleted = true
+                        break
+                    end
                 end
             end
         end
 
         local engaged = matchedQuestData ~= nil or hasCompleted
+        SocialQuest:Debug("Banner", "checkAllCompleted remote: engaged=" .. tostring(engaged)
+            .. " done=" .. tostring((matchedQuestData and matchedQuestData.isComplete) or hasCompleted)
+            .. " title=" .. (matchedQuestData and matchedQuestData.title or "nil"))
         if engaged then
             anyEngaged = true
             local done = (matchedQuestData and matchedQuestData.isComplete) or hasCompleted

@@ -1,6 +1,13 @@
 SocialQuest Changelog
 =====================
 
+Version 2.18.2 (April 2026)
+- Bug fix: "Everyone has completed" banner failed to fire on Retail when party members
+  held variant questIDs for the same logical quest. checkAllCompleted now falls back to
+  direct questID match when title resolution fails, and finds the local player's variant
+  quest by title scan when AQL:GetQuest returns nil for the triggering questID.
+  Verbose debug logging added to checkAllCompleted (fires when debug.enabled).
+
 Version 2.18.1 (April 2026)
 - Feature: No-objective quest status display. Quests with no numeric X/Y objectives
   (travel, talk-to-NPC, exploration) now show per-player status in Party and Shared tabs

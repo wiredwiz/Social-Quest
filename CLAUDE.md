@@ -208,6 +208,18 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.18.2 (April 2026)
+- Bug fix: "Everyone has completed" banner failed to fire on Retail when party members
+  held variant questIDs for the same logical quest. Two fixes in `checkAllCompleted`:
+  (1) Remote player quest lookup now falls back to a direct questID match when title
+  resolution fails (`triggerTitle = nil`) or when `qdata.title` was not stored — this
+  ensures the player who sent ET.Finished is always found as engaged. (2) Local player
+  engagement detection now also scans `AQL:GetAllQuests()` by title when `AQL:GetQuest`
+  returns nil for the triggering questID — correctly identifies the local player's
+  variant quest on Retail. Verbose debug logging added to `checkAllCompleted` (fires
+  when debug.enabled) to capture triggerTitle, localEngaged/Done, and per-remote-player
+  engagement when troubleshooting future issues.
+
 ### Version 2.18.1 (April 2026)
 - Feature: No-objective quest status display. Quests with no numeric X/Y objectives
   (travel, talk-to-NPC, exploration) now show per-player status in Party and Shared tabs
