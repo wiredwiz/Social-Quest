@@ -208,6 +208,49 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.18.0 (April 2026 — Improvements branch)
+- Bug fix: "Everyone has completed" banner now fires correctly when party members hold
+  Retail variant questIDs for the same logical quest (same title, different numeric ID
+  per race/class character type). `checkAllFinished` renamed to `checkAllCompleted`
+  throughout. Remote player matching now uses quest title comparison (`qdata.title`)
+  rather than exact questID lookup, so variant questIDs are correctly detected as the
+  same quest.
+- Bug fix: Party tab no longer shows duplicate rows for Retail variant questIDs of the
+  same ungrouped (non-chain) quest. Entries are merged by title via new `mergePlayers`
+  deduplication helper that prefers real quest-data rows over "needsShare" placeholders.
+- Bug fix: Shared tab no longer requires both players to have the identical questID for
+  a quest to appear. Title-based merge of `questEngaged` entries means variant questIDs
+  of the same quest now combine their player counts, correctly reaching the 2+ threshold.
+- Language cleanup: all internal debug messages and comments around the "everyone done"
+  check updated from "finished" to "completed" for consistency with the displayed
+  `L["Everyone has completed: %s"]` string.
+- Requires: AQL 3.3.0 (`GetQuestAliasKey`, `AreQuestsAliases` available; `checkAllCompleted`
+  uses `AQL:GetQuestTitle` for cross-source title resolution).
+
+### Version 2.17.19 (April 2026 — Improvements branch)
+- Bug fix: spurious `QuestMapFrame_ShowQuestDetails` re-fires after `QuestMapFrame_CloseQuestDetails` during back-navigation. Blizzard calls ShowQuestDetails immediately after CloseQuestDetails as part of its own bookkeeping, re-setting `_retailDetailQuestID` in the same game frame and causing the toggle-close to misfire on the next SQ click. Fix: `_retailDetailClosedAt` records the `GetTime()` of the last CloseQuestDetails call; ShowQuestDetails hook ignores any call within 100ms of it. That window is far longer than the same-frame spurious Blizzard fire, and far shorter than any human re-click.
+
+### Version 2.17.18 (April 2026 — Improvements branch)
+- Bug fix: toggle-close in `openQuestLogToQuest` (RowFactory.lua) now uses hook-based tracking instead of `AQL:IsQuestDetailShown()`. On Retail, `QuestModelScene:IsVisible()` (the basis of `IsQuestDetailShown`) remains true even when the quest list is showing — the Retail quest log uses a split-pane layout where the model scene stays visible regardless of which panel is active. The fix: `hooksecurefunc` on `QuestMapFrame_ShowQuestDetails` sets `_retailDetailQuestID = questID` when details are confirmed shown; `hooksecurefunc` on `QuestMapFrame_CloseQuestDetails` (if present) and `WorldMapFrame:OnHide` clear it. The toggle-close condition on Retail is now `IsQuestLogShown() AND _retailDetailQuestID == questID`. On TBC/Classic, the original `GetSelectedQuestLogEntryId() == questID` check is preserved (still correct on those versions).
+
+### Version 2.17.17 (April 2026 — Improvements branch)
+- Superseded by 2.17.18. Added `AQL:IsQuestDetailShown()` to toggle-close condition; did not work because `QuestModelScene:IsVisible()` does not distinguish detail-panel-active from quest-list-showing on Retail.
+
+### Version 2.17.16 (April 2026 — Improvements branch)
+- Cleanup: removed orphaned `local SQWowUI = SocialQuestWowUI` declaration from `UI/RowFactory.lua`. This local was added when implementing the (now-removed) SQ bypass for quest detail navigation and was never referenced after the bypass was deleted.
+
+### Version 2.17.15 (April 2026 — Improvements branch)
+- Reverted 2.17.14's toggle change. Using `AQL:GetCurrentlyOpenQuestId()` (AQL-tracked state) is incorrect: if the player opens the quest log from the tracker, a keybind, or any other source, the tracked questID is stale and the toggle fires on the wrong quest. The toggle check is restored to `AQL:GetSelectedQuestLogEntryId() == questID` (observable UI state). On Retail this depends on `WowQuestAPI.ShowQuestDetails` establishing the visual selection — the toggle-close gracefully degrades to a no-op until that unverified Retail API is resolved.
+
+### Version 2.17.13 (April 2026 — Improvements branch)
+- Bug fix: clicking a quest title in the SQ group window opened the quest log but did not navigate to or select that quest's detail panel. `openQuestLogToQuest` in `RowFactory.lua` used two deprecated AQL APIs — `AQL:GetSelectedQuestId()` replaced with `AQL:GetSelectedQuestLogEntryId()` and `AQL:SetQuestLogSelection(logIndex)` replaced with `AQL:OpenQuestLogById(questID)`. The Retail detail-panel navigation gap is fixed in AQL 3.2.7 (`WowQuestAPI.ShowQuestDetails` + `OpenQuestLogByIndex` update). Also fixed a nil dereference: `AQL:GetQuest(questID).zone` now nil-safe.
+
+### Version 2.17.12 (April 2026 — Improvements branch)
+- Bug fix (follow-up to 2.17.11): `BuildRemoteObjectives` reformatted count-first objective text (`"X/Y Description"`) into count-last (`"Description: X/Y"`), causing the local player's bar to show `"8/8 Blackrock Spy slain"` while remote players showed `"Blackrock Spy slain: 8/8"`. Fixed by detecting which format was matched and reconstructing in the same format — count-first stays count-first, count-last stays count-last.
+
+### Version 2.17.11 (April 2026 — Improvements branch)
+- Bug fix: remote player objective bar text showed the local player's stale count instead of the remote player's actual progress. Two root causes: (1) `BuildRemoteObjectives` in `TabUtils.lua` only recognised WoW's count-last objective text format (`"Description: X/Y"`) when stripping the embedded count before substituting the remote player's value; Retail's `C_QuestLog.GetQuestObjectives` returns count-first format (`"X/Y Description"`) which didn't match the pattern, so the verbatim stale text was used. Fixed by trying the count-first pattern `"^%d+/%d+%s+(.+)$"` as a fallback, with a final safety net of count-only text when neither pattern matches but an embedded count is detected. (2) `OnUpdateReceived` in `GroupData.lua` stored `objectives[i].isFinished` directly from the wire as an integer (0 or 1) — in Lua `0` is truthy, so RowFactory's `obj.isFinished and "completed" or "active"` coloured every freshly-accepted quest bar green immediately. Fixed by converting `obj.isFinished = obj.isFinished == 1` in a loop before storing, matching the fix already applied to `OnInitReceived` in 2.12.17.
+
 ### Version 2.17.10 (April 2026 — Improvements branch)
 - Bug fix: `chainStepEntries` declared at wrong scope in `PartyTab:BuildTree` — shared across all zones, so a chainID appearing in multiple zones caused Zone B to silently merge players into Zone A's entry and drop the step from Zone B's chain. Fixed by replacing `local chainStepEntries = {}` (before the questID loop) with `local chainStepEntriesByZone = {}`, initializing a per-zone sub-table on first use inside the loop. Added nil guard on `ciEntry.step` before using it as a table key, falling back to an unconditional `table.insert` when step is nil.
 
