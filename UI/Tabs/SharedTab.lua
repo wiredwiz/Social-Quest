@@ -57,6 +57,32 @@ function SharedTab:BuildTree(filterTable)
         end
     end
 
+    -- Merge questEngaged entries with matching titles to handle Retail variant questIDs:
+    -- same logical quest, different numeric IDs per race/class character type.
+    -- Chain-grouped quests are already deduplicated by chainEngaged (step-number keying),
+    -- so this pass only affects non-chain quests in questEngaged.
+    -- On non-Retail this is a safe no-op (all quest titles are unique per zone in practice).
+    do
+        local mergedQuestEngaged = {}
+        local questEngagedByTitle = {}
+        for questID, engaged in pairs(questEngaged) do
+            local title = AQL:GetQuestTitle(questID) or ("Quest " .. questID)
+            local canonID = questEngagedByTitle[title]
+            if canonID then
+                -- Another questID with the same title already exists; merge players into it.
+                for playerName, eng in pairs(engaged) do
+                    if not mergedQuestEngaged[canonID][playerName] then
+                        mergedQuestEngaged[canonID][playerName] = eng
+                    end
+                end
+            else
+                questEngagedByTitle[title]  = questID
+                mergedQuestEngaged[questID] = engaged
+            end
+        end
+        questEngaged = mergedQuestEngaged
+    end
+
     -- Step 2: build tree from groups with 2+ engaged players.
     local tree     = { zones = {} }
     local orderIdx = 0
