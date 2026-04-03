@@ -52,6 +52,16 @@ local function formatTimeRemaining(timerSeconds, snapshotTime)
     return string.format("%d:%02d", math.floor(remaining / 60), math.floor(remaining % 60))
 end
 
+-- Returns true when a quest has no trackable numeric objectives:
+-- nil/empty objectives array, or all entries have numRequired == 0.
+local function isNoObjectiveQuest(objectives)
+    if not objectives or #objectives == 0 then return true end
+    for _, obj in ipairs(objectives) do
+        if obj.numRequired and obj.numRequired > 0 then return false end
+    end
+    return true
+end
+
 -- Retail-only: tracks which questID has its detail panel confirmed showing.
 -- Set via hooksecurefunc on QuestMapFrame_ShowQuestDetails (fires when AQL navigates).
 -- Cleared when the back button is pressed or the quest log closes.
@@ -216,14 +226,19 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     end)
     x = x + 24
 
-    -- Determine badge text. "Complete" trumps "Group".
-    -- (Complete) is shown on Mine tab only (callbacks.onTitleShiftClick is present
-    -- only there). On Party/Shared, completion is shown in the player row instead.
+    -- Determine badge text. Priority: (Complete) > (Group) > (In Progress).
+    -- (Complete) and (In Progress) are Mine tab only (callbacks.onTitleShiftClick
+    -- is present only there). (Group) shows on all tabs.
+    -- On Party/Shared, per-player status is shown in the player rows instead.
     local badgeText = ""
     if questEntry.isComplete and callbacks and callbacks.onTitleShiftClick then
         badgeText = SocialQuestColors.GetUIColor("completed") .. L["(Complete)"] .. C.reset
     elseif questEntry.suggestedGroup and questEntry.suggestedGroup > 0 then
         badgeText = C.chain .. L["(Group)"] .. C.reset
+    elseif not questEntry.isComplete
+        and callbacks and callbacks.onTitleShiftClick
+        and isNoObjectiveQuest(questEntry.objectives) then
+        badgeText = C.unknown .. L["(In Progress)"] .. C.reset
     end
     local badgeWidth = badgeText ~= "" and 80 or 0
     -- Share button width (0 when no onShare callback).
