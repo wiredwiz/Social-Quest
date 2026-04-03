@@ -208,6 +208,20 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.18.1 (April 2026)
+- Feature: No-objective quest status display. Quests with no numeric X/Y objectives
+  (travel, talk-to-NPC, exploration) now show per-player status in Party and Shared tabs
+  using a two-column layout: player name left, status text left-aligned at bar start
+  position. Three states: "Finished" (quest turned in, green), "Complete" (objectives
+  met not yet turned in, green), "In Progress" (no objectives, not yet done, dimmed).
+  Mine tab title row gains an `(In Progress)` badge at lowest priority (after `(Complete)`
+  and `(Group)`).
+- Refactor: `hasCompleted` and `isComplete` player rows now use `renderStatusRow` for
+  consistent two-column layout. Single-string fallback preserved when `nameColumnWidth`
+  is nil.
+- i18n: new locale keys `Finished`, `In Progress`, `(In Progress)` in all 12 locales.
+  Removed `%s FINISHED` format-string key (superseded by standalone `Finished`).
+
 ### Version 2.18.0 (April 2026 — Improvements branch)
 - Bug fix: "Everyone has completed" banner now fires correctly when party members hold
   Retail variant questIDs for the same logical quest (same title, different numeric ID
