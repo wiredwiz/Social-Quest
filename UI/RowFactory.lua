@@ -52,15 +52,70 @@ local function formatTimeRemaining(timerSeconds, snapshotTime)
     return string.format("%d:%02d", math.floor(remaining / 60), math.floor(remaining % 60))
 end
 
+-- Retail-only: tracks which questID has its detail panel confirmed showing.
+-- Set via hooksecurefunc on QuestMapFrame_ShowQuestDetails (fires when AQL navigates).
+-- Cleared when the back button is pressed or the quest log closes.
+-- Needed because C_QuestLog.GetSelectedQuest() persists after Back is pressed,
+-- making it unreliable as a "detail is showing" signal on Retail.
+--
+-- Spurious-fire problem: Blizzard calls QuestMapFrame_ShowQuestDetails again
+-- immediately after QuestMapFrame_CloseQuestDetails as part of its own back-navigation
+-- bookkeeping. This re-sets _retailDetailQuestID in the same game frame, causing the
+-- toggle-close to fire incorrectly on the next SQ click. Fix: record the timestamp of
+-- the last CloseQuestDetails call and ignore any ShowQuestDetails that fires within
+-- 100ms of it. That window is far longer than the same-frame spurious Blizzard fire,
+-- and far shorter than any human-initiated re-click.
+local _retailDetailQuestID = nil
+local _retailDetailClosedAt = -1
+local _retailDetailHooksReady = false
+
+local function ensureRetailDetailHooks()
+    if _retailDetailHooksReady then return end
+    _retailDetailHooksReady = true
+
+    if QuestMapFrame_ShowQuestDetails then
+        hooksecurefunc("QuestMapFrame_ShowQuestDetails", function(questID)
+            if GetTime() - _retailDetailClosedAt < 0.1 then return end
+            _retailDetailQuestID = questID
+        end)
+    end
+
+    if QuestMapFrame_CloseQuestDetails then
+        hooksecurefunc("QuestMapFrame_CloseQuestDetails", function()
+            _retailDetailQuestID = nil
+            _retailDetailClosedAt = GetTime()
+        end)
+    end
+
+    if WorldMapFrame then
+        WorldMapFrame:HookScript("OnHide", function()
+            _retailDetailQuestID = nil
+            _retailDetailClosedAt = -1
+        end)
+    end
+end
+
 local function openQuestLogToQuest(questID)
     local AQL = SocialQuest.AQL
     if not AQL then return end
-    -- Toggle: if the log is shown, the quest is visible (zone not collapsed), and already
-    -- selected, close it. GetQuestLogIndex returns nil when the quest's zone is collapsed,
-    -- which causes the condition to fail and fall through to the expand+navigate path.
-    if AQL:IsQuestLogShown() and AQL:GetQuestLogIndex(questID) and AQL:GetSelectedQuestId() == questID then
-        AQL:HideQuestLog()
-        return
+    -- Toggle: if the log is open and this quest's detail panel is confirmed showing, close it.
+    -- On Retail we use hook-based tracking (_retailDetailQuestID) because
+    -- C_QuestLog.GetSelectedQuest() persists the last-selected questID even after the user
+    -- presses Back to return to the quest list — using it as the toggle signal would close
+    -- the log when it should navigate to the detail panel instead.
+    -- On TBC/Classic, GetSelectedQuestLogEntryId() accurately reflects the current selection.
+    if SQWowAPI.IS_RETAIL then
+        ensureRetailDetailHooks()
+        if AQL:IsQuestLogShown() and _retailDetailQuestID == questID then
+            AQL:HideQuestLog()
+            _retailDetailQuestID = nil
+            return
+        end
+    else
+        if AQL:IsQuestLogShown() and AQL:GetSelectedQuestLogEntryId() == questID then
+            AQL:HideQuestLog()
+            return
+        end
     end
     -- Save collapsed state, expand all to make the quest visible, navigate, restore.
     local zones = AQL:GetQuestLogZones()
@@ -71,8 +126,9 @@ local function openQuestLogToQuest(questID)
     -- live log, guaranteed to have a zone. Keep that zone expanded.
     local targetZone
     if logIndex then
-        AQL:SetQuestLogSelection(logIndex)
-        targetZone = AQL:GetQuest(questID).zone
+        AQL:OpenQuestLogById(questID)
+        local questInfo = AQL:GetQuest(questID)
+        targetZone = questInfo and questInfo.zone
     end
     -- Restore collapsed state for all other zones. If logIndex was nil,
     -- targetZone is nil and everything restores to its original state.

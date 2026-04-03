@@ -99,14 +99,29 @@ function SocialQuestTabUtils.BuildRemoteObjectives(pquest, localInfo)
         local localObj = localObjs[i]
         local text
         if localObj and localObj.text and localObj.text ~= "" then
-            -- WoW objective text is "Description: X/Y". Strip the local player's
-            -- embedded count and substitute the remote player's values so the bar
-            -- overlay shows "6/8" instead of "0/8" when the local player is at 0.
-            local baseName = localObj.text:match("^(.-)%s*:%s*%d+/%d+%s*$")
-            if baseName then
-                text = baseName .. ": " .. tostring(obj.numFulfilled or 0) .. "/" .. tostring(obj.numRequired or 1)
+            -- WoW objective text embeds the local player's count. Strip it and
+            -- substitute the remote player's values. Two formats are in use:
+            --   count-last:  "Description: X/Y"  (TBC, some Retail quests)
+            --   count-first: "X/Y Description"   (Retail C_QuestLog.GetQuestObjectives)
+            -- If neither pattern matches but the text contains a count, fall back to
+            -- count-only rather than exposing the local player's stale number.
+            -- Strip the local player's embedded count and substitute the remote
+            -- player's value, preserving the original format so all rows look
+            -- identical regardless of whether the player is local or remote.
+            -- count-last:  "Description: X/Y"  → "Description: N/M"
+            -- count-first: "X/Y Description"   → "N/M Description"
+            local countLast  = localObj.text:match("^(.-)%s*:%s*%d+/%d+%s*$")
+            local countFirst = localObj.text:match("^%d+/%d+%s+(.+)$")
+            if countLast and countLast ~= "" then
+                text = countLast .. ": " .. tostring(obj.numFulfilled or 0) .. "/" .. tostring(obj.numRequired or 1)
+            elseif countFirst and countFirst ~= "" then
+                text = tostring(obj.numFulfilled or 0) .. "/" .. tostring(obj.numRequired or 1) .. " " .. countFirst
+            elseif localObj.text:find("%d+/%d+") then
+                -- Has embedded count but neither format matched; count-only is safer
+                -- than showing the local player's stale count for the remote player.
+                text = tostring(obj.numFulfilled or 0) .. "/" .. tostring(obj.numRequired or 1)
             else
-                text = localObj.text  -- event/NPC objectives with no count; use as-is
+                text = localObj.text  -- event/NPC/talk objective; no count to substitute
             end
         else
             text = tostring(obj.numFulfilled or 0) .. "/" .. tostring(obj.numRequired or 1)

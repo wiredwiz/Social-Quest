@@ -36,3 +36,4 @@ end
 function SocialQuestWowUI.AddChatMessage(msg)
     DEFAULT_CHAT_FRAME:AddMessage(msg)
 end
+

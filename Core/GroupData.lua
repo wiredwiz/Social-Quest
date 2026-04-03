@@ -126,6 +126,14 @@ function SocialQuestGroupData:OnUpdateReceived(sender, payload)
     else
         local AQL  = SocialQuest.AQL
         local info = AQL and AQL:GetQuest(questID)
+        -- Convert integer wire-format flags to booleans (same as OnInitReceived).
+        -- buildQuestPayload sends isFinished as 0 or 1; in Lua 0 is truthy, so
+        -- without conversion RowFactory's "obj.isFinished and completed or active"
+        -- would render every freshly-accepted quest bar as completed (green).
+        local storedObjs = payload.objectives or {}
+        for _, obj in ipairs(storedObjs) do
+            obj.isFinished = obj.isFinished == 1
+        end
         entry.quests[questID] = {
             questID      = questID,
             title        = (info and info.title) or (AQL and AQL:GetQuestTitle(questID)),
@@ -133,7 +141,7 @@ function SocialQuestGroupData:OnUpdateReceived(sender, payload)
             isFailed     = payload.isFailed    == 1,
             snapshotTime = payload.snapshotTime,
             timerSeconds = payload.timerSeconds,
-            objectives   = payload.objectives or {},
+            objectives   = storedObjs,
         }
     end
 
