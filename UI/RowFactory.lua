@@ -422,6 +422,11 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent, nameColum
         fs:SetText(amber .. displayName .. "|r " .. amber .. "[" .. reasonText .. "]|r")
         return y + ROW_H + 2
 
+    elseif playerEntry.hasSocialQuest and isNoObjectiveQuest(playerEntry.objectives) then
+        -- Quest has no numeric objectives and is not yet complete: nothing to track.
+        return renderStatusRow(contentFrame, y, x, nameColumnWidth, displayName,
+            L["In Progress"], C.unknown)
+
     elseif not playerEntry.hasSocialQuest
         and (not playerEntry.objectives or #playerEntry.objectives == 0) then
         local fs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
