@@ -75,7 +75,9 @@ L["(Group)"]                                = true
 -- %s args: (1) step number, (2) chain length. Both are already tostring'd before format.
 L[" (Step %s of %s)"]                       = true
 -- %s = player character name
-L["%s FINISHED"]                            = true   -- permanent: quest turned in
+L["Finished"]                               = true   -- player row: quest turned in
+L["In Progress"]                            = true   -- player row: no-objective quest, not yet done
+L["(In Progress)"]                          = true   -- Mine tab title badge
 L["Completed"]                              = true   -- in-progress: objectives done, not yet turned in
 L["%s Needs it Shared"]                     = true
 L["%s (no data)"]                           = true
