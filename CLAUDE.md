@@ -208,6 +208,13 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.18.3 (April 2026)
+- Bug fix: chain header label in Party and Shared tabs showed the title of the current
+  quest step rather than the chain's root quest name, causing the label to change as
+  players turned in quests and advanced steps (regression on Retail). Both tabs now use
+  `AQL:GetQuestInfo(chainID)` to resolve the step-1 title at chain-entry creation time,
+  matching the fix already in place in MineTab since 2.6.0.
+
 ### Version 2.18.2 (April 2026)
 - Bug fix: "Everyone has completed" banner failed to fire on Retail when party members
   held variant questIDs for the same logical quest. Two fixes in `checkAllCompleted`:

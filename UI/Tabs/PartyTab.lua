@@ -347,10 +347,11 @@ function PartyTab:BuildTree(filterTable)
             if ciEntry and ciEntry.chainID then
                 local chainID = ciEntry.chainID
                 if not zone.chains[chainID] then
-                    zone.chains[chainID] = { title = entry.title, steps = {} }
-                end
-                if ciEntry.step == 1 then
-                    zone.chains[chainID].title = entry.title
+                    -- chainID is always the questID of step 1; resolve its title for a
+                    -- stable chain label regardless of which step the player is currently on.
+                    local step1Info  = AQL:GetQuestInfo(chainID)
+                    local chainTitle = (step1Info and step1Info.title) or entry.title
+                    zone.chains[chainID] = { title = chainTitle, steps = {} }
                 end
                 if ciEntry.step then
                     if not chainStepEntries[chainID] then chainStepEntries[chainID] = {} end

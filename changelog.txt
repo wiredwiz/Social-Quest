@@ -1,6 +1,11 @@
 SocialQuest Changelog
 =====================
 
+Version 2.18.3 (April 2026)
+- Bug fix: chain header label in Party and Shared tabs showed the current step's title
+  instead of the chain root name, changing as players advanced through the chain. Both
+  tabs now use AQL:GetQuestInfo(chainID) for a stable step-1 title, matching MineTab.
+
 Version 2.18.2 (April 2026)
 - Bug fix: "Everyone has completed" banner failed to fire on Retail when party members
   held variant questIDs for the same logical quest. checkAllCompleted now falls back to

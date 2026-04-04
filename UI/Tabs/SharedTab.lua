@@ -115,9 +115,12 @@ function SharedTab:BuildTree(filterTable)
                 local zone = ensureZone(zoneName)
 
                 if not zone.chains[chainID] then
-                    zone.chains[chainID] = { title = "Chain " .. chainID, steps = {} }
+                    -- chainID is always the questID of step 1; resolve its title for a
+                    -- stable chain label regardless of which step any player is currently on.
+                    local step1Info  = AQL:GetQuestInfo(chainID)
+                    local chainTitle = (step1Info and step1Info.title) or ("Chain " .. chainID)
+                    zone.chains[chainID] = { title = chainTitle, steps = {} }
                 end
-                -- Prefer step 1's title as the chain label (deterministic across pairs() order).
 
                 -- One questEntry per distinct questID in the chain.
                 local addedQuestIDs   = {}
@@ -127,16 +130,6 @@ function SharedTab:BuildTree(filterTable)
                         addedQuestIDs[eng.questID] = true
                         local localInfo = AQL:GetQuest(eng.questID)
                         local ci = AQL:GetChainInfo(eng.questID)
-
-                        -- Update chain title: prefer step 1 (deterministic regardless of pairs order).
-                        -- eng.step was resolved in addEngagement via SelectBestChain.
-                        if localInfo and localInfo.title and eng.step == 1 then
-                            zone.chains[chainID].title = localInfo.title
-                        elseif localInfo and localInfo.title and
-                            zone.chains[chainID].title == "Chain " .. chainID then
-                            -- Fallback: use any local title if step 1 not encountered yet.
-                            zone.chains[chainID].title = localInfo.title
-                        end
 
                         local entry = {
                             questID        = eng.questID,
