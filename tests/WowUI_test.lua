@@ -60,8 +60,8 @@ end
 
 local pass, fail = 0, 0
 
-local function assert_eq(label, expected, got)
-    if expected == got then
+local function assert_eq(label, got, expected)
+    if got == expected then
         pass = pass + 1
     else
         fail = fail + 1
@@ -93,9 +93,9 @@ do
     local fr = makeFrame(1600, 800, 400, 300)
     -- right=2000 > 1920 → dx = 1920-2000 = -80 → new left = 1520
     SocialQuestWowUI.ClampFrameToScreen(fr)
-    assert_eq("off_right: setPointCalled", true, fr.setPointCalled)
-    assert_eq("off_right: x", 1520, fr.lastX)
-    assert_eq("off_right: y unchanged", 800, fr.lastY)
+    assert_eq("off_right: setPointCalled", fr.setPointCalled, true)
+    assert_eq("off_right: x", fr.lastX, 1520)
+    assert_eq("off_right: y unchanged", fr.lastY, 800)
 end
 
 -- 3. Frame off the left edge: shifted right.
@@ -103,9 +103,9 @@ do
     local fr = makeFrame(-50, 800, 400, 300)
     -- left=-50 < 0 → dx = 50 → new left = 0
     SocialQuestWowUI.ClampFrameToScreen(fr)
-    assert_eq("off_left: setPointCalled", true, fr.setPointCalled)
-    assert_eq("off_left: x", 0, fr.lastX)
-    assert_eq("off_left: y unchanged", 800, fr.lastY)
+    assert_eq("off_left: setPointCalled", fr.setPointCalled, true)
+    assert_eq("off_left: x", fr.lastX, 0)
+    assert_eq("off_left: y unchanged", fr.lastY, 800)
 end
 
 -- 4. Frame off the top edge: shifted down.
@@ -113,9 +113,9 @@ do
     local fr = makeFrame(100, 1200, 400, 300)
     -- top=1200 > 1080 → dy = 1080-1200 = -120 → new top = 1080
     SocialQuestWowUI.ClampFrameToScreen(fr)
-    assert_eq("off_top: setPointCalled", true, fr.setPointCalled)
-    assert_eq("off_top: x unchanged", 100, fr.lastX)
-    assert_eq("off_top: y", 1080, fr.lastY)
+    assert_eq("off_top: setPointCalled", fr.setPointCalled, true)
+    assert_eq("off_top: x unchanged", fr.lastX, 100)
+    assert_eq("off_top: y", fr.lastY, 1080)
 end
 
 -- 5. Frame off the bottom edge: shifted up.
@@ -123,9 +123,9 @@ do
     local fr = makeFrame(100, 100, 400, 300)
     -- bottom = 100-300 = -200 < 0 → dy = 200 → new top = 300
     SocialQuestWowUI.ClampFrameToScreen(fr)
-    assert_eq("off_bottom: setPointCalled", true, fr.setPointCalled)
-    assert_eq("off_bottom: x unchanged", 100, fr.lastX)
-    assert_eq("off_bottom: y", 300, fr.lastY)
+    assert_eq("off_bottom: setPointCalled", fr.setPointCalled, true)
+    assert_eq("off_bottom: x unchanged", fr.lastX, 100)
+    assert_eq("off_bottom: y", fr.lastY, 300)
 end
 
 -- 6. Frame off both right and bottom edges: both axes corrected.
@@ -134,9 +134,9 @@ do
     -- right=2100>1920 → dx=-180; left+dx=1520≥0 so no left override
     -- bottom=200-300=-100<0 → dy=100 → new top=300
     SocialQuestWowUI.ClampFrameToScreen(fr)
-    assert_eq("off_right_bottom: setPointCalled", true, fr.setPointCalled)
-    assert_eq("off_right_bottom: x", 1520, fr.lastX)
-    assert_eq("off_right_bottom: y", 300,  fr.lastY)
+    assert_eq("off_right_bottom: setPointCalled", fr.setPointCalled, true)
+    assert_eq("off_right_bottom: x", fr.lastX, 1520)
+    assert_eq("off_right_bottom: y", fr.lastY, 300)
 end
 
 -- 7. Frame wider than screen: left edge wins.
@@ -145,9 +145,9 @@ do
     -- right=2400>1920 → dx=1920-2400=-480; left+dx=-100+(-480)=-580<0 → dx=-left=100
     -- new left = 0 (left edge pinned)
     SocialQuestWowUI.ClampFrameToScreen(fr)
-    assert_eq("wider_than_screen: setPointCalled", true, fr.setPointCalled)
-    assert_eq("wider_than_screen: x", 0, fr.lastX)
-    assert_eq("wider_than_screen: y unchanged", 800, fr.lastY)
+    assert_eq("wider_than_screen: setPointCalled", fr.setPointCalled, true)
+    assert_eq("wider_than_screen: x", fr.lastX, 0)
+    assert_eq("wider_than_screen: y unchanged", fr.lastY, 800)
 end
 
 -- 8. Frame with nil GetLeft (not yet laid out): no-op, no error.
@@ -155,7 +155,7 @@ do
     local fr = makeFrame(100, 800, 400, 300)
     fr.GetLeft = function() return nil end
     local ok = pcall(SocialQuestWowUI.ClampFrameToScreen, fr)
-    assert_eq("nil_getleft: no error", true, ok)
+    assert_eq("nil_getleft: no error", ok, true)
     assert_false("nil_getleft: SetPoint not called", fr.setPointCalled)
 end
 
