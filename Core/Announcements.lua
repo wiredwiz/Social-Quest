@@ -231,9 +231,9 @@ function SocialQuestAnnounce:OnQuestEvent(eventType, questID, questInfo)
                or (questInfo and questInfo.title)
                or (AQL and AQL:GetQuestTitle(questID))
                or ("Quest " .. questID)
-    -- WoW TBC does not render |H...|h hyperlinks in addon-sent party chat messages;
-    -- use [Title] bracket format instead. Banners also use plain title.
-    local msg   = formatOutboundQuestMsg(eventType, "[" .. title .. "]")
+    local level   = (questInfo and questInfo.level) or (info and info.level)
+    local display = BuildQuestLink(questID, title, level) or ("[" .. title .. "]")
+    local msg     = formatOutboundQuestMsg(eventType, display)
     local chainInfo = questInfo and questInfo.chainInfo
     msg = appendChainStep(msg, eventType, chainInfo)
 
