@@ -306,8 +306,12 @@ function SocialQuestAnnounce:OnObjectiveEvent(eventType, questInfo, objective, i
     if questieWouldAnnounce(eventType) then
         SocialQuest:Debug("Banner", "Chat suppressed: Questie will announce " .. eventType)
     else
+        local questName  = questInfo.title or ("Quest " .. questInfo.questID)
+        local questLevel = questInfo.level
+        local display    = BuildQuestLink(questInfo.questID, questName, questLevel)
+                        or ("[" .. questName .. "]")
         local msg = formatOutboundObjectiveMsg(
-            "[" .. (questInfo.title or ("Quest " .. questInfo.questID)) .. "]",
+            display,
             objective.name or "",
             objective.numFulfilled,
             objective.numRequired,
