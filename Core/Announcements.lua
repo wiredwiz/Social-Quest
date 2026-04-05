@@ -759,8 +759,12 @@ function SocialQuestAnnounce:TestChatLink()
     local info  = AQL and AQL:GetQuest(337)
     local title = (info and info.title) or "Wanted: Hogger"
     local level = (info and info.level) or 10
-    local display = BuildQuestLink(337, title, level) or ("[" .. title .. "]")
-    local msg   = formatOutboundQuestMsg("completed", display)
+    -- Use native |Hquest:| format for the preview: DEFAULT_CHAT_FRAME:AddMessage
+    -- renders it as a proper colored, clickable hyperlink on all WoW versions.
+    -- Non-native types (socialquest:, questie:) are sanitized to plain text by
+    -- AddMessage; the actual SendChatMessage path uses BuildQuestLink instead.
+    local previewLink = "|Hquest:337:" .. level .. "|h[" .. level .. "] " .. title .. "|h|r"
+    local msg   = formatOutboundQuestMsg("completed", previewLink)
     displayChatPreview(msg)
 end
 
