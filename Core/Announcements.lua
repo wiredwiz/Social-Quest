@@ -755,9 +755,12 @@ function SocialQuestAnnounce:TestEvent(eventType)
 end
 
 function SocialQuestAnnounce:TestChatLink()
-    local AQL  = SocialQuest.AQL
-    local link = AQL and AQL:GetQuestLink(337)
-    local msg  = formatOutboundQuestMsg("completed", link or "Quest 337 (no link)")
+    local AQL   = SocialQuest.AQL
+    local info  = AQL and AQL:GetQuest(337)
+    local title = (info and info.title) or "Wanted: Hogger"
+    local level = (info and info.level) or 10
+    local display = BuildQuestLink(337, title, level) or ("[" .. title .. "]")
+    local msg   = formatOutboundQuestMsg("completed", display)
     displayChatPreview(msg)
 end
 
