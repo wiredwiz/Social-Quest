@@ -208,6 +208,21 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.18.24 (April 2026)
+- Feature: clickable quest links in SQ outbound chat announcements. On non-Retail,
+  SQ now sends `|Hquestie:questID:senderGUID|h[level] Quest Name|h|r` format —
+  Questie users get a clickable tooltip; others see `[level] Quest Name` as readable
+  plain text. On Retail, SQ sends `|Hsocialquest:questID:level|h` with a `SetItemRef`
+  hook in `Tooltips.lua` that forwards clicks to the native quest tooltip.
+- Feature: quest link tooltip augmentation now works for all quest link types (native
+  `|Hquest:|`, Questie `|Hquestie:|`, and SQ's `|Hsocialquest:|`). Party member
+  progress is appended below Questie's "Your progress:" section in matching visual
+  style — plain "Party progress:" header, `" - Name: desc: X/Y"` objective lines.
+  Only fires in a party group (never in raid or BG). Local player is skipped (already
+  shown by Questie/WoW). On Retail, alias resolution via title-based scan handles
+  variant quest IDs. All tooltip augmentation wrapped in `pcall` to prevent SQ errors
+  from corrupting the base WoW or Questie tooltip.
+
 ### Version 2.18.23 (April 2026)
 - Feature: group window and `/sq diagnose` console no longer open off-screen.
   Added `SQWowUI.ClampFrameToScreen(frame)` to `Core/WowUI.lua`. Reads the
