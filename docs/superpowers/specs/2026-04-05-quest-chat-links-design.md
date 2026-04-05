@@ -296,6 +296,49 @@ prevents false matches inside longer strings.
 
 ---
 
+## Defensive Coding Requirements
+
+The tooltip rewrite runs inside WoW's and Questie's display path. Any unguarded error
+in SQ's code will propagate up and corrupt the tooltip or suppress it entirely for the
+user. The following rules are mandatory throughout `addGroupProgressToTooltip` and the
+`SetItemRef` hook:
+
+**1. Wrap the entire tooltip augmentation body in `pcall`.**
+Both `addGroupProgressToTooltip` and the `SetItemRef` handler must be wrapped so any
+error in SQ's code is silently swallowed and never reaches the caller:
+
+```lua
+local ok, err = pcall(function()
+    -- all tooltip augmentation logic here
+end)
+if not ok then
+    SocialQuest:Debug("Banner", "Tooltip hook error: " .. tostring(err))
+end
+```
+
+**2. Nil-check every AQL call result before use.**
+`AQL:GetQuestTitle`, `AQL:GetQuestObjectives`, `AQL:GetQuest` — all can return nil.
+Never index the result without checking first.
+
+**3. Nil-check every `entry` field before use.**
+`entry.quests`, `entry.hasSocialQuest`, `qdata.objectives`, `qdata.isComplete` —
+all must be guarded. PlayerQuests entries can be stubs with minimal fields.
+
+**4. Nil/type-check objective fields.**
+`obj.numFulfilled` and `obj.numRequired` can be nil on stale or partially-received
+data. Use `(obj.numFulfilled or 0)` and `(obj.numRequired or 1)` — never divide or
+concatenate raw.
+
+**5. Nil-check `localKey` before the self-skip comparison.**
+`UnitFullName("player")` can return nil on early load. Guard:
+`if localKey and playerName == localKey then`.
+
+**6. Guard the `SetItemRef` hook body entirely.**
+`strsplit` can return nil fields; `tonumber` can return nil. Bail out early on any
+nil and never call `ItemRefTooltip:SetHyperlink` with a malformed string.
+
+---
+
 ## What Is NOT Changed
 
 - **On-screen banners** — `RaidNotice_AddMessage` cannot render hyperlink escape codes;
