@@ -594,6 +594,7 @@ local function applyFrameState(f)
         f:ClearAllPoints()
         f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", fs.frameX, fs.frameY)
     end
+    SQWowUI.ClampFrameToScreen(f)
 end
 
 ------------------------------------------------------------------------
