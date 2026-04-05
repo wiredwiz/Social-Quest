@@ -208,6 +208,239 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.18.23 (April 2026)
+- Feature: group window and `/sq diagnose` console no longer open off-screen.
+  Added `SQWowUI.ClampFrameToScreen(frame)` to `Core/WowUI.lua`. Reads the
+  frame's actual rendered edges after positioning and applies the minimum X/Y
+  shift to bring all four edges within `UIParent` bounds. Called at the end of
+  `applyFrameState()` in `UI/GroupFrame.lua` (covers both `Toggle()` and
+  `RestoreAfterTransition()`) and at the end of the console restore block in
+  `SocialQuest.lua`. No persistent `SetClampedToScreen` is used — correction
+  fires once at open time only. Dragging partially off-screen during a session
+  is still allowed; the window is nudged back on-screen at the next open.
+
+### Version 2.18.22 (April 2026)
+- Bug fix: Wowhead quest URL is now version-aware. `SocialQuestTabUtils.WowheadUrl`
+  in `UI/TabUtils.lua` previously hardcoded the TBC path (`/tbc/quest=`) for all WoW
+  versions. The base URL is now selected at load time from `SQWowAPI` version flags:
+  Retail → `wowhead.com/quest=`, MoP Classic → `wowhead.com/mop-classic/quest=`,
+  TBC → `wowhead.com/tbc/quest=`, Classic Era → `wowhead.com/classic/quest=`.
+
+### Version 2.18.21 (April 2026)
+- Cleanup: removed diagnostic debug messages from `checkAllCompleted` and `OnQuestEvent`
+  added during the "Everyone has completed" investigation. Retained suppression-reason
+  messages ("not in group", "member without data source", "local player not done",
+  "remote player not done", "no remote players engaged", "display.finished off") and
+  the success banner log. Removed entry log, local state dump, per-player loop log,
+  post-loop state dump, display gate log, and the `OnQuestEvent` event-type diagnostic.
+
+### Version 2.18.20 (April 2026)
+- Cleanup: removed diagnostic debug logging from `UIErrorsFrame.AddMessage` hook
+  (`InitEventHooks`) added during 2.18.17–2.18.19 investigation.
+
+### Version 2.18.19 (April 2026)
+- Bug fix: "Objective Complete" suppression still failed after 2.18.18. Root cause:
+  Retail sends the message as `"Objective Complete."` (with a trailing period). The
+  comparison target `"objective complete"` (no period) never matched. Fix: strip a
+  trailing period from the message before the case-insensitive comparison using
+  `msg:match("^(.-)%.?$")`.
+
+### Version 2.18.18 (April 2026)
+- Bug fix: "Objective Complete" suppression did not work on Retail. Root cause:
+  `UIErrorsFrame:GetScript("OnEvent")` returns nil on Retail (the handler is defined in
+  XML, not Lua), so `InitEventHooks` exited immediately without installing any hook.
+  Fix: replaced the `GetScript("OnEvent")` / `SetScript` pattern with a direct
+  `UIErrorsFrame.AddMessage` replacement hook. `AddMessage` is the common display path
+  on all WoW version families regardless of how the event reached the frame (event
+  handler, direct call, XML, etc.). The suppression logic is unchanged: count-based
+  objective text is suppressed via `AQL:IsQuestObjectiveText`, and the standalone
+  "Objective Complete" string is matched case-insensitively against
+  `QUEST_WATCH_OBJECTIVE_COMPLETE` (nil on Retail) with fallback `"objective complete"`.
+
+### Version 2.18.17 (April 2026)
+- Bug fix: "Objective Complete" WoW notification still appeared when SQ's own
+  objective-complete banner was enabled. Root cause: `QUEST_WATCH_OBJECTIVE_COMPLETE`
+  is nil in TBC Classic, and the fallback `"Objective Complete"` used an exact
+  case-sensitive match. TBC sends `"Objective complete"` (lowercase c). Fix: replaced
+  the exact-match check with a case-insensitive comparison against the WoW global when
+  present, falling back to `"objective complete"`. Also checks `messageType` (arg1) in
+  addition to `msg` (arg2) since the text arg position varies by WoW build. Added
+  debug-mode logging of all `UI_INFO_MESSAGE` events through `UIErrorsFrame` (visible
+  when SQ debug is enabled) to aid future diagnosis.
+
+### Version 2.18.16 (April 2026)
+- Bug fix: WoW's "Objective Complete" notification was not suppressed when SQ's own
+  objective-complete banner was enabled. The existing `UI_INFO_MESSAGE` hook only
+  suppressed count-based objective text (e.g. "Tainted Ooze killed: 10/10") and only
+  when `objective_progress` was on. Two fixes in `InitEventHooks`: (1) count-based
+  objective text suppression now also fires when `objective_complete` is enabled (not
+  only `objective_progress`); (2) added a second check that suppresses the standalone
+  "Objective Complete" string (WoW global `QUEST_WATCH_OBJECTIVE_COMPLETE`) when
+  `objective_complete` is enabled. Both checks are gated on `displayOwn` being true.
+
+### Version 2.18.15 (April 2026)
+- Bug fix: "Everyone has completed" banner fired immediately when the first player
+  completed a quest on the second (or later) run, even though other party members had
+  not finished yet. Root cause: `selfFinishedQuests[questID]` was set to `true` when the
+  local player completed a quest but was never cleared when the quest was abandoned and
+  re-accepted. On a subsequent run, when a remote player finished first and triggered
+  `checkAllCompleted(questID, false)`, `localDone` evaluated to `true` via the stale
+  `selfFinishedQuests` entry even though `localHasCompleted` was `false`. Fix: added
+  `selfFinishedQuests[questID] = nil` inside `OnQuestEvent` when `eventType == ET.Abandoned`,
+  clearing the record so `localDone` correctly evaluates to `false` until the local player
+  completes the quest again in the new run.
+
+### Version 2.18.14 (April 2026)
+- Bug fix: "Everyone has completed" banner fired immediately when the first player
+  completed a quest, even though other party members had not finished yet. Root cause:
+  `checkAllCompleted` checked `entry.completedQuests` when determining remote player
+  engagement. That table is populated by `SQ_RESP_COMPLETE` which sends
+  `AQL:GetCompletedQuests()` — the player's entire quest completion history. If a party
+  member had previously completed the quest (any prior session, daily reset, etc.), they
+  were counted as "engaged and done" for the current session, causing the banner to fire
+  as soon as the first player finished. Fix: removed the `completedQuests` lookup from
+  the remote-engagement check entirely. Only `entry.quests` (active quests this session)
+  is used to determine whether a player is engaged with the quest.
+
+### Version 2.18.13 (April 2026)
+- Bug fix: "Everyone has completed" banner was not visible for the last player to finish
+  a quest. Root cause: `RaidWarningFrame` holds at most ~2 messages; when three banners
+  fire in the same Lua frame (objective "4/4", "You have completed", "Everyone has
+  completed"), the third message is dropped. Fix: `displayBanner` for "Everyone has
+  completed" is now deferred by 2 seconds via `SQWowAPI.TimerAfter`. The banner fires
+  after the quest-finished and objective-complete banners have cleared the queue, making
+  it the prominent final notification. The chat message (when applicable) is still sent
+  immediately since the chat system does not share the RaidWarningFrame queue.
+
+### Version 2.18.12 (April 2026)
+- Bug fix: "Everyone has completed" banner fired prematurely as soon as the first player
+  completed a quest, even when no other party member had finished yet. Root cause: in
+  `checkAllCompleted`, `anyEngaged` was initialized to `localEngaged` (true when the
+  local player just completed). If no remote player's quest data was found in
+  `PlayerQuests`, the remote loop left `anyEngaged = true` (from the initialization) and
+  the `if not anyEngaged then return end` guard did not suppress the banner. Fix: added
+  `anyRemoteEngaged` flag (initialized to false) that is set to true inside the remote
+  loop only when a party member is found engaged with the same quest. The guard now
+  requires both `anyEngaged` and `anyRemoteEngaged` — the banner only fires when at
+  least one remote party member was also engaged with the quest and all such members
+  are done.
+
+### Version 2.18.11 (April 2026)
+- Bug fix: Party and Shared tabs showed "Complete" status text for quests with numeric
+  objectives (kill/collect/interact) when all objectives were fulfilled, instead of
+  showing fully-filled progress bars. Root cause: `AddPlayerRow` in `RowFactory.lua`
+  applied the `isComplete → "Complete"` text branch to all complete quests regardless
+  of objective type. Fix: added `isNoObjectiveQuest` guard to the `isComplete` branch,
+  matching the existing guard on the `"In Progress"` branch. Quests with numeric
+  objectives now always render bars; "Complete" text only shows for quests with no
+  trackable numeric objectives (talk-to-NPC, go-to-location, etc.).
+
+### Version 2.18.10 (April 2026)
+- Bug fix: "Everyone has completed" banner suppressed when both players finish
+  near-simultaneously. Root cause: `checkAllCompleted` is called twice per completion
+  event — once with `localHasCompleted=true` (own AQL callback) and once with
+  `localHasCompleted=false` (triggered by the remote player's incoming `SQ_UPDATE`).
+  On the second call, `AQL:GetQuest(questID).isComplete` may still be `false` if the
+  AQL cache hasn't settled yet (or in `/aql fire` testing, where the cache is never
+  updated). The local-done check then fails and the banner is suppressed even though
+  the local player did complete the quest. Fix: `selfFinishedQuests` module-level table
+  in `Announcements.lua` records any questID for which `checkAllCompleted` fired with
+  `localHasCompleted=true`. The `localDone` check now includes `selfFinishedQuests[questID]`
+  so subsequent remote-triggered calls always see the local player as done.
+
+### Version 2.18.9 (April 2026)
+- Feature: `/sq diagnose` console window now persists geometry across sessions. Window
+  position (TOPLEFT), size, and input/output split fraction are stored in
+  `char.frameState.console` (AceDB char scope) and restored the next time `/sq diagnose`
+  is opened. Position is saved on drag-stop, size on resize-grip mouse-up, and split
+  fraction when the separator bar is released.
+- Feature: PageUp / PageDown scroll the input and output panes of the `/sq diagnose`
+  console while keeping keyboard focus, so scrolling no longer interrupts typing or
+  text selection. Shift+PageUp/Down additionally extends the text selection: uses the
+  click anchor (set when the user clicks in the pane) and estimates characters per page
+  from the EditBox line height and scroll-frame viewport height, then calls HighlightText
+  to extend the selection to the new cursor position.
+- Fix: all four `.toc` files (TBC, Mainline, Classic, Mists) now stay in sync on every
+  version bump. Classic and Mists were last updated at 2.17.10 and have been brought
+  forward to the current version.
+
+### Version 2.18.8 (April 2026)
+- Bug fix: "Everyone has completed" banner never fired in cross-realm parties on Retail
+  due to three compounding issues in `Core/Communications.lua`:
+  1. **Self-filter** (`OnCommReceived`): `UnitFullName("player")` returns nil realm on
+     Retail even inside a cross-realm party, but CHAT_MSG_ADDON includes the realm suffix
+     for all senders.  The self-filter now falls back to `GetNormalizedRealmName()` when
+     UnitFullName returns a nil or empty realm, so own PARTY loopback messages (e.g.
+     `"Leannae-Hakkar"`) are correctly suppressed instead of creating a self-stub with
+     `hasSocialQuest=false`.
+  2. **PARTY /reload recovery** (`SQ_INIT` handler): after the reloading player broadcasts
+     `SQ_INIT` to PARTY, existing members never received `GROUP_ROSTER_UPDATE` (they never
+     saw the player leave), so `OnMemberJoined` never fired and no whisper was sent back.
+     PARTY is now included in the jittered-whisper-response path alongside RAID and
+     INSTANCE_CHAT, with a 1–4 s delay.  `OnMemberJoined`'s direct send stamps
+     `lastInitSent` so the 15-second cooldown suppresses any duplicate on fresh joins.
+  3. **`hasSocialQuest` in `SQ_RESP_COMPLETE`**: a player responding to `SQ_REQ_COMPLETED`
+     proves they have SocialQuest installed.  The handler now sets `entry.hasSocialQuest =
+     true` and `entry.dataProvider` so `checkAllCompleted`'s suppression gate
+     (`not hasSocialQuest and not dataProvider`) cannot fire for them even if the normal
+     `SQ_INIT` exchange was delayed.
+
+### Version 2.18.7 (April 2026)
+- Bug fix: Ctrl+C in the `/sq diagnose` output pane still opened the Character window.
+  Root cause identified: WoW fires `OnKeyDown` with `key = "LCTRL"` (or `"RCTRL"`) the
+  moment the user holds Ctrl, *before* "C" is pressed. The previous handler had no guard
+  for modifier keys, so `ClearFocus()` was called on the LCTRL event, stripping C-level
+  focus from the EditBox. When "C" then arrived, no EditBox owned focus and the game
+  keybinding fired instead. Fix: modifier keys (`LCTRL/RCTRL/LSHIFT/RSHIFT/LALT/RALT`)
+  now call `SetPropagateKeyboardInput(false)` and return early without clearing focus.
+  `Ctrl+A` / `Ctrl+C` likewise call `SetPropagateKeyboardInput(false)` explicitly so
+  WoW's native EditBox copy/select-all runs at the C level. All other keys propagate
+  normally and release focus as before.
+
+### Version 2.18.6 (April 2026)
+- Bug fix: Ctrl+C in the `/sq diagnose` console output pane opened the Character window
+  instead of copying selected text. Root cause: `SetPropagateKeyboardInput(false)` on the
+  child EditBox only blocks Lua-frame propagation, not WoW's C-level game keybinding system.
+  Fix: the main console frame now calls `f:EnableKeyboard(true)` and installs an `OnKeyDown`
+  handler that calls `self:SetPropagateKeyboardInput(not sqEditFocused)`. A `sqEditFocused`
+  flag is toggled by `OnEditFocusGained`/`OnEditFocusLost` on both EditBoxes. When either
+  EditBox owns keyboard focus the main frame blocks game keybindings (Ctrl+C, etc.); when
+  neither does, keybindings propagate normally so chat and other UI shortcuts are unaffected.
+- Bug fix: clicking anywhere in the input pane (including empty space below the text) now
+  gives the input EditBox keyboard focus. The input ScrollFrame now has `EnableMouse(true)`
+  and an `OnMouseDown` that forwards `SetFocus()` to the EditBox, so a left-click anywhere
+  in the input area places the cursor rather than only responding when clicking directly
+  on existing text.
+
+### Version 2.18.5 (April 2026)
+- Feature: `/sq diagnose` now opens a persistent interactive Lua console window instead of
+  the old read-only copyable text popup. The window has: an input pane (multiline EditBox,
+  Tab inserts 2 spaces) for typing Lua code; a draggable separator bar between input and
+  output; an output pane (ScrollFrame + FontString) showing captured results; Run and Clear
+  buttons in the title bar. Clicking Run executes the input as Lua via `loadstring`/`pcall`,
+  temporarily redirects the global `print` to capture output lines (shown in yellow), and
+  wraps each run with `--[[ SQ-RUN-START ]]--` / `--[[ SQ-RUN-END ]]--` markers. Compile
+  and runtime errors shown in red. The window is draggable, resizable (resize grip at
+  bottom-right), clamped to screen, TOOLTIP strata (always on top), and toggles on repeated
+  `/sq diagnose`. The output pane pre-populates with the same group-state snapshot the old
+  popup showed, in grey. Frame persists as `SQConsoleFrame` global for the session.
+
+### Version 2.18.4 (April 2026)
+- Bug fix: "Everyone has completed" banner never fired on Retail when both party members
+  completed their quest. Root cause: on Retail, `UnitName("partyN")` returns a nil realm
+  for same-realm players, while AceComm message senders include the realm suffix
+  (`"Name-Realm"`). This caused two separate `PlayerQuests` entries per player — a ghost
+  stub under `"Name"` (created by `GroupComposition` and `OnUnitQuestLogChanged`) and a
+  full-data entry under `"Name-Realm"` (created from the AceComm sender). The ghost stub
+  has `hasSocialQuest=false` and no `dataProvider`, so `checkAllCompleted`'s suppression
+  gate (`if not entry.hasSocialQuest and not entry.dataProvider then return end`) fired on
+  it, preventing the "Everyone completed" message. Fix: `GroupComposition.lua` and
+  `GroupData.lua` now call `SQWowAPI.UnitFullName` instead of `SQWowAPI.UnitName` when
+  building the player key for `PlayerQuests`. On Retail, `UnitFullName` returns
+  `"Name", "Realm"` even for same-realm players, matching the AceComm sender format. On
+  TBC/Classic/MoP, `UnitFullName` behaves identically to `UnitName` (realm is nil for all
+  players) — no behavior change on those versions.
+
 ### Version 2.18.3 (April 2026)
 - Bug fix: chain header label in Party and Shared tabs showed the title of the current
   quest step rather than the chain's root quest name, causing the label to change as
