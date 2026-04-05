@@ -166,17 +166,39 @@ local questTitle = SocialQuest.AQL and SocialQuest.AQL:GetQuestTitle(questID)
 
 Replace `entry.quests and entry.quests[questID]` with `resolveQuestData(entry, questID, questTitle)`.
 
+**Visual format — match Questie's style exactly.**
+
+Questie's "Your progress:" section uses:
+- A blank `" "` line before the header (via `_AddTooltipLine(" ")`)
+- Plain-text header with no color code: `"Your progress: "`
+- Per-objective lines as `AddLine`: `" - " .. color .. description .. ": " .. count .. "|r"`
+
+Our party progress section must look like a natural extension of that. Rules:
+1. Blank `" "` separator line before the "Party progress:" header.
+2. Header is plain uncolored text: `L["Party progress"] .. ":"`.
+3. Each player's row is an `AddLine` (not `AddDoubleLine`) in the same
+   `" - name: ..."` style as Questie's objective lines.
+4. Objective text is resolved from AQL (`AQL:GetQuestObjectives(questID)`) so
+   descriptions are shown, not just counts. Index-matched to `qdata.objectives`.
+   If AQL text is unavailable, fall back to count-only `"N/M"`.
+5. Multiple objectives for one player are semicolon-separated on the same line.
+6. `isComplete` players show `L["Complete"]` in the same green Questie uses for
+   finished objectives: `"|cFF40C040"`.
+7. No SQ-specific color headers — this section should read as a seamless
+   continuation of Questie's tooltip, not a separate SQ block.
+
 **Full revised addGroupProgressToTooltip:**
 
 ```lua
 local function addGroupProgressToTooltip(tooltip, questID)
     if not SocialQuestWowAPI.IsInGroup() or SocialQuestWowAPI.IsInRaid() then return end
 
-    local C   = SocialQuestColors
     local AQL = SocialQuest.AQL
     if not AQL then return end
 
     local questTitle = AQL:GetQuestTitle(questID)
+    -- Fetch local objective text for description labels (never transmitted over wire).
+    local localObjs = AQL:GetQuestObjectives(questID) or {}
 
     local localName, localRealm = SocialQuestWowAPI.UnitFullName("player")
     local localKey = localRealm and (localName .. "-" .. localRealm) or localName
@@ -188,30 +210,35 @@ local function addGroupProgressToTooltip(tooltip, questID)
             local qdata = resolveQuestData(entry, questID, questTitle)
             if qdata then
                 if not hasAnyGroupData then
-                    tooltip:AddLine(C.header .. L["Group Progress"] .. C.reset)
+                    tooltip:AddLine(" ")   -- blank separator, matching Questie style
+                    tooltip:AddLine(L["Party progress"] .. ":")
                     hasAnyGroupData = true
                 end
 
-                local statusStr
+                local line
                 if not entry.hasSocialQuest then
-                    statusStr = C.unknown .. L["(shared, no data)"] .. C.reset
+                    line = " - " .. playerName .. ": " .. L["(shared, no data)"]
                 elseif qdata.isComplete then
-                    statusStr = C.completed .. L["Objectives complete"] .. C.reset
+                    line = " - " .. playerName .. ": " .. "|cFF40C040" .. L["Complete"] .. "|r"
                 else
                     local parts = {}
-                    for _, obj in ipairs(qdata.objectives or {}) do
-                        table.insert(parts, obj.numFulfilled .. "/" .. obj.numRequired)
+                    for i, obj in ipairs(qdata.objectives or {}) do
+                        local localObj = localObjs[i]
+                        local desc = localObj and localObj.text
+                                  and localObj.text:match("^(.-)%s*:%s*%d") -- strip count-last
+                                  or  localObj and localObj.text:match("^%d+/%d+%s+(.+)$") -- strip count-first
+                        local count = obj.numFulfilled .. "/" .. obj.numRequired
+                        if desc and desc ~= "" then
+                            table.insert(parts, desc .. ": " .. count)
+                        else
+                            table.insert(parts, count)
+                        end
                     end
-                    statusStr = #parts > 0
-                        and table.concat(parts, "  ")
-                        or C.unknown .. L["(no data)"] .. C.reset
+                    local status = #parts > 0 and table.concat(parts, "; ") or L["(no data)"]
+                    line = " - " .. playerName .. ": " .. status
                 end
 
-                tooltip:AddDoubleLine(
-                    C.white .. playerName .. C.reset,
-                    statusStr,
-                    1, 1, 1, 1, 1, 1
-                )
+                tooltip:AddLine(line, 1, 1, 1)  -- white text, matching Questie's plain lines
             end
         end
     end
