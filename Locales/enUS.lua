@@ -84,6 +84,7 @@ L["%s (no data)"]                           = true
 
 -- UI/Tooltips.lua
 L["Group Progress"]                         = true
+L["Party progress"]                         = true
 L["(shared, no data)"]                      = true
 L["Objectives complete"]                    = true
 L["(no data)"]                              = true

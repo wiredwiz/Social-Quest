@@ -62,6 +62,7 @@ L["%s (no data)"]                          = "%s (sem dados)"
 
 -- UI/Tooltips.lua
 L["Group Progress"]                        = "Progresso do grupo"
+L["Party progress"]                        = "Progresso do grupo"
 L["(shared, no data)"]                     = "(compartilhada, sem dados)"
 L["Objectives complete"]                   = "Objetivos concluídos"
 L["(no data)"]                             = "(sem dados)"
