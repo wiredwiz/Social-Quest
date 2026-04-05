@@ -113,7 +113,6 @@ local function addGroupProgressToTooltip(tooltip, questID)
 end
 
 function SocialQuestTooltips:Initialize()
-    local SQWowAPI = SocialQuestWowAPI   -- local alias for closures below
     if SQWowAPI.IS_RETAIL and TooltipDataProcessor and Enum.TooltipDataType then
         -- Retail: native tooltip data processor — fires after WoW populates quest tooltips.
         TooltipDataProcessor.AddTooltipPostCall(
