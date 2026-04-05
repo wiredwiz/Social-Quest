@@ -759,13 +759,21 @@ function SocialQuestAnnounce:TestChatLink()
     local info  = AQL and AQL:GetQuest(337)
     local title = (info and info.title) or "Wanted: Hogger"
     local level = (info and info.level) or 10
-    -- Use native |Hquest:| format for the preview: DEFAULT_CHAT_FRAME:AddMessage
-    -- renders it as a proper colored, clickable hyperlink on all WoW versions.
-    -- Non-native types (socialquest:, questie:) are sanitized to plain text by
-    -- AddMessage; the actual SendChatMessage path uses BuildQuestLink instead.
-    local previewLink = "|Hquest:337:" .. level .. "|h[" .. level .. "] " .. title .. "|h|r"
-    local msg   = formatOutboundQuestMsg("completed", previewLink)
+    -- Chat preview: show the message text format.
+    -- Note: Retail security prevents DEFAULT_CHAT_FRAME:AddMessage from rendering
+    -- |H...|h hyperlinks from addon code — the link text shows as plain text here
+    -- but works correctly when SQ broadcasts it via SendChatMessage.
+    local display = BuildQuestLink(337, title, level) or ("[" .. title .. "]")
+    local msg = formatOutboundQuestMsg("completed", display)
     displayChatPreview(msg)
+    -- Open the quest tooltip directly so party progress augmentation can be tested
+    -- without needing to click a link in chat.
+    if ItemRefTooltip then
+        ShowUIPanel(ItemRefTooltip)
+        ItemRefTooltip:SetOwner(UIParent, "ANCHOR_PRESERVE")
+        ItemRefTooltip:SetHyperlink("quest:337:" .. level)
+        ItemRefTooltip:Show()
+    end
 end
 
 ------------------------------------------------------------------------
