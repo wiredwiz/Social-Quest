@@ -57,37 +57,25 @@ function SocialQuest:Debug() end
 function SocialQuest:ScheduleRepeatingTimer(fn, delay) return {} end
 function SocialQuest:Print() end
 
--- ── TBC tests (IS_RETAIL = false) ────────────────────────────────────────────
+-- BuildQuestLink now returns plain text [[level] Quest Name (questID)] on all versions.
+-- No |H codes are sent through SendChatMessage. The chat filter in Tooltips.lua
+-- converts the marker to |Hsocialquest:| locally on each receiving client.
 dofile("Core/Announcements.lua")
 local B = SocialQuestAnnounce._BuildQuestLink
 
-assert_eq("tbc_basic",
-    B(337, "Wanted: Hogger", 10),
-    "|Hquestie:337:Player-1234-ABCDEF12|h[10] Wanted: Hogger|h|r")
+assert_eq("basic",         B(337, "Wanted: Hogger", 10),  "[[10] Wanted: Hogger (337)]")
+assert_eq("nil_level",     B(100, "A Quest",         nil), "[[0] A Quest (100)]")
+assert_eq("nil_questID",   B(nil, "A Quest",           5), nil)
+assert_eq("nil_name",      B(337, nil,                 5), nil)
 
-assert_eq("tbc_nil_level",
-    B(100, "A Quest", nil),
-    "|Hquestie:100:Player-1234-ABCDEF12|h[0] A Quest|h|r")
-
-assert_eq("tbc_nil_questID",  B(nil, "A Quest", 5), nil)
-assert_eq("tbc_nil_name",     B(337, nil,       5), nil)
-
--- ── Retail tests (IS_RETAIL = true) ──────────────────────────────────────────
+-- Retail path: same output (no version branching in BuildQuestLink anymore)
 SocialQuestWowAPI.IS_RETAIL = true
 SocialQuestWowAPI.IS_TBC    = false
-dofile("Core/Announcements.lua")   -- re-load so SQWowAPI local captures IS_RETAIL=true
+dofile("Core/Announcements.lua")
 B = SocialQuestAnnounce._BuildQuestLink
 
-assert_eq("retail_basic",
-    B(337, "Wanted: Hogger", 40),
-    "|Hsocialquest:337:40|h[40] Wanted: Hogger|h|r")
-
-assert_eq("retail_nil_level",
-    B(337, "Wanted: Hogger", nil),
-    "|Hsocialquest:337:0|h[0] Wanted: Hogger|h|r")
-
-assert_eq("retail_nil_questID", B(nil, "Name", 5), nil)
-assert_eq("retail_nil_name",    B(1,   nil,    5), nil)
+assert_eq("retail_basic",  B(337, "Wanted: Hogger", 40),  "[[40] Wanted: Hogger (337)]")
+assert_eq("retail_nil_lv", B(337, "Wanted: Hogger", nil), "[[0] Wanted: Hogger (337)]")
 
 -- ── Result ────────────────────────────────────────────────────────────────────
 if failures == 0 then

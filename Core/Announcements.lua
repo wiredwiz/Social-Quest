@@ -109,23 +109,18 @@ local function formatOutboundObjectiveMsg(questTitle, objText, numFulfilled, num
         numFulfilled, numRequired, objText, suffix, questTitle)
 end
 
--- Builds the clickable hyperlink string for SendChatMessage.
--- Non-Retail: Questie-compatible |Hquestie:| format. Questie users get a clickable
---   tooltip; others see "[level] Name" as plain readable text.
--- Retail: SQ's own |Hsocialquest:| format. Tooltips.lua registers a SetItemRef hook
---   that forwards it to the native quest tooltip display.
+-- Builds the outbound quest link string for SendChatMessage.
+-- Returns plain text [[level] Quest Name (questID)] on all versions — no |H codes,
+-- so SendChatMessage never taints on Retail and never gets stripped on TBC.
+-- A ChatFrame_AddMessageEventFilter in Tooltips.lua converts this marker to
+-- |Hsocialquest:questID:level| locally on each receiving client before display.
+-- Matches Questie's plain-text format so Questie's own filter handles it for
+-- Questie users on TBC as a bonus.
 -- Returns nil when questID or questName is nil (safe: callers fall back to plain title).
 local function BuildQuestLink(questID, questName, questLevel)
     if not questID or not questName then return nil end
     local level = questLevel or 0
-    if SQWowAPI.IS_RETAIL then
-        return "|Hsocialquest:" .. questID .. ":" .. level
-               .. "|h[" .. level .. "] " .. questName .. "|h|r"
-    else
-        local senderGUID = UnitGUID("player") or ""
-        return "|Hquestie:" .. questID .. ":" .. senderGUID
-               .. "|h[" .. level .. "] " .. questName .. "|h|r"
-    end
+    return "[[" .. level .. "] " .. questName .. " (" .. questID .. ")]"
 end
 -- Exposed for unit tests. Not part of the public API.
 SocialQuestAnnounce._BuildQuestLink = BuildQuestLink
@@ -755,13 +750,32 @@ function SocialQuestAnnounce:TestEvent(eventType)
 end
 
 function SocialQuestAnnounce:TestChatLink()
-    local AQL   = SocialQuest.AQL
-    local info  = AQL and AQL:GetQuest(337)
-    local title = (info and info.title) or "Wanted: Hogger"
-    local level = (info and info.level) or 10
-    local display = BuildQuestLink(337, title, level) or ("[" .. title .. "]")
+    local AQL = SocialQuest.AQL
+    if not AQL then return end
+
+    local questID, info = next(AQL:GetAllQuests() or {})
+    if not questID then
+        SQWowUI.AddChatMessage("|cFFFF4444SocialQuest:|r You must have a quest in your log to test the chat link.")
+        return
+    end
+
+    local title = (info and info.title) or AQL:GetQuestTitle(questID) or ("Quest " .. questID)
+    local level = info and info.level
+    local display = BuildQuestLink(questID, title, level) or ("[" .. title .. "]")
     local msg = formatOutboundQuestMsg("completed", display)
-    displayChatPreview(msg)
+    -- displayChatPreview uses AddMessage directly, which bypasses ChatFrame_AddMessageEventFilter.
+    -- Apply the same conversion the chat filter does so the preview shows a clickable link.
+    local previewMsg = msg:gsub(
+        "%[%[(%d+)%]%s(.-)%s*%((%d+)%)%]",
+        function(lvStr, name, qidStr)
+            local lv  = tonumber(lvStr) or 0
+            local qid = tonumber(qidStr)
+            if not qid then return end
+            return "|cffffff00|Hsocialquest:" .. qid .. ":" .. lv
+                   .. "|h[" .. lv .. "] " .. name .. "|h|r"
+        end
+    )
+    displayChatPreview(previewMsg)
 end
 
 ------------------------------------------------------------------------
