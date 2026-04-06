@@ -199,6 +199,15 @@ L["Print a local chat preview of a 'Quest turned in' message for quest 337 using
 L["Test Follow Notification"]   = "Test Follow Notification"
 L["Display a demo follow notification banner showing the 'started following you' message."] = "Display a demo follow notification banner showing the 'started following you' message."
 
+-- UI/Options.lua — Tooltips option group
+L["Tooltips"]                               = "툴팁"
+L["Enhance Questie/Blizzard tooltips"]      = "Questie/Blizzard 툴팁 강화"
+L["Append party progress to existing quest tooltips when clicking quest links in chat."] = "채팅에서 퀘스트 링크를 클릭할 때 기존 퀘스트 툴팁에 파티 진행 상황을 추가합니다."
+L["Replace Blizzard quest tooltips"]        = "Blizzard 퀘스트 툴팁 교체"
+L["When clicking a native quest: link, show SocialQuest's full tooltip instead of WoW's basic one."] = "기본 quest: 링크를 클릭할 때 WoW의 기본 툴팁 대신 SocialQuest의 전체 툴팁을 표시합니다."
+L["Replace Questie quest tooltips"]         = "Questie 퀘스트 툴팁 교체"
+L["When clicking a questie: link, show SocialQuest's full tooltip instead of Questie's."] = "questie: 링크를 클릭할 때 Questie의 툴팁 대신 SocialQuest의 전체 툴팁을 표시합니다."
+
 -- UI/Options.lua — Social Quest Window option group
 -- UI/WindowFilter.lua — filter header labels
 L["Click to dismiss the active filter for this tab."] = "클릭하여 이 탭의 활성 필터를 닫습니다."

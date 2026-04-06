@@ -199,6 +199,15 @@ L["Print a local chat preview of a 'Quest turned in' message for quest 337 using
 L["Test Follow Notification"]   = "Test Follow Notification"
 L["Display a demo follow notification banner showing the 'started following you' message."] = "Display a demo follow notification banner showing the 'started following you' message."
 
+-- UI/Options.lua — Tooltips option group
+L["Tooltips"]                               = "提示框"
+L["Enhance Questie/Blizzard tooltips"]      = "增強 Questie/Blizzard 提示框"
+L["Append party progress to existing quest tooltips when clicking quest links in chat."] = "點擊聊天中的任務連結時，將小隊進度附加到現有任務提示框中。"
+L["Replace Blizzard quest tooltips"]        = "替換暴雪任務提示框"
+L["When clicking a native quest: link, show SocialQuest's full tooltip instead of WoW's basic one."] = "點擊原生 quest: 連結時，顯示 SocialQuest 的完整提示框，而非魔獸世界的基礎提示框。"
+L["Replace Questie quest tooltips"]         = "替換 Questie 任務提示框"
+L["When clicking a questie: link, show SocialQuest's full tooltip instead of Questie's."] = "點擊 questie: 連結時，顯示 SocialQuest 的完整提示框，而非 Questie 的提示框。"
+
 -- UI/Options.lua — Social Quest Window option group
 -- UI/WindowFilter.lua — filter header labels
 L["Click to dismiss the active filter for this tab."] = "點擊以關閉此分頁的當前篩選。"

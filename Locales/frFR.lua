@@ -198,6 +198,15 @@ L["Print a local chat preview of a 'Quest turned in' message for quest 337 using
 L["Test Follow Notification"]   = "Test Follow Notification"
 L["Display a demo follow notification banner showing the 'started following you' message."] = "Display a demo follow notification banner showing the 'started following you' message."
 
+-- UI/Options.lua — Tooltips option group
+L["Tooltips"]                               = "Infobulles"
+L["Enhance Questie/Blizzard tooltips"]      = "Améliorer les infobulles Questie/Blizzard"
+L["Append party progress to existing quest tooltips when clicking quest links in chat."] = "Ajoute la progression du groupe aux infobulles de quête existantes lors d'un clic sur un lien de quête dans le chat."
+L["Replace Blizzard quest tooltips"]        = "Remplacer les infobulles de quête Blizzard"
+L["When clicking a native quest: link, show SocialQuest's full tooltip instead of WoW's basic one."] = "En cliquant sur un lien quest: natif, affiche l'infobulle complète de SocialQuest plutôt que celle de WoW."
+L["Replace Questie quest tooltips"]         = "Remplacer les infobulles de quête Questie"
+L["When clicking a questie: link, show SocialQuest's full tooltip instead of Questie's."] = "En cliquant sur un lien questie:, affiche l'infobulle complète de SocialQuest plutôt que celle de Questie."
+
 -- UI/Options.lua — Social Quest Window option group
 -- UI/WindowFilter.lua — filter header labels
 L["Click to dismiss the active filter for this tab."] = "Cliquez pour masquer le filtre actif de cet onglet."
