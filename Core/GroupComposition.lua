@@ -110,7 +110,7 @@ function SocialQuestGroupComposition:OnGroupRosterUpdate()
         newMembers[selfName] = true
         local count = SQWowAPI.GetNumGroupMembers()
         for i = 1, count - 1 do  -- count includes self; partyX units are non-self members
-            local name, realm = SQWowAPI.UnitName("party" .. i)
+            local name, realm = SQWowAPI.UnitFullName("party" .. i)
             if name then
                 local fullName = normalize(name, realm)
                 newMembers[fullName] = true

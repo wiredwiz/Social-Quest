@@ -194,7 +194,7 @@ function SocialQuestGroupData:OnUnitQuestLogChanged(unit)
     -- Only handle party/raid units, not "player".
     if not unit or unit == "player" then return end
 
-    local name, realm = SQWowAPI.UnitName(unit)
+    local name, realm = SQWowAPI.UnitFullName(unit)
     if not name then return end
     local fullName = realm and realm ~= "" and (name.."-"..realm) or name
 

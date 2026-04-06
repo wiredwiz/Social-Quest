@@ -199,6 +199,9 @@ function SocialQuestComm:OnMemberJoined(fullName, groupType)
         local db = SocialQuest.db.profile
         if db.party.transmit then
             self:SendFullInit("WHISPER", fullName)
+            -- Stamp the cooldown so the PARTY SQ_INIT jitter path (reload recovery)
+            -- does not send a duplicate whisper within 15 seconds of this direct send.
+            lastInitSent[fullName] = SQWowAPI.GetTime()
             SocialQuest:Debug("Comm", "OnMemberJoined (party): sent SQ_INIT whisper to " .. fullName)
         end
     end
@@ -267,8 +270,14 @@ end
 
 function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
     -- Ignore our own messages.
+    -- On Retail, UnitFullName("player") returns nil realm even in cross-realm parties,
+    -- but CHAT_MSG_ADDON includes the realm for all senders.  Fall back to
+    -- GetNormalizedRealmName() so the self-filter catches "Name-Realm" senders.
     local myName, myRealm = SQWowAPI.UnitFullName("player")
-    local myFullName = myRealm and (myName .. "-" .. myRealm) or myName
+    if not myRealm or myRealm == "" then
+        myRealm = SQWowAPI.GetNormalizedRealmName()
+    end
+    local myFullName = (myRealm and myRealm ~= "") and (myName .. "-" .. myRealm) or myName
     if sender == myName or sender == myFullName then return end
 
     local ok, payload = LibStub("AceSerializer-3.0"):Deserialize(msg)
@@ -293,9 +302,13 @@ function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
 
         -- Raid/BG broadcasts: schedule a jittered whisper response so that up to
         -- 39 existing members don't all respond simultaneously (storm prevention).
-        -- Party and whisper distributions need no response here:
-        --   Party:   OnMemberJoined already sent a direct whisper to new members.
-        --   Whisper: This is their response to us; no further response needed.
+        -- Party: also schedule a jittered whisper response to handle the /reload case —
+        --   after a reload the reloading player broadcasts SQ_INIT to PARTY, but existing
+        --   members don't receive GROUP_ROSTER_UPDATE (they never left), so OnMemberJoined
+        --   never fires and no whisper is sent.  The PARTY jitter path covers this gap.
+        --   OnMemberJoined's direct whisper still runs on fresh joins; the 15-second
+        --   cooldown (set by OnMemberJoined via lastInitSent) suppresses the duplicate.
+        -- Whisper: This is their response to us; no further response needed.
         if distribution == "RAID" or distribution == "INSTANCE_CHAT" then
             if lastInitSent[sender] and (SQWowAPI.GetTime() - lastInitSent[sender] < 15) then
                 SocialQuest:Debug("Comm", "SQ_INIT from " .. sender .. " — response suppressed (cooldown)")
@@ -309,6 +322,22 @@ function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
                     self:SendFullInit("WHISPER", sender)
                     SocialQuest:Debug("Comm", "Sent jittered SQ_INIT whisper to " .. sender)
                 end, math.random(1, 8))
+            end
+        elseif distribution == "PARTY" then
+            local db = SocialQuest.db.profile
+            if db.party.transmit then
+                if lastInitSent[sender] and (SQWowAPI.GetTime() - lastInitSent[sender] < 15) then
+                    SocialQuest:Debug("Comm", "SQ_INIT from " .. sender .. " (PARTY) — response suppressed (cooldown)")
+                else
+                    if pendingResponses[sender] then
+                        SocialQuest:CancelTimer(pendingResponses[sender])
+                    end
+                    pendingResponses[sender] = SocialQuest:ScheduleTimer(function()
+                        pendingResponses[sender] = nil
+                        self:SendFullInit("WHISPER", sender)
+                        SocialQuest:Debug("Comm", "Sent jittered SQ_INIT whisper to " .. sender .. " (PARTY broadcast response)")
+                    end, math.random(1, 4))
+                end
             end
         end
 
@@ -372,6 +401,10 @@ function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
         local entry = SocialQuestGroupData.PlayerQuests[sender]
         if entry then
             entry.completedQuests = payload.completedQuests or {}
+            -- A SQ_RESP_COMPLETE proves the sender has SocialQuest installed.
+            -- Set hasSocialQuest so checkAllCompleted's suppression gate does not fire.
+            entry.hasSocialQuest = true
+            entry.dataProvider   = entry.dataProvider or SocialQuest.DataProviders.SocialQuest
         end
         SocialQuestGroupFrame:RequestRefresh()
 

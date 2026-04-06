@@ -14,6 +14,14 @@ SocialQuestWowAPI.IS_RETAIL      = _toc >= 100000
 function SocialQuestWowAPI.GetTime()                              return GetTime()                              end
 function SocialQuestWowAPI.UnitName(unit)                         return UnitName(unit)                         end
 function SocialQuestWowAPI.UnitFullName(unit)                     return UnitFullName(unit)                     end
+-- Returns the current realm name in the short, hyphenable form used by
+-- CHAT_MSG_ADDON sender strings (no spaces). On Retail, UnitFullName("player")
+-- returns nil realm even though the player IS on a realm; this fills that gap.
+function SocialQuestWowAPI.GetNormalizedRealmName()
+    if GetNormalizedRealmName then return GetNormalizedRealmName() end
+    local r = GetRealmName and GetRealmName()
+    return r and r:gsub("%s+", "") or nil
+end
 function SocialQuestWowAPI.UnitLevel(unit)                        return UnitLevel(unit)                        end
 function SocialQuestWowAPI.UnitRace(unit)                         return UnitRace(unit)                         end
 function SocialQuestWowAPI.UnitClass(unit)                        return UnitClass(unit)                        end
