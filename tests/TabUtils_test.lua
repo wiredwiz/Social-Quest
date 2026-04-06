@@ -33,6 +33,7 @@ local AQL = {
 
 SocialQuest = { AQL = AQL }
 SocialQuestGroupData = { PlayerQuests = {} }
+SocialQuestWowAPI = { IS_TBC = true, IS_RETAIL = false, IS_MOP = false, IS_CLASSIC_ERA = false }
 
 dofile("UI/TabUtils.lua")
 

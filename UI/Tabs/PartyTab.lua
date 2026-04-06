@@ -268,6 +268,7 @@ function PartyTab:BuildTree(filterTable)
     local orderIdx            = 0
     local chainStepEntriesByZone = {}
     local questsByTitleByZone    = {}   -- zoneName → {title → entry} for ungrouped quest dedup
+    local chainTitleToIDByZone   = {}   -- zoneName → {chainTitle → canonical chainID} for alias dedup
 
     -- Merges source players into target, deduplicating by player name.
     -- When a player appears in both lists, the entry with real quest data is
@@ -351,7 +352,23 @@ function PartyTab:BuildTree(filterTable)
                     -- stable chain label regardless of which step the player is currently on.
                     local step1Info  = AQL:GetQuestInfo(chainID)
                     local chainTitle = (step1Info and step1Info.title) or entry.title
-                    zone.chains[chainID] = { title = chainTitle, steps = {} }
+                    -- Alias normalization (Retail/MoP): if a chain with the same step-1 title
+                    -- already exists under a different chainID (another alias), redirect so
+                    -- all players merge into one chain block instead of two.
+                    if SQWowAPI.IS_RETAIL or SQWowAPI.IS_MOP then
+                        if not chainTitleToIDByZone[zoneName] then
+                            chainTitleToIDByZone[zoneName] = {}
+                        end
+                        local canonID = chainTitleToIDByZone[zoneName][chainTitle]
+                        if canonID then
+                            chainID = canonID  -- redirect; zone.chains[canonID] already exists
+                        else
+                            chainTitleToIDByZone[zoneName][chainTitle] = chainID
+                            zone.chains[chainID] = { title = chainTitle, steps = {} }
+                        end
+                    else
+                        zone.chains[chainID] = { title = chainTitle, steps = {} }
+                    end
                 end
                 if ciEntry.step then
                     if not chainStepEntries[chainID] then chainStepEntries[chainID] = {} end
@@ -396,6 +413,35 @@ function PartyTab:BuildTree(filterTable)
                     questsByTitleByZone[zoneName][titleKey] = entry
                     table.insert(zone.quests, entry)
                 end
+            end
+        end
+    end
+
+    -- Alias post-processing: on Retail and MoP Classic, an ungrouped entry whose title
+    -- matches an existing chain step was produced by a variant questID that failed chain
+    -- resolution. Merge its players into the matching step and remove it from zone.quests.
+    if SQWowAPI.IS_RETAIL or SQWowAPI.IS_MOP then
+        for _, zone in pairs(tree.zones) do
+            if next(zone.quests) and next(zone.chains) then
+                local remaining = {}
+                for _, entry in ipairs(zone.quests) do
+                    local merged = false
+                    for _, searchZone in pairs(tree.zones) do
+                        for _, chainEntry in pairs(searchZone.chains) do
+                            for _, stepEntry in ipairs(chainEntry.steps) do
+                                if stepEntry.title == entry.title then
+                                    mergePlayers(stepEntry.players, entry.players)
+                                    merged = true
+                                    break
+                                end
+                            end
+                            if merged then break end
+                        end
+                        if merged then break end
+                    end
+                    if not merged then table.insert(remaining, entry) end
+                end
+                zone.quests = remaining
             end
         end
     end

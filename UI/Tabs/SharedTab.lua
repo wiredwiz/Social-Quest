@@ -5,7 +5,8 @@
 
 SharedTab = {}
 
-local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
+local L      = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
+local SQWowAPI = SocialQuestWowAPI
 
 ------------------------------------------------------------------------
 -- Tab provider interface
@@ -25,6 +26,20 @@ function SharedTab:BuildTree(filterTable)
     -- questEngaged[questID][playerName] = { isLocal, qdata }
     local chainEngaged = {}
     local questEngaged = {}
+    local chainTitleToID = {}  -- chainTitle → canonical chainID, for alias normalization
+
+    -- Objectives fingerprint: "count:req1,req2,..." built from numRequired values.
+    -- Used as a secondary alias-matching key when quest titles are unresolvable (e.g. a
+    -- remote alias questID on MoP Classic that is not in the local log and has no provider).
+    -- Returns nil when there are no numeric objectives (avoids false positives on talk/travel quests).
+    local function buildObjSig(objectives)
+        if not objectives or #objectives == 0 then return nil end
+        local parts = {}
+        for _, obj in ipairs(objectives) do
+            table.insert(parts, tostring(obj.numRequired or 0))
+        end
+        return #parts .. ":" .. table.concat(parts, ",")
+    end
 
     local function addEngagement(questID, playerName, isLocal, qdata)
         local chainResult = AQL:GetChainInfo(questID)
@@ -32,6 +47,20 @@ function SharedTab:BuildTree(filterTable)
         local ciEntry = SocialQuestTabUtils.SelectChain(chainResult, engaged)
         if ciEntry and ciEntry.chainID then
             local cid = ciEntry.chainID
+            -- Alias normalization (Retail/MoP): redirect to canonical chainID when a chain
+            -- with the same step-1 title already exists under a different alias chainID.
+            if SQWowAPI.IS_RETAIL or SQWowAPI.IS_MOP then
+                local step1Info  = AQL:GetQuestInfo(cid)
+                local chainTitle = step1Info and step1Info.title
+                if chainTitle then
+                    local canonID = chainTitleToID[chainTitle]
+                    if canonID then
+                        cid = canonID
+                    else
+                        chainTitleToID[chainTitle] = cid
+                    end
+                end
+            end
             if not chainEngaged[cid] then chainEngaged[cid] = {} end
             chainEngaged[cid][playerName] = {
                 questID     = questID,
@@ -41,6 +70,57 @@ function SharedTab:BuildTree(filterTable)
                 qdata       = qdata,
             }
         else
+            -- Alias fallback: on Retail and MoP Classic, quest aliases produce different
+            -- questIDs for the same logical quest. If chain resolution failed, check whether
+            -- a chain already established by another player's alias has the same title.
+            -- Local player quests are always processed before remote (see call order below),
+            -- so the chain entry will exist by the time the remote alias is processed.
+            if SQWowAPI.IS_RETAIL or SQWowAPI.IS_MOP then
+                local myTitle = (qdata and qdata.title) or AQL:GetQuestTitle(questID)
+                if myTitle then
+                    for cid, cEntries in pairs(chainEngaged) do
+                        for _, eng in pairs(cEntries) do
+                            if AQL:GetQuestTitle(eng.questID) == myTitle then
+                                if not chainEngaged[cid][playerName] then
+                                    chainEngaged[cid][playerName] = {
+                                        questID     = questID,
+                                        step        = eng.step,
+                                        chainLength = eng.chainLength,
+                                        isLocal     = isLocal,
+                                        qdata       = qdata,
+                                    }
+                                end
+                                return
+                            end
+                        end
+                    end
+                else
+                    -- Title unavailable (e.g. remote alias questID on MoP Classic not in
+                    -- the local log with no provider coverage). Fall back to objectives
+                    -- fingerprint: same numRequired pattern = same logical quest.
+                    local mySig = buildObjSig(qdata and qdata.objectives)
+                    if mySig then
+                        for cid, cEntries in pairs(chainEngaged) do
+                            for _, eng in pairs(cEntries) do
+                                local engInfo = AQL:GetQuest(eng.questID) or eng.qdata
+                                local engSig  = buildObjSig(engInfo and engInfo.objectives)
+                                if engSig == mySig then
+                                    if not chainEngaged[cid][playerName] then
+                                        chainEngaged[cid][playerName] = {
+                                            questID     = questID,
+                                            step        = eng.step,
+                                            chainLength = eng.chainLength,
+                                            isLocal     = isLocal,
+                                            qdata       = qdata,
+                                        }
+                                    end
+                                    return
+                                end
+                            end
+                        end
+                    end
+                end
+            end
             if not questEngaged[questID] then questEngaged[questID] = {} end
             questEngaged[questID][playerName] = { isLocal = isLocal, qdata = qdata }
         end
@@ -57,29 +137,71 @@ function SharedTab:BuildTree(filterTable)
         end
     end
 
-    -- Merge questEngaged entries with matching titles to handle Retail variant questIDs:
-    -- same logical quest, different numeric IDs per race/class character type.
+    -- Merge questEngaged entries for alias questIDs (Retail/MoP): same logical quest,
+    -- different numeric IDs per race/class character type. Two-phase approach:
+    -- Phase 1: questIDs with resolvable titles become canonical entries. Build a title map
+    --   and an objectives-sig map so Phase 2 can merge by fingerprint.
+    -- Phase 2: questIDs whose title cannot be resolved (remote alias on MoP with no provider)
+    --   are merged into canonical entries by objectives fingerprint.
     -- Chain-grouped quests are already deduplicated by chainEngaged (step-number keying),
     -- so this pass only affects non-chain quests in questEngaged.
-    -- On non-Retail this is a safe no-op (all quest titles are unique per zone in practice).
     do
         local mergedQuestEngaged = {}
         local questEngagedByTitle = {}
+        local questEngagedBySig   = {}  -- objectives sig → canonical questID
+
+        -- Phase 1: questIDs with resolvable titles become canonical entries.
         for questID, engaged in pairs(questEngaged) do
-            local title = AQL:GetQuestTitle(questID) or ("Quest " .. questID)
-            local canonID = questEngagedByTitle[title]
-            if canonID then
-                -- Another questID with the same title already exists; merge players into it.
-                for playerName, eng in pairs(engaged) do
-                    if not mergedQuestEngaged[canonID][playerName] then
-                        mergedQuestEngaged[canonID][playerName] = eng
+            local title = AQL:GetQuestTitle(questID)
+            if title then
+                local canonID = questEngagedByTitle[title]
+                if canonID then
+                    for playerName, eng in pairs(engaged) do
+                        if not mergedQuestEngaged[canonID][playerName] then
+                            mergedQuestEngaged[canonID][playerName] = eng
+                        end
+                    end
+                else
+                    questEngagedByTitle[title]  = questID
+                    mergedQuestEngaged[questID] = engaged
+                    if SQWowAPI.IS_RETAIL or SQWowAPI.IS_MOP then
+                        -- Index this entry's objectives sig for Phase 2 alias matching.
+                        local info = AQL:GetQuest(questID)
+                        local sig  = buildObjSig(info and info.objectives)
+                        if sig and not questEngagedBySig[sig] then
+                            questEngagedBySig[sig] = questID
+                        end
                     end
                 end
-            else
-                questEngagedByTitle[title]  = questID
-                mergedQuestEngaged[questID] = engaged
             end
         end
+
+        -- Phase 2: questIDs without resolvable titles — try objectives fingerprint fallback.
+        for questID, engaged in pairs(questEngaged) do
+            if not AQL:GetQuestTitle(questID) then
+                local canonID
+                if SQWowAPI.IS_RETAIL or SQWowAPI.IS_MOP then
+                    for _, eng in pairs(engaged) do
+                        local sig = buildObjSig(eng.qdata and eng.qdata.objectives)
+                        if sig then
+                            canonID = questEngagedBySig[sig]
+                            break
+                        end
+                    end
+                end
+                if canonID then
+                    for playerName, eng in pairs(engaged) do
+                        if not mergedQuestEngaged[canonID][playerName] then
+                            mergedQuestEngaged[canonID][playerName] = eng
+                        end
+                    end
+                else
+                    -- No match found; keep as a standalone entry with a fallback display key.
+                    mergedQuestEngaged[questID] = engaged
+                end
+            end
+        end
+
         questEngaged = mergedQuestEngaged
     end
 

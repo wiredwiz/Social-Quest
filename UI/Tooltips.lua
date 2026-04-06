@@ -16,8 +16,8 @@ local SQWowAPI = SocialQuestWowAPI
 local function resolveQuestData(entry, questID, questTitle)
     if not entry or not entry.quests then return nil end
     if entry.quests[questID] then return entry.quests[questID] end
-    -- Alias fallback: Retail only, requires a resolved title.
-    if SQWowAPI.IS_RETAIL and questTitle then
+    -- Alias fallback: Retail and MoP Classic (both use per-race/class variant questIDs).
+    if (SQWowAPI.IS_RETAIL or SQWowAPI.IS_MOP) and questTitle then
         for _, qdata in pairs(entry.quests) do
             if qdata and qdata.title == questTitle then return qdata end
         end
@@ -94,7 +94,7 @@ local function addGroupProgressToTooltip(tooltip, questID)
                         end
                         local status = #parts > 0
                             and table.concat(parts, "; ")
-                            or  L["(no data)"]
+                            or  L["In Progress"]
                         line = " - " .. playerName .. ": " .. status
                     end
 
@@ -113,6 +113,64 @@ local function addGroupProgressToTooltip(tooltip, questID)
 end
 
 function SocialQuestTooltips:Initialize()
+    -- Chat filter: SQ sends plain [[level] Quest Name (questID)] markers via
+    -- SendChatMessage (no |H codes — avoids Retail taint and TBC server stripping).
+    -- This filter intercepts incoming messages on each client and replaces the marker
+    -- with a clickable |Hsocialquest:| link before the message is displayed locally.
+    -- The SetItemRef hook below handles clicks on these links.
+    local SQ_LINK_PATTERN = "%[%[(%d+)%]%s(.-)%s*%((%d+)%)%]"
+    local function sqChatFilter(_, _, msg, ...)
+        if not msg then return end
+        local newMsg = msg:gsub(SQ_LINK_PATTERN, function(levelStr, name, questIDStr)
+            local level   = tonumber(levelStr) or 0
+            local questID = tonumber(questIDStr)
+            if not questID then return end
+            return "|cffffff00|Hsocialquest:" .. questID .. ":" .. level
+                   .. "|h[" .. level .. "] " .. name .. "|h|r"
+        end)
+        if newMsg ~= msg then
+            return false, newMsg, ...
+        end
+    end
+    local SQ_FILTER_EVENTS = {
+        "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER",
+        "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER", "CHAT_MSG_RAID_WARNING",
+        "CHAT_MSG_GUILD", "CHAT_MSG_OFFICER",
+        "CHAT_MSG_INSTANCE_CHAT", "CHAT_MSG_INSTANCE_CHAT_LEADER",
+        "CHAT_MSG_WHISPER", "CHAT_MSG_WHISPER_INFORM",
+    }
+    for _, event in ipairs(SQ_FILTER_EVENTS) do
+        ChatFrame_AddMessageEventFilter(event, sqChatFilter)
+    end
+
+    -- SetItemRef hook: fires when a player clicks any |Hsocialquest:| link.
+    -- If Questie is installed, calls SetHyperlink("questie:") so Questie's SetHyperlink
+    -- override fires and renders its enhanced tooltip (Questie only enhances questie: links,
+    -- not quest: links — quest: falls through to the basic WoW handler).
+    -- If Questie is not installed, falls back to quest: format for the native WoW tooltip.
+    -- SQ's own SetHyperlink hook (below) then appends party progress in both cases.
+    hooksecurefunc("SetItemRef", function(link, text, button)
+        local ok, err = pcall(function()
+            if not link then return end
+            local linkType, qidStr, levelStr = strsplit(":", link)
+            if linkType ~= "socialquest" then return end
+            local questID = tonumber(qidStr)
+            local level   = tonumber(levelStr) or 0
+            if not questID then return end
+            ShowUIPanel(ItemRefTooltip)
+            ItemRefTooltip:SetOwner(UIParent, "ANCHOR_PRESERVE")
+            if QuestieLoader then
+                ItemRefTooltip:SetHyperlink("questie:" .. questID .. ":" .. level)
+            else
+                ItemRefTooltip:SetHyperlink("quest:" .. questID .. ":" .. level)
+            end
+            ItemRefTooltip:Show()
+        end)
+        if not ok then
+            SocialQuest:Debug("Banner", "SetItemRef hook error: " .. tostring(err))
+        end
+    end)
+
     if SQWowAPI.IS_RETAIL and TooltipDataProcessor and Enum.TooltipDataType then
         -- Retail: native tooltip data processor — fires after WoW populates quest tooltips.
         TooltipDataProcessor.AddTooltipPostCall(
@@ -123,31 +181,9 @@ function SocialQuestTooltips:Initialize()
                 end
             end
         )
-
-        -- Retail: forward our custom |Hsocialquest:questID:level| links to the native
-        -- quest tooltip display. TooltipDataProcessor then fires and appends party progress.
-        hooksecurefunc("SetItemRef", function(link, text, button)
-            local ok, err = pcall(function()
-                if not link then return end
-                local linkType, qidStr, levelStr = strsplit(":", link)
-                if linkType ~= "socialquest" then return end
-                local questID = tonumber(qidStr)
-                local level   = tonumber(levelStr) or 0
-                if not questID then return end
-                ShowUIPanel(ItemRefTooltip)
-                ItemRefTooltip:SetOwner(UIParent, "ANCHOR_PRESERVE")
-                ItemRefTooltip:SetHyperlink("quest:" .. questID .. ":" .. level)
-                ItemRefTooltip:Show()
-            end)
-            if not ok then
-                SocialQuest:Debug("Banner", "SetItemRef hook error: " .. tostring(err))
-            end
-        end)
-
     elseif ItemRefTooltip then
         -- TBC / Classic / Mists: hook SetHyperlink on ItemRefTooltip.
-        -- Matches quest: (native links), questie: (Questie links), and
-        -- socialquest: (should not appear on non-Retail, but guard anyway).
+        -- Matches quest: (native links) and questie: (Questie links).
         hooksecurefunc(ItemRefTooltip, "SetHyperlink", function(self, link)
             if not link then return end
             local questID = tonumber(link:match("^quest:(%d+)"))

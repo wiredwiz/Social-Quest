@@ -5,8 +5,21 @@
 SocialQuestTabUtils = {}
 
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
+local SQWowAPI = SocialQuestWowAPI
 
-local WOWHEAD_QUEST_BASE = "https://www.wowhead.com/tbc/quest="
+-- Version-aware Wowhead quest URL base. Computed once at load time since the
+-- WoW version never changes during a session.
+local WOWHEAD_QUEST_BASE
+if SQWowAPI.IS_RETAIL then
+    WOWHEAD_QUEST_BASE = "https://www.wowhead.com/quest="
+elseif SQWowAPI.IS_MOP then
+    WOWHEAD_QUEST_BASE = "https://www.wowhead.com/mop-classic/quest="
+elseif SQWowAPI.IS_TBC then
+    WOWHEAD_QUEST_BASE = "https://www.wowhead.com/tbc/quest="
+else
+    -- Classic Era fallback
+    WOWHEAD_QUEST_BASE = "https://www.wowhead.com/classic/quest="
+end
 
 -- Builds the Wowhead quest URL from a questID.
 -- Single owner of the URL format so it never gets out of sync with stored data.

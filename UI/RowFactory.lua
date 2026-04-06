@@ -393,7 +393,7 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent, nameColum
         return renderStatusRow(contentFrame, y, x, nameColumnWidth, displayName,
             L["Finished"], SocialQuestColors.GetUIColor("completed"))
 
-    elseif playerEntry.isComplete then
+    elseif playerEntry.isComplete and isNoObjectiveQuest(playerEntry.objectives) then
         return renderStatusRow(contentFrame, y, x, nameColumnWidth, displayName,
             L["Complete"], SocialQuestColors.GetUIColor("completed"))
 
