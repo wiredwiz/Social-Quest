@@ -199,15 +199,6 @@ L["Print a local chat preview of a 'Quest turned in' message for quest 337 using
 L["Test Follow Notification"]   = "Test Follow Notification"
 L["Display a demo follow notification banner showing the 'started following you' message."] = "Display a demo follow notification banner showing the 'started following you' message."
 
--- UI/Options.lua — Tooltips option group
-L["Tooltips"]                               = "Подсказки"
-L["Enhance Questie/Blizzard tooltips"]      = "Улучшать подсказки Questie/Blizzard"
-L["Append party progress to existing quest tooltips when clicking quest links in chat."] = "Добавляет прогресс группы к существующим подсказкам заданий при нажатии на ссылки заданий в чате."
-L["Replace Blizzard quest tooltips"]        = "Заменять подсказки заданий Blizzard"
-L["When clicking a native quest: link, show SocialQuest's full tooltip instead of WoW's basic one."] = "При нажатии на ссылку quest: отображает полную подсказку SocialQuest вместо стандартной подсказки WoW."
-L["Replace Questie quest tooltips"]         = "Заменять подсказки заданий Questie"
-L["When clicking a questie: link, show SocialQuest's full tooltip instead of Questie's."] = "При нажатии на ссылку questie: отображает полную подсказку SocialQuest вместо подсказки Questie."
-
 -- UI/Options.lua — Social Quest Window option group
 -- UI/WindowFilter.lua — filter header labels
 L["Click to dismiss the active filter for this tab."] = "Нажмите, чтобы убрать активный фильтр для этой вкладки."
@@ -333,3 +324,25 @@ L["share.reason.wrong_class"]      = "не тот класс"
 L["share.reason.quest_log_full"]   = "журнал заданий заполнен"
 L["share.reason.exclusive_quest"]  = "принято взаимоисключающее задание"
 L["share.reason.already_advanced"] = "уже прошёл этот этап"
+
+-- UI/Options.lua — Tooltips group
+L["Tooltips"]                                         = "Подсказки"
+L["Enhance Questie/Blizzard tooltips"]               = "Улучшить подсказки Questie/Blizzard"
+L["Append party progress to existing quest tooltips. Adds party member status below Questie's or WoW's tooltip."] = "Добавляет прогресс группы к существующим подсказкам заданий."
+L["Replace Blizzard quest tooltips"]                  = "Заменить подсказки заданий Blizzard"
+L["When clicking a quest link, show SocialQuest's full tooltip instead of WoW's basic tooltip."] = "При нажатии на ссылку задания показывает полную подсказку SocialQuest вместо стандартной WoW."
+L["Replace Questie quest tooltips"]                   = "Заменить подсказки заданий Questie"
+L["When clicking a questie link, show SocialQuest's full tooltip instead of Questie's tooltip. Not available when Questie is not installed."] = "При нажатии на ссылку Questie показывает полную подсказку SocialQuest вместо Questie. Недоступно без Questie."
+-- UI/Tooltips.lua — BuildTooltip status lines
+L["You are on this quest"]                            = "Вы выполняете это задание"
+L["You have completed this quest"]                    = "Вы выполнили это задание"
+L["You are eligible for this quest"]                  = "Вы можете принять это задание"
+L["You are not eligible for this quest"]              = "Вы не можете принять это задание"
+-- UI/Tooltips.lua — BuildTooltip NPC labels
+L["Quest Giver:"]                                     = "Источник задания:"
+L["Turn In:"]                                         = "Сдать:"
+-- UI/Tooltips.lua — BuildTooltip level / type line
+L["Level %d"]                                         = "%d ур."
+L["[Dungeon]"]                                        = "[Подземелье]"
+L["[Raid]"]                                           = "[Рейд]"
+L["[Group]"]                                          = "[Группа]"

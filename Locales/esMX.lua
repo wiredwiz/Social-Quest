@@ -198,15 +198,6 @@ L["Print a local chat preview of a 'Quest turned in' message for quest 337 using
 L["Test Follow Notification"]   = "Test Follow Notification"
 L["Display a demo follow notification banner showing the 'started following you' message."] = "Display a demo follow notification banner showing the 'started following you' message."
 
--- UI/Options.lua — Tooltips option group
-L["Tooltips"]                               = "Tooltips"
-L["Enhance Questie/Blizzard tooltips"]      = "Mejorar tooltips de Questie/Blizzard"
-L["Append party progress to existing quest tooltips when clicking quest links in chat."] = "Añade el progreso del grupo a los tooltips de misión existentes al hacer clic en enlaces de misión en el chat."
-L["Replace Blizzard quest tooltips"]        = "Reemplazar tooltips de misión de Blizzard"
-L["When clicking a native quest: link, show SocialQuest's full tooltip instead of WoW's basic one."] = "Al hacer clic en un enlace quest: nativo, muestra el tooltip completo de SocialQuest en lugar del básico de WoW."
-L["Replace Questie quest tooltips"]         = "Reemplazar tooltips de misión de Questie"
-L["When clicking a questie: link, show SocialQuest's full tooltip instead of Questie's."] = "Al hacer clic en un enlace questie:, muestra el tooltip completo de SocialQuest en lugar del de Questie."
-
 -- UI/Options.lua — Social Quest Window option group
 -- UI/WindowFilter.lua — filter header labels
 L["Click to dismiss the active filter for this tab."] = "Haz clic para descartar el filtro activo de esta pestaña."
@@ -332,3 +323,25 @@ L["share.reason.wrong_class"]      = "clase incorrecta"
 L["share.reason.quest_log_full"]   = "diario de misiones lleno"
 L["share.reason.exclusive_quest"]  = "misión exclusiva aceptada"
 L["share.reason.already_advanced"] = "ya está más avanzado"
+
+-- UI/Options.lua — Tooltips group
+L["Tooltips"]                                         = "Globos de información"
+L["Enhance Questie/Blizzard tooltips"]               = "Mejorar globos de Questie/Blizzard"
+L["Append party progress to existing quest tooltips. Adds party member status below Questie's or WoW's tooltip."] = "Añade el progreso del grupo a los globos de misión existentes."
+L["Replace Blizzard quest tooltips"]                  = "Sustituir globos de misión de Blizzard"
+L["When clicking a quest link, show SocialQuest's full tooltip instead of WoW's basic tooltip."] = "Al hacer clic en un enlace de misión, muestra el globo completo de SocialQuest en lugar del básico de WoW."
+L["Replace Questie quest tooltips"]                   = "Sustituir globos de misión de Questie"
+L["When clicking a questie link, show SocialQuest's full tooltip instead of Questie's tooltip. Not available when Questie is not installed."] = "Al hacer clic en un enlace de Questie, muestra el globo completo de SocialQuest. No disponible si Questie no está instalado."
+-- UI/Tooltips.lua — BuildTooltip status lines
+L["You are on this quest"]                            = "Tienes esta misión"
+L["You have completed this quest"]                    = "Has completado esta misión"
+L["You are eligible for this quest"]                  = "Puedes aceptar esta misión"
+L["You are not eligible for this quest"]              = "No puedes aceptar esta misión"
+-- UI/Tooltips.lua — BuildTooltip NPC labels
+L["Quest Giver:"]                                     = "Dador de misión:"
+L["Turn In:"]                                         = "Entrega:"
+-- UI/Tooltips.lua — BuildTooltip level / type line
+L["Level %d"]                                         = "Nivel %d"
+L["[Dungeon]"]                                        = "[Mazmorra]"
+L["[Raid]"]                                           = "[Banda]"
+L["[Group]"]                                          = "[Grupo]"

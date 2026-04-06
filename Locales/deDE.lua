@@ -198,15 +198,6 @@ L["Print a local chat preview of a 'Quest turned in' message for quest 337 using
 L["Test Follow Notification"]   = "Test Follow Notification"
 L["Display a demo follow notification banner showing the 'started following you' message."] = "Display a demo follow notification banner showing the 'started following you' message."
 
--- UI/Options.lua — Tooltips option group
-L["Tooltips"]                               = "Tooltips"
-L["Enhance Questie/Blizzard tooltips"]      = "Questie/Blizzard-Tooltips erweitern"
-L["Append party progress to existing quest tooltips when clicking quest links in chat."] = "Fügt den Gruppenfortschritt zu bestehenden Questtooltips hinzu, wenn Questlinks im Chat angeklickt werden."
-L["Replace Blizzard quest tooltips"]        = "Blizzard-Questtooltips ersetzen"
-L["When clicking a native quest: link, show SocialQuest's full tooltip instead of WoW's basic one."] = "Beim Klicken eines nativen quest:-Links wird SocialQuests vollständiger Tooltip anstelle des einfachen WoW-Tooltips angezeigt."
-L["Replace Questie quest tooltips"]         = "Questie-Questtooltips ersetzen"
-L["When clicking a questie: link, show SocialQuest's full tooltip instead of Questie's."] = "Beim Klicken eines questie:-Links wird SocialQuests vollständiger Tooltip anstelle von Questies Tooltip angezeigt."
-
 -- UI/Options.lua — Social Quest Window option group
 -- UI/WindowFilter.lua — filter header labels
 L["Click to dismiss the active filter for this tab."] = "Klicken, um den aktiven Filter für diesen Tab auszublenden."
@@ -332,3 +323,25 @@ L["share.reason.wrong_class"]      = "falsche Klasse"
 L["share.reason.quest_log_full"]   = "Questtagebuch voll"
 L["share.reason.exclusive_quest"]  = "exklusive Quest angenommen"
 L["share.reason.already_advanced"] = "bereits weiter"
+
+-- UI/Options.lua — Tooltips group
+L["Tooltips"]                                         = "Schnellinfos"
+L["Enhance Questie/Blizzard tooltips"]               = "Questie/Blizzard-Schnellinfos erweitern"
+L["Append party progress to existing quest tooltips. Adds party member status below Questie's or WoW's tooltip."] = "Fügt den bestehenden Quest-Schnellinfos einen Gruppenfortschrittsabschnitt hinzu."
+L["Replace Blizzard quest tooltips"]                  = "Blizzard-Quest-Schnellinfos ersetzen"
+L["When clicking a quest link, show SocialQuest's full tooltip instead of WoW's basic tooltip."] = "Zeigt beim Klick auf einen Quest-Link den vollständigen SocialQuest-Tooltip statt des WoW-Standardtooltips."
+L["Replace Questie quest tooltips"]                   = "Questie-Quest-Schnellinfos ersetzen"
+L["When clicking a questie link, show SocialQuest's full tooltip instead of Questie's tooltip. Not available when Questie is not installed."] = "Zeigt beim Klick auf einen Questie-Link den vollständigen SocialQuest-Tooltip. Nicht verfügbar, wenn Questie nicht installiert ist."
+-- UI/Tooltips.lua — BuildTooltip status lines
+L["You are on this quest"]                            = "Du bist auf dieser Quest"
+L["You have completed this quest"]                    = "Du hast diese Quest abgeschlossen"
+L["You are eligible for this quest"]                  = "Du kannst diese Quest annehmen"
+L["You are not eligible for this quest"]              = "Du kannst diese Quest nicht annehmen"
+-- UI/Tooltips.lua — BuildTooltip NPC labels
+L["Quest Giver:"]                                     = "Questgeber:"
+L["Turn In:"]                                         = "Abgabe:"
+-- UI/Tooltips.lua — BuildTooltip level / type line
+L["Level %d"]                                         = "Stufe %d"
+L["[Dungeon]"]                                        = "[Verlies]"
+L["[Raid]"]                                           = "[Schlachtzug]"
+L["[Group]"]                                          = "[Gruppe]"

@@ -199,15 +199,6 @@ L["Print a local chat preview of a 'Quest turned in' message for quest 337 using
 L["Test Follow Notification"]   = "Test Follow Notification"
 L["Display a demo follow notification banner showing the 'started following you' message."] = "Display a demo follow notification banner showing the 'started following you' message."
 
--- UI/Options.lua — Tooltips option group
-L["Tooltips"]                               = "ツールチップ"
-L["Enhance Questie/Blizzard tooltips"]      = "Questie/Blizzardのツールチップを拡張"
-L["Append party progress to existing quest tooltips when clicking quest links in chat."] = "チャットのクエストリンクをクリックした際、既存のクエストツールチップにパーティの進捗を追加します。"
-L["Replace Blizzard quest tooltips"]        = "Blizzardのクエストツールチップを置き換え"
-L["When clicking a native quest: link, show SocialQuest's full tooltip instead of WoW's basic one."] = "ネイティブのquest:リンクをクリックした際、WoWの基本ツールチップの代わりにSocialQuestの完全なツールチップを表示します。"
-L["Replace Questie quest tooltips"]         = "Questieのクエストツールチップを置き換え"
-L["When clicking a questie: link, show SocialQuest's full tooltip instead of Questie's."] = "questie:リンクをクリックした際、Questieのツールチップの代わりにSocialQuestの完全なツールチップを表示します。"
-
 -- UI/Options.lua — Social Quest Window option group
 -- UI/WindowFilter.lua — filter header labels
 L["Click to dismiss the active filter for this tab."] = "クリックしてこのタブのフィルターを閉じます。"
@@ -333,3 +324,25 @@ L["share.reason.wrong_class"]      = "クラスが合わない"
 L["share.reason.quest_log_full"]   = "クエストログが満杯"
 L["share.reason.exclusive_quest"]  = "排他クエストを受注済み"
 L["share.reason.already_advanced"] = "すでに次のステップに進んでいる"
+
+-- UI/Options.lua — Tooltips group
+L["Tooltips"]                                         = "ツールチップ"
+L["Enhance Questie/Blizzard tooltips"]               = "Questie/Blizzardのツールチップを拡張"
+L["Append party progress to existing quest tooltips. Adds party member status below Questie's or WoW's tooltip."] = "既存のクエストツールチップにパーティ進行状況を追加します。"
+L["Replace Blizzard quest tooltips"]                  = "Blizzardのクエストツールチップを置換"
+L["When clicking a quest link, show SocialQuest's full tooltip instead of WoW's basic tooltip."] = "クエストリンクのクリック時にWoWの基本ツールチップの代わりにSocialQuestのツールチップを表示します。"
+L["Replace Questie quest tooltips"]                   = "Questieのクエストツールチップを置換"
+L["When clicking a questie link, show SocialQuest's full tooltip instead of Questie's tooltip. Not available when Questie is not installed."] = "Questieリンクのクリック時にQuestieのツールチップの代わりにSocialQuestのツールチップを表示します。Questie未インストール時は使用できません。"
+-- UI/Tooltips.lua — BuildTooltip status lines
+L["You are on this quest"]                            = "このクエストを進行中です"
+L["You have completed this quest"]                    = "このクエストを完了しました"
+L["You are eligible for this quest"]                  = "このクエストを受注できます"
+L["You are not eligible for this quest"]              = "このクエストを受注できません"
+-- UI/Tooltips.lua — BuildTooltip NPC labels
+L["Quest Giver:"]                                     = "クエスト発行者："
+L["Turn In:"]                                         = "完了報告："
+-- UI/Tooltips.lua — BuildTooltip level / type line
+L["Level %d"]                                         = "レベル%d"
+L["[Dungeon]"]                                        = "[ダンジョン]"
+L["[Raid]"]                                           = "[レイド]"
+L["[Group]"]                                          = "[グループ]"

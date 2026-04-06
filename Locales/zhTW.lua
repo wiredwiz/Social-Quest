@@ -199,15 +199,6 @@ L["Print a local chat preview of a 'Quest turned in' message for quest 337 using
 L["Test Follow Notification"]   = "Test Follow Notification"
 L["Display a demo follow notification banner showing the 'started following you' message."] = "Display a demo follow notification banner showing the 'started following you' message."
 
--- UI/Options.lua — Tooltips option group
-L["Tooltips"]                               = "提示框"
-L["Enhance Questie/Blizzard tooltips"]      = "增強 Questie/Blizzard 提示框"
-L["Append party progress to existing quest tooltips when clicking quest links in chat."] = "點擊聊天中的任務連結時，將小隊進度附加到現有任務提示框中。"
-L["Replace Blizzard quest tooltips"]        = "替換暴雪任務提示框"
-L["When clicking a native quest: link, show SocialQuest's full tooltip instead of WoW's basic one."] = "點擊原生 quest: 連結時，顯示 SocialQuest 的完整提示框，而非魔獸世界的基礎提示框。"
-L["Replace Questie quest tooltips"]         = "替換 Questie 任務提示框"
-L["When clicking a questie: link, show SocialQuest's full tooltip instead of Questie's."] = "點擊 questie: 連結時，顯示 SocialQuest 的完整提示框，而非 Questie 的提示框。"
-
 -- UI/Options.lua — Social Quest Window option group
 -- UI/WindowFilter.lua — filter header labels
 L["Click to dismiss the active filter for this tab."] = "點擊以關閉此分頁的當前篩選。"
@@ -333,3 +324,25 @@ L["share.reason.wrong_class"]      = "職業不符"
 L["share.reason.quest_log_full"]   = "任務日誌已滿"
 L["share.reason.exclusive_quest"]  = "已接互斥任務"
 L["share.reason.already_advanced"] = "已超過此步驟"
+
+-- UI/Options.lua — Tooltips group
+L["Tooltips"]                                         = "提示資訊"
+L["Enhance Questie/Blizzard tooltips"]               = "增強 Questie/暴雪任務提示"
+L["Append party progress to existing quest tooltips. Adds party member status below Questie's or WoW's tooltip."] = "在現有任務提示框中加入小隊成員進度。"
+L["Replace Blizzard quest tooltips"]                  = "取代暴雪任務提示"
+L["When clicking a quest link, show SocialQuest's full tooltip instead of WoW's basic tooltip."] = "點擊任務連結時，顯示 SocialQuest 完整提示框而非原版任務提示框。"
+L["Replace Questie quest tooltips"]                   = "取代 Questie 任務提示"
+L["When clicking a questie link, show SocialQuest's full tooltip instead of Questie's tooltip. Not available when Questie is not installed."] = "點擊 Questie 連結時，顯示 SocialQuest 完整提示框而非 Questie 提示框。未安裝 Questie 時不可用。"
+-- UI/Tooltips.lua — BuildTooltip status lines
+L["You are on this quest"]                            = "你正在進行此任務"
+L["You have completed this quest"]                    = "你已完成此任務"
+L["You are eligible for this quest"]                  = "你可以接取此任務"
+L["You are not eligible for this quest"]              = "你無法接取此任務"
+-- UI/Tooltips.lua — BuildTooltip NPC labels
+L["Quest Giver:"]                                     = "任務發布者："
+L["Turn In:"]                                         = "交任務："
+-- UI/Tooltips.lua — BuildTooltip level / type line
+L["Level %d"]                                         = "%d 級"
+L["[Dungeon]"]                                        = "[地城]"
+L["[Raid]"]                                           = "[團隊]"
+L["[Group]"]                                          = "[組隊]"

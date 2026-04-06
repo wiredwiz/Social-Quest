@@ -110,17 +110,18 @@ local function formatOutboundObjectiveMsg(questTitle, objText, numFulfilled, num
 end
 
 -- Builds the outbound quest link string for SendChatMessage.
--- Returns plain text [[level] Quest Name (questID)] on all versions — no |H codes,
+-- Returns plain text [[level] Quest Name {questID}] on all versions — no |H codes,
 -- so SendChatMessage never taints on Retail and never gets stripped on TBC.
+-- Uses {questID} (curly braces) to distinguish from Questie's ChatFilter.lua, which
+-- explicitly matches [[level] Name (questID)] with parentheses and competes to convert
+-- that format to its own |Hquestie:| link type.
 -- A ChatFrame_AddMessageEventFilter in Tooltips.lua converts this marker to
 -- |Hsocialquest:questID:level| locally on each receiving client before display.
--- Matches Questie's plain-text format so Questie's own filter handles it for
--- Questie users on TBC as a bonus.
 -- Returns nil when questID or questName is nil (safe: callers fall back to plain title).
 local function BuildQuestLink(questID, questName, questLevel)
     if not questID or not questName then return nil end
     local level = questLevel or 0
-    return "[[" .. level .. "] " .. questName .. " (" .. questID .. ")]"
+    return "[[" .. level .. "] " .. questName .. " {" .. questID .. "}]"
 end
 -- Exposed for unit tests. Not part of the public API.
 SocialQuestAnnounce._BuildQuestLink = BuildQuestLink

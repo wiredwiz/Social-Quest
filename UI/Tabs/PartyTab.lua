@@ -42,20 +42,22 @@ local function isEligibleForShare(questID, playerData, unitToken)
     if unitToken then
         -- Check 2: wrong race.
         -- UnitRace returns (localizedName, englishName, raceID). The numeric raceID
-        -- maps to Questie's requiredRaces bitmask via bit position 2^(raceID-1).
+        -- maps to Questie's requiredRaces bitmask via bit.lshift(1, raceID-1)
+        -- (equivalent to 2^(raceID-1) but faster — integer shift vs float exponentiation).
         if reqs and reqs.requiredRaces then
             local raceId = select(3, SQWowAPI.UnitRace(unitToken))
-            if raceId and bit.band(reqs.requiredRaces, 2 ^ (raceId - 1)) == 0 then
+            if raceId and bit.band(reqs.requiredRaces, bit.lshift(1, raceId - 1)) == 0 then
                 return { eligible = false, reason = { code = "wrong_race" } }
             end
         end
 
         -- Check 3: wrong class.
         -- UnitClass returns (localizedName, classToken, classID). The numeric classID
-        -- maps to Questie's requiredClasses bitmask via bit position 2^(classID-1).
+        -- maps to Questie's requiredClasses bitmask via bit.lshift(1, classID-1)
+        -- (equivalent to 2^(classID-1) but faster — integer shift vs float exponentiation).
         if reqs and reqs.requiredClasses then
             local classId = select(3, SQWowAPI.UnitClass(unitToken))
-            if classId and bit.band(reqs.requiredClasses, 2 ^ (classId - 1)) == 0 then
+            if classId and bit.band(reqs.requiredClasses, bit.lshift(1, classId - 1)) == 0 then
                 return { eligible = false, reason = { code = "wrong_class" } }
             end
         end

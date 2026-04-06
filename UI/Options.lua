@@ -334,22 +334,22 @@ function SocialQuestOptions:Initialize()
                 name  = L["Tooltips"],
                 order = 10,
                 args  = {
-                    enhance = toggle(
-                        L["Enhance Questie/Blizzard tooltips"],
-                        L["Append party progress to existing quest tooltips when clicking quest links in chat."],
+                    enhance = toggle(L["Enhance Questie/Blizzard tooltips"],
+                        L["Append party progress to existing quest tooltips. Adds party member status below Questie's or WoW's tooltip."],
                         { "tooltips", "enhance" }, 1),
-                    replaceBlizzard = toggle(
-                        L["Replace Blizzard quest tooltips"],
-                        L["When clicking a native quest: link, show SocialQuest's full tooltip instead of WoW's basic one."],
+                    replaceBlizzard = toggle(L["Replace Blizzard quest tooltips"],
+                        L["When clicking a quest link, show SocialQuest's full tooltip instead of WoW's basic tooltip."],
                         { "tooltips", "replaceBlizzard" }, 2),
-                    replaceQuestie = {
+                    replaceQuestie  = {
                         type     = "toggle",
                         name     = L["Replace Questie quest tooltips"],
-                        desc     = L["When clicking a questie: link, show SocialQuest's full tooltip instead of Questie's."],
+                        desc     = L["When clicking a questie link, show SocialQuest's full tooltip instead of Questie's tooltip. Not available when Questie is not installed."],
                         order    = 3,
                         disabled = function() return QuestieLoader == nil end,
                         get      = function(info) return db.tooltips.replaceQuestie end,
-                        set      = function(info, v) db.tooltips.replaceQuestie = v end,
+                        set      = function(info, v)
+                            db.tooltips.replaceQuestie = v
+                        end,
                     },
                 },
             },
