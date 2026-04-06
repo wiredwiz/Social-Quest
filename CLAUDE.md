@@ -208,6 +208,93 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.19.2 (April 2026)
+- Bug fix: quest links in chat now show Questie's custom tooltip when clicked.
+  Reverted 2.19.1's chat filter change — links are again `|Hsocialquest:|` (not `|Hquest:|`).
+  Restored the `SetItemRef` hook for `socialquest:` links with the correct fix: Questie's
+  `SetHyperlink` override only renders its enhanced tooltip for `questie:` link format; for
+  `quest:` format it falls through to the basic WoW handler. The hook now calls
+  `ItemRefTooltip:SetHyperlink("questie:questID:level")` when `QuestieLoader` is present
+  (triggering Questie's enhanced tooltip), and falls back to `quest:` format otherwise.
+  SQ's `SetHyperlink` hook already matched `questie:` links (unchanged) so party progress
+  is appended after Questie's tooltip in both cases.
+
+### Version 2.19.1 (April 2026)
+- Bug fix: clicking a quest link in chat now shows Questie's custom tooltip correctly and
+  the link itself is clickable. Two fixes in `UI/Tooltips.lua`: (1) Chat filter now
+  produces native `|Hquest:questID:level|h` links instead of `|Hsocialquest:|` links.
+  Using `quest:` lets WoW's native SetItemRef pipeline handle clicks, so Questie's own
+  SetItemRef hook fires and renders its enhanced tooltip; SQ's SetHyperlink hook on
+  ItemRefTooltip still fires afterwards to append party progress. (2) Removed the
+  `SetItemRef` hook for `socialquest:` links entirely — it is no longer needed since the
+  chat filter produces native `quest:` links. Note: calling `SetItemRef` from inside a
+  `hooksecurefunc("SetItemRef")` callback (2.19.0) is illegal — SetItemRef is a protected
+  function and the call caused a silent taint error, leaving the link non-functional.
+
+### Version 2.19.0 (April 2026)
+- Bug fix: clicking a `socialquest:` quest link in chat now shows Questie's custom tooltip
+  instead of the basic WoW tooltip. Root cause: the `SetItemRef` hook was calling
+  `ItemRefTooltip:SetHyperlink("quest:...")` directly, bypassing Questie's own `SetItemRef`
+  hook which intercepts `quest:` links to render its enhanced tooltip. Fix: replaced the
+  three-line direct manipulation with a single `SetItemRef("quest:questID:level", text, button)`
+  call, routing through WoW's full link-handling pipeline so Questie's hook fires first and
+  SQ's existing `SetHyperlink` hook on `ItemRefTooltip` appends party progress afterwards.
+
+### Version 2.18.28 (April 2026)
+- Bug fix: `SQWowAPI` was never declared in `UI/Tabs/SharedTab.lua`. Every alias-handling
+  code path added in 2.18.26 (chainTitleToID normalization, title fallback, objectives
+  fingerprint, two-phase questEngaged merge) referenced `SQWowAPI.IS_RETAIL` and
+  `SQWowAPI.IS_MOP`, which crashed at runtime because the local was absent. WoW's error
+  handler swallowed the crash and rendered an empty Shared tab. Fix: added
+  `local SQWowAPI = SocialQuestWowAPI` at the top of the file, matching the existing
+  declaration in `PartyTab.lua`.
+
+### Version 2.18.27 (April 2026)
+- Bug fix: Shared tab now correctly shows quests shared by two players with alias questIDs
+  on MoP Classic even when the remote alias questID's title cannot be resolved (not in the
+  local log and no provider coverage). Added objectives fingerprint (`numRequired` count
+  and per-objective values) as a secondary matching key. Two new fallback paths in
+  `UI/Tabs/SharedTab.lua`: (1) `addEngagement` else-branch now tries objectives fingerprint
+  against existing `chainEngaged` entries when both title-based matching and chain
+  resolution fail — covers the common MoP case where one alias resolves a chain and the
+  other does not. (2) The `questEngaged` merge pass is now two-phase: Phase 1 builds
+  canonical entries from questIDs with resolvable titles (indexing their objectives sig);
+  Phase 2 merges questIDs with unresolvable titles into the canonical entry by objectives
+  fingerprint match — covers non-chain quests where neither player has provider coverage.
+  Both paths are gated on `IS_RETAIL or IS_MOP` and only activate when
+  `#objectives > 0` (no-op for talk/travel quests that have no numeric objectives).
+
+### Version 2.18.26 (April 2026)
+- Bug fix: MoP Classic alias quest IDs now handled the same as Retail. On MoP Classic,
+  Blizzard assigns different questIDs for the same logical quest per race/class character
+  type (same as Retail). Five fixes: (1) `UI/Tooltips.lua` `resolveQuestData` title-based
+  alias fallback extended to `IS_MOP`, so clicking a quest link shows party progress for
+  players whose alias questID differs from the link's ID. (2) `UI/Tabs/PartyTab.lua`
+  chain insertion adds title-based chainID normalization (`chainTitleToIDByZone`): when a
+  new chain would be created with a step-1 title matching an existing chain, the incoming
+  chainID is redirected to the canonical one so both alias questIDs merge into one block
+  instead of two. (3) `UI/Tabs/PartyTab.lua` post-processing pass after the main loop
+  moves any ungrouped `zone.quests` entry whose title matches a chain step into that step,
+  covering the case where one alias resolves chain info and the other does not. (4)
+  `UI/Tabs/SharedTab.lua` `addEngagement` adds the same title-based chain normalization
+  (`chainTitleToID`) before inserting into `chainEngaged`. (5) `UI/Tabs/SharedTab.lua`
+  `addEngagement` `else` branch gains a title-based fallback to route a failed-chain-
+  resolution questID into an existing `chainEngaged` entry with the same title. All alias
+  logic gated on `IS_RETAIL or IS_MOP`.
+
+### Version 2.18.25 (April 2026)
+- Fix: quest link chat announcements no longer taint or lock up the Retail client.
+  Root cause (2.18.24): `BuildQuestLink` sent `|Hsocialquest:...|h` directly through
+  `SendChatMessage`, which Retail rejects at the client level causing taint/lockup.
+  `BuildQuestLink` now sends plain text `[[level] Quest Name (questID)]` on all
+  versions — no `|H` codes ever go through `SendChatMessage`. A new
+  `ChatFrame_AddMessageEventFilter` registered in `Tooltips.lua:Initialize()` intercepts
+  incoming messages on each client and replaces the marker with
+  `|cffffff00|Hsocialquest:questID:level|h...|h|r` before display, making it clickable
+  locally. The `SetItemRef` hook for `socialquest:` links is moved outside the
+  IS_RETAIL guard so it handles clicks on both Retail and TBC. Architecture matches
+  Questie's `ChatFilter.lua` pattern exactly.
+
 ### Version 2.18.24 (April 2026)
 - Feature: clickable quest links in SQ outbound chat announcements. On non-Retail,
   SQ now sends `|Hquestie:questID:senderGUID|h[level] Quest Name|h|r` format —
