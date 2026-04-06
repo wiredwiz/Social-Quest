@@ -329,10 +329,35 @@ function SocialQuestOptions:Initialize()
                 },
             },
 
+            tooltips = {
+                type  = "group",
+                name  = L["Tooltips"],
+                order = 10,
+                args  = {
+                    enhance = toggle(
+                        L["Enhance Questie/Blizzard tooltips"],
+                        L["Append party progress to existing quest tooltips when clicking quest links in chat."],
+                        { "tooltips", "enhance" }, 1),
+                    replaceBlizzard = toggle(
+                        L["Replace Blizzard quest tooltips"],
+                        L["When clicking a native quest: link, show SocialQuest's full tooltip instead of WoW's basic one."],
+                        { "tooltips", "replaceBlizzard" }, 2),
+                    replaceQuestie = {
+                        type     = "toggle",
+                        name     = L["Replace Questie quest tooltips"],
+                        desc     = L["When clicking a questie: link, show SocialQuest's full tooltip instead of Questie's."],
+                        order    = 3,
+                        disabled = function() return QuestieLoader == nil end,
+                        get      = function(info) return db.tooltips.replaceQuestie end,
+                        set      = function(info, v) db.tooltips.replaceQuestie = v end,
+                    },
+                },
+            },
+
             debug = {
                 type  = "group",
                 name  = L["Debug"],
-                order = 10,
+                order = 11,
                 args  = {
                     enabled = toggle(L["Enable debug mode"],
                         L["Print internal debug messages to the chat frame. Useful for diagnosing comm issues or event flow problems."],

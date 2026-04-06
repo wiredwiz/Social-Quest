@@ -314,6 +314,11 @@ function SocialQuest:GetDefaults()
             debug = {
                 enabled = false,
             },
+            tooltips = {
+                enhance        = true,
+                replaceBlizzard = false,
+                replaceQuestie  = false,
+            },
             window = {
                 autoFilterInstance = true,
                 autoFilterZone     = false,

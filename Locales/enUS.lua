@@ -228,6 +228,15 @@ L["Print a local chat preview of a 'Quest turned in' message for quest 337 using
 L["Test Follow Notification"]   = true
 L["Display a demo follow notification banner showing the 'started following you' message."] = true
 
+-- UI/Options.lua — Tooltips option group
+L["Tooltips"]                               = true
+L["Enhance Questie/Blizzard tooltips"]      = true
+L["Append party progress to existing quest tooltips when clicking quest links in chat."] = true
+L["Replace Blizzard quest tooltips"]        = true
+L["When clicking a native quest: link, show SocialQuest's full tooltip instead of WoW's basic one."] = true
+L["Replace Questie quest tooltips"]         = true
+L["When clicking a questie: link, show SocialQuest's full tooltip instead of Questie's."] = true
+
 -- UI/Options.lua — Social Quest Window option group
 -- UI/WindowFilter.lua — filter header labels
 L["Click to dismiss the active filter for this tab."] = true
