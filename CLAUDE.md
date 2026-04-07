@@ -235,16 +235,20 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 - Bug fix: false "accepted" announcements for Questie bridge members' pre-existing quests
   on group join. Root cause: `OnBridgeQuestUpdate` in `Core/GroupData.lua` fires
   `ET.Accepted` for any quest where `existing == nil`. When a member joins with SQ
-  disabled (or Questie-only), their first Questie packet hits an empty stub, so every
+  disabled (or Questie-only), their first Questie packet hits an empty stub so every
   quest has `isNew = true` and all pre-existing quests are announced as newly accepted.
-  Fix: added `bridgeInitializing` flag per `PlayerQuests` entry. On the first
-  `OnBridgeQuestUpdate` call for a member the flag is set to `true` and a 0-tick
-  `SQWowAPI.TimerAfter(0)` is started. Questie V1 responses are processed by AceComm as
-  a single reassembled handler, within which `RegisterTooltip` fires synchronously for
-  every quest; the 0-tick timer fires at the next frame boundary — after all those calls
-  complete — so it marks "initial batch done" precisely without a fixed time window.
-  `ET.Accepted` is suppressed while `bridgeInitializing` is `true` or `nil`. The timer
-  self-invalidates on leave/rejoin via a `pdata` identity check.
+  Fix: two complementary mechanisms in `Core/GroupData.lua`. (1) `OnBridgeQuestUpdate`
+  sets `pdata.bridgeInitializing = true` on the first call for a member and schedules a
+  0-tick `SQWowAPI.TimerAfter(0)` to clear it. Questie V1 responses are reassembled by
+  AceComm into a single handler where `RegisterTooltip` fires synchronously for all
+  quests; the 0-tick timer fires at the next frame boundary after the entire batch
+  completes, precisely marking "initial sync done" without a fixed time window.
+  (2) `OnBridgeHydrate` sets `pdata.bridgeInitializing = false` when it populates a
+  player's snapshot. After hydration, `pdata.quests` contains all known quests so
+  subsequent `RegisterTooltip` calls find `existing ~= nil` and `isNew` is never true
+  for pre-existing quests — covering any future multi-frame Questie protocol.
+  `ET.Accepted` is suppressed while `bridgeInitializing` is `true` or `nil`; fires
+  normally once `false`. Timer self-invalidates on leave/rejoin via `pdata` identity.
 
 ### Version 2.22.1 (April 2026)
 - Feature: chain line added to `BuildTooltip` between the title line and the status line.

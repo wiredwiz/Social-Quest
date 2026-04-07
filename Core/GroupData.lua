@@ -225,12 +225,22 @@ function SocialQuestGroupData:OnBridgeQuestUpdate(provider, fullName, questEntry
     if not pdata then return end            -- not a known group member; ignore
     if pdata.hasSocialQuest then return end -- SQ data takes precedence
 
-    -- On the first bridge update for this member, suppress ET.Accepted for all
-    -- quests in the same Lua execution batch. Questie V1 responses are reassembled
-    -- by AceComm into a single handler call, within which RegisterTooltip fires
-    -- synchronously for every quest in the log. C_Timer.After(0) fires at the
-    -- next frame boundary — after all those synchronous calls complete — so it
-    -- precisely marks "initial batch done" without relying on a fixed time window.
+    -- Suppress ET.Accepted until the initial quest snapshot has been established.
+    -- Two complementary mechanisms cover all protocol paths:
+    --
+    -- (1) 0-tick timer — covers Questie V1, where AceComm delivers the full quest
+    --     log as one reassembled message and RegisterTooltip fires synchronously for
+    --     every quest within that single handler. The timer fires at the next frame
+    --     boundary, after the entire batch has been processed.
+    --
+    -- (2) OnBridgeHydrate (below) — covers Questie V2 and any future protocol that
+    --     fires RegisterTooltip across multiple frames. OnBridgeHydrate populates
+    --     pdata.quests with the full snapshot AND sets bridgeInitializing = false.
+    --     After that, quests already in pdata.quests have existing ~= nil, so
+    --     isNew is never true for them regardless of when RegisterTooltip fires.
+    --
+    -- Together: (1) handles multi-quest same-frame batches exactly; (2) ensures
+    -- correctness for any multi-frame protocol by seeding the known state first.
     if pdata.bridgeInitializing == nil then
         pdata.bridgeInitializing = true
         SQWowAPI.TimerAfter(0, function()
@@ -307,6 +317,9 @@ function SocialQuestGroupData:OnBridgeHydrate(provider, snapshot)
             pdata.lastSync     = SQWowAPI.GetTime()
             pdata.quests       = quests
             -- completedQuests preserved if accumulated before hydration
+            -- Mark baseline established: after this, any new quest in
+            -- OnBridgeQuestUpdate is genuinely new (not initial-sync data).
+            pdata.bridgeInitializing = false
         end
     end
     SocialQuestGroupFrame:RequestRefresh()
