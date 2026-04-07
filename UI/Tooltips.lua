@@ -111,7 +111,7 @@ local function renderPartyProgress(tooltip, questID, includeSelf)
                 end
 
                 local line
-                if not entry.hasSocialQuest then
+                if not entry.hasSocialQuest and not entry.dataProvider then
                     line = " - " .. playerName .. ": " .. L["(shared, no data)"]
                 elseif qdata.isComplete then
                     line = " - " .. playerName .. ": "

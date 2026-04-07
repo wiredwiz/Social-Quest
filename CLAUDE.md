@@ -231,6 +231,16 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.23.1 (April 2026)
+- Bug fix: tooltip party progress section showed "(shared, no data)" for Questie bridge
+  players instead of their actual quest progress. Root cause: `renderPartyProgress` in
+  `UI/Tooltips.lua` branched on `not entry.hasSocialQuest` to show the no-data label,
+  but Questie bridge entries also have `hasSocialQuest = false` — they have real objective
+  data in `entry.quests` populated by `OnBridgeQuestUpdate`/`OnBridgeHydrate`. Fix: added
+  `and not entry.dataProvider` to the condition so the no-data label only fires for pure
+  stubs (no SQ, no bridge data source). Bridge players now fall through to the normal
+  objectives rendering path showing their actual progress.
+
 ### Version 2.23.0 (April 2026)
 - Bug fix: false "accepted" announcements for Questie bridge members' pre-existing quests
   on group join. Root cause: `OnBridgeQuestUpdate` in `Core/GroupData.lua` fires
