@@ -225,6 +225,21 @@ function SocialQuestGroupData:OnBridgeQuestUpdate(provider, fullName, questEntry
     if not pdata then return end            -- not a known group member; ignore
     if pdata.hasSocialQuest then return end -- SQ data takes precedence
 
+    -- On the first bridge update for this member, open a 2-second initialization
+    -- window (bridgeInitializing = true → false). During this window "new" quests
+    -- are silently absorbed rather than announced as "accepted" — they are the
+    -- player's pre-existing quests, not genuinely newly accepted ones. Without
+    -- this guard, a Questie-only (or SQ-disabled) member joining with an existing
+    -- log causes every quest in their first Questie packet to fire ET.Accepted.
+    if pdata.bridgeInitializing == nil then
+        pdata.bridgeInitializing = true
+        SQWowAPI.TimerAfter(2.0, function()
+            if SocialQuestGroupData.PlayerQuests[fullName] == pdata then
+                pdata.bridgeInitializing = false
+            end
+        end)
+    end
+
     pdata.dataProvider = provider
     pdata.lastSync     = SQWowAPI.GetTime()
     if not pdata.quests then pdata.quests = {} end
@@ -259,7 +274,9 @@ function SocialQuestGroupData:OnBridgeQuestUpdate(provider, fullName, questEntry
 
     pdata.quests[questID] = questEntry
 
-    if isNew then
+    -- Only fire "accepted" after the initialization window closes.
+    -- nil/true = window open (suppress); false = window closed (fire normally).
+    if isNew and pdata.bridgeInitializing == false then
         SocialQuestAnnounce:OnRemoteQuestEvent(
             fullName, ET.Accepted, questID, questEntry.title)
     end
