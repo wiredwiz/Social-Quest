@@ -341,8 +341,8 @@ L["You are not eligible for this quest"]              = "你无法接取此任�
 -- UI/Tooltips.lua — BuildTooltip NPC labels
 L["Quest Giver:"]                                     = "任务发布者："
 L["Turn In:"]                                         = "交任务处："
--- UI/Tooltips.lua — BuildTooltip level / type line
-L["Level %d"]                                         = "%d 级"
-L["[Dungeon]"]                                        = "[地下城]"
-L["[Raid]"]                                           = "[团队副本]"
-L["[Group]"]                                          = "[组队]"
+-- UI/Tooltips.lua — BuildTooltip title and location lines
+L["Location:"]                                        = "地点："
+L["(Dungeon)"]                                        = "(地下城)"
+L["(Raid)"]                                           = "(团队副本)"
+L["(Group %d+)"]                                      = "(组队 %d+)"

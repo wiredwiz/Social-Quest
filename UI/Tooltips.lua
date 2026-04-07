@@ -35,7 +35,7 @@ end
 -- Includes the blank separator line before the header.
 -- Returns true if any party data was added, false otherwise.
 -- Does NOT call tooltip:Show().
-local function renderPartyProgress(tooltip, questID)
+local function renderPartyProgress(tooltip, questID, includeSelf)
     -- Party-only gate: never augment in raid or BG.
     local inRaid  = SQWowAPI.IsInRaid()
     local inBG    = SQWowAPI.PARTY_CATEGORY_INSTANCE
@@ -56,9 +56,51 @@ local function renderPartyProgress(tooltip, questID)
 
     local hasAnyGroupData = false
 
+    -- The local player is not in PlayerQuests (SQ stores remote members only).
+    -- When includeSelf is true (SQ's own full tooltip), fetch from live AQL data.
+    if includeSelf then
+        local localQuestEntry = AQL:GetQuest(questID)
+        if not localQuestEntry and (SQWowAPI.IS_RETAIL or SQWowAPI.IS_MOP) and questTitle then
+            for _, q in pairs(AQL:GetAllQuests()) do
+                if q.title == questTitle then localQuestEntry = q; break end
+            end
+        end
+        if localQuestEntry then
+            if not hasAnyGroupData then
+                tooltip:AddLine(" ")
+                tooltip:AddLine(L["Party progress"] .. ":")
+                hasAnyGroupData = true
+            end
+            local line
+            if localQuestEntry.isComplete then
+                line = " - " .. (localName or "You") .. ": "
+                       .. "|cFF40C040" .. L["Complete"] .. "|r"
+            else
+                local parts = {}
+                for _, obj in ipairs(localQuestEntry.objectives or {}) do
+                    local nf   = obj.numFulfilled or 0
+                    local nr   = obj.numRequired  or 1
+                    local text = obj.text
+                    local desc = text and (
+                        text:match("^(.-)%s*:%s*%d+/%d+%s*$")
+                     or text:match("^%d+/%d+%s+(.+)$")
+                    )
+                    if desc and desc ~= "" then
+                        table.insert(parts, desc .. ": " .. nf .. "/" .. nr)
+                    else
+                        table.insert(parts, nf .. "/" .. nr)
+                    end
+                end
+                local status = #parts > 0 and table.concat(parts, "; ") or L["In Progress"]
+                line = " - " .. (localName or "You") .. ": " .. status
+            end
+            tooltip:AddLine(line, 1, 1, 1)
+        end
+    end
+
     for playerName, entry in pairs(SocialQuestGroupData.PlayerQuests) do
         if localKey and playerName == localKey then
-            -- Skip local player — their progress is shown by Questie / native tooltip.
+            -- Skip local player (not in PlayerQuests in practice; guard for safety).
         else
             local qdata = resolveQuestData(entry, questID, questTitle)
             if qdata then
@@ -186,30 +228,6 @@ local function buildStatusLine(questID, questInfo, AQL)
     return L["You are eligible for this quest"], 1, 1, 1
 end
 
--- Builds the "Level N · Zone · [Dungeon] [Raid] [Group]" line.
--- Returns the string or nil when no level is available.
-local function buildLevelLine(questInfo)
-    local parts = {}
-    if questInfo.level then
-        table.insert(parts, string.format(L["Level %d"], questInfo.level))
-    end
-    if questInfo.zone then
-        table.insert(parts, questInfo.zone)
-    end
-    if questInfo.isDungeon then
-        table.insert(parts, L["[Dungeon]"])
-    end
-    if questInfo.isRaid then
-        table.insert(parts, L["[Raid]"])
-    end
-    -- [Group] only when not already labelled as dungeon or raid.
-    if questInfo.isGroup and not questInfo.isDungeon and not questInfo.isRaid then
-        table.insert(parts, L["[Group]"])
-    end
-    if #parts == 0 then return nil end
-    -- Middle dot separator (U+00B7, UTF-8 bytes 0xC2 0xB7).
-    return table.concat(parts, " \195\183 ")
-end
 
 -- ---------------------------------------------------------------------------
 -- BuildTooltip — full SQ tooltip renderer
@@ -228,13 +246,66 @@ function SocialQuestTooltips:BuildTooltip(tooltip, questID)
         local questInfo = AQL:GetQuestInfo(questID)
         if not questInfo then return end
 
+        -- GetQuestInfo Tier 1 (cache path) returns the raw cache entry, which has no
+        -- description, NPC info, or type-badge fields — those come from GetQuestDetails.
+        -- Merge them in when missing so BuildTooltip always has the full set of fields.
+        if questInfo.description == nil then
+            local details = AQL:GetQuestDetails(questID)
+            if details then
+                local merged = {}
+                for k, v in pairs(questInfo) do merged[k] = v end
+                merged.description  = details.description
+                merged.starterNPC   = details.starterNPC
+                merged.starterZone  = details.starterZone
+                merged.finisherNPC  = details.finisherNPC
+                merged.finisherZone = details.finisherZone
+                merged.isDungeon    = details.isDungeon
+                merged.isRaid       = details.isRaid
+                if details.isDungeon or details.isRaid then
+                    merged.isGroup = true
+                end
+                questInfo = merged
+            end
+        end
+
         tooltip:ClearLines()
 
-        -- 1. Title line — yellow, same as WoW quest link color.
-        -- SQ logo icon appended so our tooltip is visually distinct from Questie/WoW.
+        -- 1. Title line: "Title [level]  <SQ badge>" left, "(Dungeon)"/"(Raid)"/"(Group N+)" right.
         local title = questInfo.title or ("Quest " .. questID)
-        local titleWithIcon = title .. "  |TInterface/AddOns/SocialQuest/Logo.png:14:14|t"
-        tooltip:AddLine(titleWithIcon, 1, 0.82, 0)
+        local level = questInfo.level
+        local levelBadge = level and (" [" .. level .. "]") or ""
+        local titleLeft = title .. levelBadge .. "  |TInterface/AddOns/SocialQuest/Logo.png:14:14|t"
+
+        local sg = questInfo.suggestedGroup and questInfo.suggestedGroup > 0 and questInfo.suggestedGroup
+        local typeBadge
+        if questInfo.isDungeon then
+            typeBadge = L["(Dungeon)"]
+        elseif questInfo.isRaid then
+            typeBadge = L["(Raid)"]
+        elseif questInfo.isGroup or sg then
+            typeBadge = sg and string.format(L["(Group %d+)"], sg) or L["(Group)"]
+        end
+
+        if typeBadge then
+            tooltip:AddDoubleLine(titleLeft, typeBadge, 1, 0.82, 0, 0.4, 0.8, 1.0)
+        else
+            tooltip:AddLine(titleLeft, 1, 0.82, 0)
+        end
+
+        -- 1b. Chain line: "<Chain Name> (Step x of y)" when provider has chain data.
+        local chainResult = AQL:GetChainInfo(questID)
+        if chainResult and chainResult.knownStatus == AQL.ChainStatus.Known then
+            local chain = AQL:SelectBestChain(chainResult, { [questID] = true })
+            if chain and chain.step and chain.length and chain.length > 1 then
+                local s1 = chain.steps and chain.steps[1]
+                local chainName = (s1 and s1.title)
+                               or (s1 and s1.quests and s1.quests[1] and s1.quests[1].title)
+                               or AQL:GetQuestTitle(chain.chainID)
+                if chainName then
+                    tooltip:AddLine(chainName .. string.format(L[" (Step %s of %s)"], chain.step, chain.length), 0.4, 0.7, 1.0)
+                end
+            end
+        end
 
         -- 2. Status line (alias-aware).
         local statusText, sR, sG, sB = buildStatusLine(questID, questInfo, AQL)
@@ -242,10 +313,9 @@ function SocialQuestTooltips:BuildTooltip(tooltip, questID)
             tooltip:AddLine(statusText, sR, sG, sB)
         end
 
-        -- 3. Level · Zone · type badges line.
-        local levelLine = buildLevelLine(questInfo)
-        if levelLine then
-            tooltip:AddLine(levelLine, 1, 1, 1)
+        -- 3. Location line.
+        if questInfo.zone then
+            tooltip:AddLine(L["Location:"] .. " " .. questInfo.zone, 1, 1, 1)
         end
 
         -- 4. Description (Questie only; nil when not available).
@@ -274,8 +344,8 @@ function SocialQuestTooltips:BuildTooltip(tooltip, questID)
             end
         end
 
-        -- 6. Party progress section (adds its own blank separator when data present).
-        renderPartyProgress(tooltip, questID)
+        -- 6. Party progress section — include self since we own the full tooltip.
+        renderPartyProgress(tooltip, questID, true)
 
         -- 7. Mark built and show.
         tooltip._sqTooltipBuilt = true

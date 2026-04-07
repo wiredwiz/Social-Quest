@@ -340,8 +340,8 @@ L["You are not eligible for this quest"]              = "Non puoi accettare ques
 -- UI/Tooltips.lua — BuildTooltip NPC labels
 L["Quest Giver:"]                                     = "Iniziatore:"
 L["Turn In:"]                                         = "Consegna:"
--- UI/Tooltips.lua — BuildTooltip level / type line
-L["Level %d"]                                         = "Livello %d"
-L["[Dungeon]"]                                        = "[Istanza]"
-L["[Raid]"]                                           = "[Incursione]"
-L["[Group]"]                                          = "[Gruppo]"
+-- UI/Tooltips.lua — BuildTooltip title and location lines
+L["Location:"]                                        = "Zona:"
+L["(Dungeon)"]                                        = "(Istanza)"
+L["(Raid)"]                                           = "(Incursione)"
+L["(Group %d+)"]                                      = "(Gruppo %d+)"

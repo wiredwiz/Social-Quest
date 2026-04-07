@@ -377,8 +377,8 @@ L["You are not eligible for this quest"]              = true
 L["Quest Giver:"]                                     = true
 L["Turn In:"]                                         = true
 
--- UI/Tooltips.lua — BuildTooltip level / type line
-L["Level %d"]                                         = true
-L["[Dungeon]"]                                        = true
-L["[Raid]"]                                           = true
-L["[Group]"]                                          = true
+-- UI/Tooltips.lua — BuildTooltip title and location lines
+L["Location:"]                                        = true
+L["(Dungeon)"]                                        = true
+L["(Raid)"]                                           = true
+L["(Group %d+)"]                                      = true

@@ -22,6 +22,29 @@
 
 ---
 
+## Known Performance Issues (Deferred — Do Not Fix Without Instruction)
+
+Observed in April 2026: clients freeze for ~10 seconds on group join and again on group
+leave when a Questie-only player groups with a SQ player. Two root causes identified
+spanning AQL and SQ:
+
+### AQL-side (see AQL CLAUDE.md for full details)
+- **`GrailProvider.buildReverseMap()`** — iterates 10,000+ Grail quests synchronously on
+  first `GetChainInfo()` call, triggered by `QuestCache:Rebuild()` on `GROUP_ROSTER_UPDATE`.
+  Primary cause of the join freeze.
+- **`QuestCache:_buildEntry()`** — calls chain provider per quest with no caching or
+  batching, compounding the GrailProvider cost across every quest in the active log.
+
+### SQ-side
+- **`QuestieBridge.GetSnapshot()` in `Core/QuestieBridge.lua`** — pivots Questie's
+  `remoteQuestLogs` (quest×player) into player×quest format by iterating every quest for
+  every player with no filtering. O(quests × players). Runs at t+4s/t+8s after Questie
+  request, causing the delayed secondary freeze after group join.
+- **Fix direction:** Build snapshot incrementally or filter to active-log quests only
+  before pivoting the full table.
+
+---
+
 ## Architecture
 
 ### Entry Point
@@ -207,6 +230,41 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 ---
 
 ## Version History
+
+### Version 2.22.1 (April 2026)
+- Feature: chain line added to `BuildTooltip` between the title line and the status line.
+  When `AQL:GetChainInfo` returns `knownStatus = Known` and the chain has more than one
+  step, displays `<Chain Root Title> (Step X of Y)` in light periwinkle (`0.8, 0.8, 1.0`).
+  Chain name resolved from `chain.steps[1].title`, falling back to multi-quest step format
+  and then `AQL:GetQuestTitle(chain.chainID)`. Reuses existing locale key
+  `L[" (Step %s of %s)"]`. No new locale strings required.
+
+### Version 2.22.0 (April 2026)
+- Feature: tooltip title line redesigned. Level is now shown as `[N]` between the title
+  and the SQ badge on the title line itself. Quest type badge (`(Dungeon)`, `(Raid)`,
+  `(Group N+)`, or `(Group)`) is right-aligned in light blue via `AddDoubleLine`. Group
+  size comes from `questInfo.suggestedGroup` when > 0. The old combined level/zone/badge
+  line is replaced by a plain `Location: <Zone>` line (line 3). `buildLevelLine` helper
+  removed. All 12 locale files updated with new keys (`Location:`, `(Dungeon)`, `(Raid)`,
+  `(Group %d+)`) replacing the old `Level %d`, `[Dungeon]`, `[Raid]`, `[Group]` keys.
+  Note: main TBC `SocialQuest.toc` was found at 2.19.2 (missed in prior bumps); brought
+  forward to 2.22.0 alongside the other three TOC files.
+
+### Version 2.21.0 (April 2026)
+- Bug fix: local player now included in the "Party progress:" section of SQ tooltips.
+  Previously `renderPartyProgress` in `UI/Tooltips.lua` skipped the local player with
+  a comment that Questie/WoW already showed their progress. This was incorrect for the
+  Replace tooltip mode where SQ renders its own full tooltip. The local player is now
+  added first using live `AQL:GetQuest` data (authoritative for self) before iterating
+  remote party members from `PlayerQuests`.
+- Bug fix: description (and NPC/type-badge fields) no longer missing from `BuildTooltip`
+  when the quest is in the player's active log. `AQL:GetQuestInfo` Tier 1 (cache path)
+  returns the raw `QuestCache` entry, which does not include Details-capability fields
+  (`description`, `starterNPC`, `starterZone`, `finisherNPC`, `finisherZone`, `isDungeon`,
+  `isRaid`). `BuildTooltip` now calls the new `AQL:GetQuestDetails(questID)` when
+  `questInfo.description` is nil, shallow-copies the cache result, and merges the detail
+  fields so all sections of the tooltip render correctly regardless of whether the quest
+  is in the player's log. Requires AQL 3.7.0.
 
 ### Version 2.19.2 (April 2026)
 - Bug fix: quest links in chat now show Questie's custom tooltip when clicked.

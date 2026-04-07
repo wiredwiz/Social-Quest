@@ -341,8 +341,8 @@ L["You are not eligible for this quest"]              = "Вы не можете 
 -- UI/Tooltips.lua — BuildTooltip NPC labels
 L["Quest Giver:"]                                     = "Источник задания:"
 L["Turn In:"]                                         = "Сдать:"
--- UI/Tooltips.lua — BuildTooltip level / type line
-L["Level %d"]                                         = "%d ур."
-L["[Dungeon]"]                                        = "[Подземелье]"
-L["[Raid]"]                                           = "[Рейд]"
-L["[Group]"]                                          = "[Группа]"
+-- UI/Tooltips.lua — BuildTooltip title and location lines
+L["Location:"]                                        = "Локация:"
+L["(Dungeon)"]                                        = "(Подземелье)"
+L["(Raid)"]                                           = "(Рейд)"
+L["(Group %d+)"]                                      = "(Группа %d+)"

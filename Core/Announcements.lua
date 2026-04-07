@@ -767,7 +767,7 @@ function SocialQuestAnnounce:TestChatLink()
     -- displayChatPreview uses AddMessage directly, which bypasses ChatFrame_AddMessageEventFilter.
     -- Apply the same conversion the chat filter does so the preview shows a clickable link.
     local previewMsg = msg:gsub(
-        "%[%[(%d+)%]%s(.-)%s*%((%d+)%)%]",
+        "%[%[(%d+)%]%s(.-)%s*{(%d+)}%]",
         function(lvStr, name, qidStr)
             local lv  = tonumber(lvStr) or 0
             local qid = tonumber(qidStr)
