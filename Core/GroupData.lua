@@ -225,15 +225,15 @@ function SocialQuestGroupData:OnBridgeQuestUpdate(provider, fullName, questEntry
     if not pdata then return end            -- not a known group member; ignore
     if pdata.hasSocialQuest then return end -- SQ data takes precedence
 
-    -- On the first bridge update for this member, open a 2-second initialization
-    -- window (bridgeInitializing = true → false). During this window "new" quests
-    -- are silently absorbed rather than announced as "accepted" — they are the
-    -- player's pre-existing quests, not genuinely newly accepted ones. Without
-    -- this guard, a Questie-only (or SQ-disabled) member joining with an existing
-    -- log causes every quest in their first Questie packet to fire ET.Accepted.
+    -- On the first bridge update for this member, suppress ET.Accepted for all
+    -- quests in the same Lua execution batch. Questie V1 responses are reassembled
+    -- by AceComm into a single handler call, within which RegisterTooltip fires
+    -- synchronously for every quest in the log. C_Timer.After(0) fires at the
+    -- next frame boundary — after all those synchronous calls complete — so it
+    -- precisely marks "initial batch done" without relying on a fixed time window.
     if pdata.bridgeInitializing == nil then
         pdata.bridgeInitializing = true
-        SQWowAPI.TimerAfter(2.0, function()
+        SQWowAPI.TimerAfter(0, function()
             if SocialQuestGroupData.PlayerQuests[fullName] == pdata then
                 pdata.bridgeInitializing = false
             end

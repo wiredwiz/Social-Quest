@@ -234,15 +234,17 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 ### Version 2.23.0 (April 2026)
 - Bug fix: false "accepted" announcements for Questie bridge members' pre-existing quests
   on group join. Root cause: `OnBridgeQuestUpdate` in `Core/GroupData.lua` fires
-  `ET.Accepted` for any quest where `existing == nil` (not yet in `pdata.quests`). When
-  a member joins with SQ disabled (or Questie-only), their first Questie packet populates
-  an empty stub, so every quest has `isNew = true` and all pre-existing quests are
-  announced as newly accepted. Fix: added `bridgeInitializing` flag per `PlayerQuests`
-  entry. On the first `OnBridgeQuestUpdate` call for a given member the flag is set to
-  `true` and a 2-second `SQWowAPI.TimerAfter` is started; `ET.Accepted` is suppressed
-  while the flag is `true` or `nil`. After 2 s the flag becomes `false` and genuine
-  new-quest accepts fire normally. The timer self-invalidates on leave/rejoin via a
-  `pdata` identity check.
+  `ET.Accepted` for any quest where `existing == nil`. When a member joins with SQ
+  disabled (or Questie-only), their first Questie packet hits an empty stub, so every
+  quest has `isNew = true` and all pre-existing quests are announced as newly accepted.
+  Fix: added `bridgeInitializing` flag per `PlayerQuests` entry. On the first
+  `OnBridgeQuestUpdate` call for a member the flag is set to `true` and a 0-tick
+  `SQWowAPI.TimerAfter(0)` is started. Questie V1 responses are processed by AceComm as
+  a single reassembled handler, within which `RegisterTooltip` fires synchronously for
+  every quest; the 0-tick timer fires at the next frame boundary — after all those calls
+  complete — so it marks "initial batch done" precisely without a fixed time window.
+  `ET.Accepted` is suppressed while `bridgeInitializing` is `true` or `nil`. The timer
+  self-invalidates on leave/rejoin via a `pdata` identity check.
 
 ### Version 2.22.1 (April 2026)
 - Feature: chain line added to `BuildTooltip` between the title line and the status line.
