@@ -8,7 +8,7 @@
 --     quests = {
 --         [questID] = {
 --             questID=N, isComplete=bool, isFailed=bool,
---             snapshotTime=N, timerSeconds=N_or_nil,
+--             snapshotTime=N, timerSeconds=N_or_nil, classID=N_or_nil,
 --             objectives = { {numFulfilled=N, numRequired=N, isFinished=bool}, ... }
 --         },
 --     }
