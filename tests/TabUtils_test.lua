@@ -403,6 +403,24 @@ assert_eq("GetZone unknown classID falls back to AQL",
     T.GetZoneForQuestID(77, 99), "Feralas")
 AQL._questMap = {}
 
+-- classID valid but token absent from LOCALIZED_CLASS_NAMES_MALE
+-- (e.g. DEATHKNIGHT on a TBC client whose locale table has no DEATHKNIGHT entry)
+-- CLASS_TOKEN_BY_ID has [6]="DEATHKNIGHT" but our test stub does not include
+-- LOCALIZED_CLASS_NAMES_MALE["DEATHKNIGHT"], so name resolves nil → falls back to AQL.
+-- Note: SocialQuestWowAPI.CLASS_TOKEN_BY_ID stub only has [1] and [5], so use classID=6
+-- which would be in the production table but is absent from the test stub entirely —
+-- causing token=nil and falling through. Instead, temporarily add [6] to the stub and
+-- omit it from LOCALIZED_CLASS_NAMES_MALE to test the locale-miss path.
+do
+    SocialQuestWowAPI.CLASS_TOKEN_BY_ID[6] = "DEATHKNIGHT"
+    -- LOCALIZED_CLASS_NAMES_MALE has WARRIOR and PRIEST but not DEATHKNIGHT
+    AQL._questMap = { [88] = { zone = "Eastern Plaguelands" } }
+    assert_eq("GetZone token not in locale table falls back to AQL",
+        T.GetZoneForQuestID(88, 6), "Eastern Plaguelands")
+    AQL._questMap = {}
+    SocialQuestWowAPI.CLASS_TOKEN_BY_ID[6] = nil  -- restore stub state
+end
+
 -- ── Results ───────────────────────────────────────────────────────────────────
 
 print(string.format("\nResults: %d passed, %d failed", pass, fail))
