@@ -231,6 +231,60 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.23.6 (April 2026)
+- Bug fix: Force Resync button failed to re-enable after the 30-second cooldown when
+  `/sq sync` had been used to trigger the resync. Root cause: the `NotifyChange` schedule
+  (needed for AceConfig to re-evaluate the `disabled` callback) lived in the button's
+  `func` in `Options.lua`, so it never ran when `ResyncAll()` was called from `/sq sync`.
+  Fix: moved `AceConfigRegistry:NotifyChange` scheduling into `ResyncAll()` itself, with
+  a +0.5s buffer beyond `RESYNC_COOLDOWN` to avoid a boundary race where the timer fires
+  fractionally before `IsResyncOnCooldown()` returns false. The button's `func` no longer
+  needs its own `ScheduleTimer` call.
+
+### Version 2.23.5 (April 2026)
+- Feature: `/sq sync` slash command. Calls `SocialQuestComm:ResyncAll()`. If on cooldown,
+  prints remaining seconds ("Sync is on cooldown. Try again in N seconds."). If not in a
+  group, prints "You must be in a group to sync." Otherwise fires resync and confirms with
+  "Requesting a fresh quest snapshot from all group members." `GetResyncCooldownRemaining()`
+  added to `Communications.lua` to expose remaining cooldown seconds.
+- UX: `/sq <unknown>` now prints a usage message listing supported commands instead of
+  silently opening the group window. `/sq` (no argument) still opens/closes the window.
+  The `diagnose` command is intentionally omitted from the usage message.
+
+### Version 2.23.4 (April 2026)
+- Bug fix: Questie bridge player failed to populate intermittently after `/reload`.
+  Root cause: the t+10s request send only had hydration polls at t+14s and t+20s;
+  if the remote player's response arrived after t+20s (slow client or high latency),
+  `remoteQuestLogs` was populated but never read. Added two additional safety-net
+  hydration polls at t+30s and t+40s (relative to group join) within the t+10s send
+  callback, covering slow responders without sending extra requests.
+
+### Version 2.23.3 (April 2026)
+- Feature: Force Resync now also resyncs Questie bridge players. `QuestieBridge:ForceResync()`
+  sends `QC_ID_REQUEST_FULL_QUESTLIST` immediately (no staged delays — Questie is already
+  initialized at resync time) and polls for data 4 seconds later. Wired through
+  `SocialQuestBridgeRegistry:ForceResync()` which forwards to all active bridges.
+- Refactor: resync cooldown and orchestration centralized in `Communications.lua`.
+  `SocialQuestComm:ResyncAll()` enforces the 30-second shared cooldown, calls
+  `SendResyncRequest()` for SQ members, and calls `BridgeRegistry:ForceResync()` for
+  bridge members. `SocialQuestComm:IsResyncOnCooldown()` exposes the cooldown state for
+  both the Force Resync button and the future `/sq sync` command. `Options.lua` no longer
+  owns the cooldown timer (`lastResyncTime` removed); both callers share one gate.
+
+### Version 2.23.2 (April 2026)
+- Bug fix: Questie bridge data not appearing in the Group window after `/reload`.
+  Root cause: `OnBridgeHydrate` in `Core/GroupData.lua` was setting
+  `pdata.bridgeInitializing = false` (added in v2.23.0) after populating quest data.
+  This was intended to close the initial-sync suppression window for V1 multi-frame
+  responses, but it is both redundant and incorrect. After hydration, all quests are
+  already in `pdata.quests` with `existing ~= nil`, so `isNew` is never `true` for
+  them in `OnBridgeQuestUpdate` regardless of `bridgeInitializing` state. Setting it
+  to `false` in `OnBridgeHydrate` prematurely closes the window and breaks the
+  suppression for any subsequent `RegisterTooltip` callbacks that arrive after
+  hydration (V1 multi-frame blocks). Fix: removed the assignment; `bridgeInitializing`
+  now remains `nil` after hydration, preserving the correct suppression semantics
+  exclusively in `OnBridgeQuestUpdate`.
+
 ### Version 2.23.1 (April 2026)
 - Bug fix: tooltip party progress section showed "(shared, no data)" for Questie bridge
   players instead of their actual quest progress. Root cause: `renderPartyProgress` in

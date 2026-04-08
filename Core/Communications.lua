@@ -245,6 +245,44 @@ function SocialQuestComm:GetActiveChannel()
     return nil
 end
 
+local _lastResyncTime = 0
+local RESYNC_COOLDOWN  = 30
+
+-- Returns true when a ResyncAll() was triggered less than RESYNC_COOLDOWN seconds ago.
+-- Used by the Force Resync button's disabled callback and the /sq sync command.
+function SocialQuestComm:IsResyncOnCooldown()
+    return SQWowAPI.GetTime() - _lastResyncTime < RESYNC_COOLDOWN
+end
+
+-- Returns the whole seconds remaining on the resync cooldown, or 0 if not on cooldown.
+-- Used by /sq sync to print a helpful wait message.
+function SocialQuestComm:GetResyncCooldownRemaining()
+    local remaining = RESYNC_COOLDOWN - (SQWowAPI.GetTime() - _lastResyncTime)
+    return remaining > 0 and math.ceil(remaining) or 0
+end
+
+-- Triggers a full resync of all group members: sends SQ_REQUEST to SQ members
+-- and QC_ID_REQUEST_FULL_QUESTLIST to Questie bridge members.
+-- Shared cooldown prevents spamming from both the Force Resync button and /sq sync.
+-- Schedules AceConfig NotifyChange after the cooldown so the Force Resync button
+-- re-enables automatically regardless of which caller (button or /sq sync) fired this.
+-- Returns false (no-op) when on cooldown; true otherwise.
+function SocialQuestComm:ResyncAll()
+    if self:IsResyncOnCooldown() then
+        SocialQuest:Debug("Resync", "ResyncAll: on cooldown, no-op")
+        return false
+    end
+    _lastResyncTime = SQWowAPI.GetTime()
+    self:SendResyncRequest()
+    SocialQuestBridgeRegistry:ForceResync()
+    -- +0.5s buffer ensures the timer fires after IsResyncOnCooldown() returns false,
+    -- avoiding a boundary race where the timer fires fractionally early.
+    SocialQuest:ScheduleTimer(function()
+        LibStub("AceConfigRegistry-3.0"):NotifyChange("SocialQuest")
+    end, RESYNC_COOLDOWN + 0.5)
+    return true
+end
+
 function SocialQuestComm:SendResyncRequest()
     local channel = self:GetActiveChannel()
     if not channel then

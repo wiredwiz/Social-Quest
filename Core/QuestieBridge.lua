@@ -238,6 +238,23 @@ function QuestieBridge:OnMemberJoined(fullName)
     self:_ScheduleQuestieRequest()
 end
 
+-- Called by BridgeRegistry:ForceResync() when the user triggers a manual resync.
+-- Unlike _ScheduleQuestieRequest(), fires the request immediately with no staged
+-- delays — Questie is already fully initialized by the time the user can click
+-- Force Resync or run /sq sync. Resets _pendingRequest so the send is not
+-- swallowed by the debounce guard. Schedules a hydration poll 4 seconds later.
+function QuestieBridge:ForceResync()
+    if not self._active then return end
+    self._pendingRequest = false
+    if Questie and Questie.SendMessage then
+        Questie:SendMessage("QC_ID_REQUEST_FULL_QUESTLIST")
+        SocialQuest:Debug("Quest", "QuestieBridge: ForceResync sent QC_ID_REQUEST_FULL_QUESTLIST")
+    end
+    SQWowAPI.TimerAfter(4, function()
+        if self._active then self:_ScheduleHydration() end
+    end)
+end
+
 -- Sends QC_ID_REQUEST_FULL_QUESTLIST via Questie's internal message bus.
 -- Debounced so rapid joins (e.g. raid fill) result in a single request pair.
 --
@@ -294,6 +311,8 @@ function QuestieBridge:_ScheduleQuestieRequest()
 
     -- Third send: t+10s. Fallback if UnitInParty("player") was nil at t+1s/t+5s on reload.
     -- By t+10s the party API is always stable; GetGroupType() will return non-nil.
+    -- Safety-net hydrations at t+14s, t+20s, t+30s, t+40s cover slow responders —
+    -- some clients take 15-25s to reply after a reload.
     SQWowAPI.TimerAfter(10, function()
         if not QuestieBridge._active then return end
         local inParty = UnitInParty and UnitInParty("player")
@@ -307,6 +326,12 @@ function QuestieBridge:_ScheduleQuestieRequest()
             if QuestieBridge._active then QuestieBridge:_ScheduleHydration() end
         end)
         SQWowAPI.TimerAfter(10, function()
+            if QuestieBridge._active then QuestieBridge:_ScheduleHydration() end
+        end)
+        SQWowAPI.TimerAfter(20, function()
+            if QuestieBridge._active then QuestieBridge:_ScheduleHydration() end
+        end)
+        SQWowAPI.TimerAfter(30, function()
             if QuestieBridge._active then QuestieBridge:_ScheduleHydration() end
         end)
     end)

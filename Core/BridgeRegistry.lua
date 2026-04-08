@@ -73,6 +73,16 @@ function SocialQuestBridgeRegistry:DisableAll()
     end
 end
 
+-- Called by Communications:ResyncAll() when the user triggers a manual resync.
+-- Forwards to each active bridge that supports ForceResync().
+function SocialQuestBridgeRegistry:ForceResync()
+    for _, bridge in ipairs(self._bridges) do
+        if bridge._active and bridge.ForceResync then
+            bridge:ForceResync()
+        end
+    end
+end
+
 -- Returns the nameTag string for a given provider, or nil if not found.
 -- Used by RowFactory to annotate player names with their data-source icon.
 function SocialQuestBridgeRegistry:GetNameTag(provider)

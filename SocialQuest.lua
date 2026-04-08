@@ -539,6 +539,17 @@ SocialQuest:RegisterChatCommand("sq", function(input)
     local cmd = strtrim(input or "")
     if cmd == "config" then
         LibStub("AceConfigDialog-3.0"):Open("SocialQuest")
+    elseif cmd == "sync" then
+        local remaining = SocialQuestComm:GetResyncCooldownRemaining()
+        if remaining > 0 then
+            SocialQuest:Print("Sync is on cooldown. Try again in "
+                .. remaining .. (remaining == 1 and " second." or " seconds."))
+        elseif not SocialQuestComm:GetActiveChannel() then
+            SocialQuest:Print("You must be in a group to sync.")
+        else
+            SocialQuestComm:ResyncAll()
+            SocialQuest:Print("Requesting a fresh quest snapshot from all group members.")
+        end
     elseif cmd == "diagnose" then
         local isNew = not SQConsoleFrame
         if not SQConsoleFrame then
@@ -934,7 +945,12 @@ SocialQuest:RegisterChatCommand("sq", function(input)
             SQConsoleFrame:Show()
             SQConsoleFrame:Raise()
         end
-    else
+    elseif cmd == "" then
         SocialQuestGroupFrame:Toggle()
+    else
+        SocialQuest:Print("Unknown command '" .. cmd .. "'. Usage:")
+        SocialQuest:Print("  /sq — open the SocialQuest window")
+        SocialQuest:Print("  /sq config — open settings")
+        SocialQuest:Print("  /sq sync — request a fresh quest snapshot from all group members")
     end
 end)

@@ -316,10 +316,12 @@ function SocialQuestGroupData:OnBridgeHydrate(provider, snapshot)
             pdata.dataProvider = provider
             pdata.lastSync     = SQWowAPI.GetTime()
             pdata.quests       = quests
-            -- completedQuests preserved if accumulated before hydration
-            -- Mark baseline established: after this, any new quest in
-            -- OnBridgeQuestUpdate is genuinely new (not initial-sync data).
-            pdata.bridgeInitializing = false
+            -- completedQuests preserved if accumulated before hydration.
+            -- bridgeInitializing intentionally NOT set here: after hydration all
+            -- quests have existing ~= nil in pdata.quests, so isNew is never true
+            -- for them in OnBridgeQuestUpdate regardless of bridgeInitializing state.
+            -- Leaving it nil keeps the suppression window intact for any subsequent
+            -- RegisterTooltip callbacks that arrive after this hydration.
         end
     end
     SocialQuestGroupFrame:RequestRefresh()

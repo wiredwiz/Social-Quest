@@ -3,7 +3,6 @@
 
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 local SQWowAPI = SocialQuestWowAPI
-local lastResyncTime = 0
 
 SocialQuestOptions = {}
 
@@ -368,13 +367,9 @@ function SocialQuestOptions:Initialize()
                         desc     = L["Request a fresh quest snapshot from all current group members. Disabled for 30 seconds after each use."],
                         order    = 2,
                         hidden   = function() return not db.debug.enabled end,
-                        disabled = function() return SQWowAPI.GetTime() - lastResyncTime < 30 end,
+                        disabled = function() return SocialQuestComm:IsResyncOnCooldown() end,
                         func     = function()
-                            lastResyncTime = SQWowAPI.GetTime()
-                            SocialQuestComm:SendResyncRequest()
-                            SocialQuest:ScheduleTimer(function()
-                                LibStub("AceConfigRegistry-3.0"):NotifyChange("SocialQuest")
-                            end, 30)
+                            SocialQuestComm:ResyncAll()
                         end,
                     },
                     testBanners = {
