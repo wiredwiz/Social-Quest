@@ -22,7 +22,9 @@ LibStub = setmetatable({}, {
 local AQL = {
     ChainStatus = { Known = "known", Unknown = "unknown" },
     _questInfoMap = {},
+    _questMap     = {},
     GetQuestInfo  = function(self, questID) return self._questInfoMap[questID] end,
+    GetQuest      = function(self, questID) return self._questMap[questID] end,
     _GetCurrentPlayerEngagedQuests = function(self)
         return { [100] = true }
     end,
@@ -33,7 +35,13 @@ local AQL = {
 
 SocialQuest = { AQL = AQL }
 SocialQuestGroupData = { PlayerQuests = {} }
-SocialQuestWowAPI = { IS_TBC = true, IS_RETAIL = false, IS_MOP = false, IS_CLASSIC_ERA = false }
+SocialQuestWowAPI = {
+    IS_TBC = true, IS_RETAIL = false, IS_MOP = false, IS_CLASSIC_ERA = false,
+    CLASS_TOKEN_BY_ID = {
+        [1]  = "WARRIOR",
+        [5]  = "PRIEST",
+    },
+}
 
 dofile("UI/TabUtils.lua")
 
@@ -349,6 +357,51 @@ assert_eq("BuildEngagedSet Carol empty tables → empty set", carolCount, 0)
 
 -- reset shared state so other tests in future runs start clean
 SocialQuestGroupData.PlayerQuests = {}
+
+-- ── GetZoneForQuestID ─────────────────────────────────────────────────────────
+
+-- Reset AQL maps and set up LOCALIZED_CLASS_NAMES_MALE global for tests.
+AQL._questMap     = {}
+AQL._questInfoMap = {}
+LOCALIZED_CLASS_NAMES_MALE = { WARRIOR = "Warrior", PRIEST = "Priest" }
+
+-- classID=1 (Warrior) → "Warrior"
+assert_eq("GetZone classID=1 returns Warrior",
+    T.GetZoneForQuestID(999, 1), "Warrior")
+
+-- classID=5 (Priest) → "Priest"
+assert_eq("GetZone classID=5 returns Priest",
+    T.GetZoneForQuestID(999, 5), "Priest")
+
+-- classID nil, AQL:GetQuest has zone → returns that zone
+AQL._questMap = { [42] = { zone = "Elwynn Forest" } }
+assert_eq("GetZone nil classID uses AQL GetQuest zone",
+    T.GetZoneForQuestID(42, nil), "Elwynn Forest")
+AQL._questMap = {}
+
+-- classID nil, GetQuest nil, AQL:GetQuestInfo has zone → returns that zone
+AQL._questInfoMap = { [55] = { zone = "Stormwind City" } }
+assert_eq("GetZone nil classID falls through to AQL GetQuestInfo",
+    T.GetZoneForQuestID(55, nil), "Stormwind City")
+AQL._questInfoMap = {}
+
+-- classID nil, no AQL data → "Other Quests"
+assert_eq("GetZone nil classID no AQL data returns Other Quests",
+    T.GetZoneForQuestID(999, nil), "Other Quests")
+
+-- classID provided but LOCALIZED_CLASS_NAMES_MALE is nil → falls back to AQL
+LOCALIZED_CLASS_NAMES_MALE = nil
+AQL._questMap = { [100] = { zone = "Dun Morogh" } }
+assert_eq("GetZone classID with nil LOCALIZED table falls back to AQL",
+    T.GetZoneForQuestID(100, 1), "Dun Morogh")
+AQL._questMap = {}
+LOCALIZED_CLASS_NAMES_MALE = { WARRIOR = "Warrior", PRIEST = "Priest" }
+
+-- classID for unknown class (not in CLASS_TOKEN_BY_ID) → falls back to AQL
+AQL._questMap = { [77] = { zone = "Feralas" } }
+assert_eq("GetZone unknown classID falls back to AQL",
+    T.GetZoneForQuestID(77, 99), "Feralas")
+AQL._questMap = {}
 
 -- ── Results ───────────────────────────────────────────────────────────────────
 

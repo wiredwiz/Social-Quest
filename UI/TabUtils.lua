@@ -31,7 +31,16 @@ end
 -- Falls back from active-quest cache → AQL:GetQuestInfo (which includes provider lookup)
 -- → "Other Quests". The provider fallback resolves zone for remote-only quests (quests
 -- a party member has that the local player does not).
-function SocialQuestTabUtils.GetZoneForQuestID(questID)
+-- classID is optional. When provided (remote player's quest entry), it is used
+-- to resolve the localized class name directly, bypassing AQL. This covers the
+-- case where AQL's provider lookup returns a geographic zone instead of the
+-- class-name zone header used by WoW's quest log.
+function SocialQuestTabUtils.GetZoneForQuestID(questID, classID)
+    if classID then
+        local token = SQWowAPI.CLASS_TOKEN_BY_ID[classID]
+        local name  = token and LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[token]
+        if name then return name end
+    end
     local AQL = SocialQuest.AQL
     -- Fast path: active quest cache.
     local info = AQL:GetQuest(questID)
