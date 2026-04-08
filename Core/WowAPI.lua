@@ -78,3 +78,23 @@ SocialQuestWowAPI.CLASS_ID = {
     Warrior=1, Paladin=2, Hunter=3, Rogue=4, Priest=5, DeathKnight=6,
     Shaman=7, Mage=8, Warlock=9, Monk=10, Druid=11, DemonHunter=12, Evoker=13,
 }
+
+-- Maps WoW numeric class ID to the uppercase class token used as a key in
+-- LOCALIZED_CLASS_NAMES_MALE and returned by UnitClass() as the second value.
+-- Covers all classes across all WoW versions; entries for classes absent from
+-- the current version are simply absent from LOCALIZED_CLASS_NAMES_MALE.
+SocialQuestWowAPI.CLASS_TOKEN_BY_ID = {
+    [1]  = "WARRIOR",
+    [2]  = "PALADIN",
+    [3]  = "HUNTER",
+    [4]  = "ROGUE",
+    [5]  = "PRIEST",
+    [6]  = "DEATHKNIGHT",
+    [7]  = "SHAMAN",
+    [8]  = "MAGE",
+    [9]  = "WARLOCK",
+    [10] = "MONK",
+    [11] = "DRUID",
+    [12] = "DEMONHUNTER",
+    [13] = "EVOKER",
+}
