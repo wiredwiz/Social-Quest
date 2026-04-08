@@ -231,6 +231,20 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.24.0 (April 2026)
+- Feature: class quest zone resolution. Remote players' class quests now appear
+  under the correct localized class-name zone header ("Warrior", "Priest", etc.)
+  in the Party and Shared tabs instead of under a geographic zone or "Other Quests".
+  Root cause: AQL's provider lookup (Questie/Grail) returns the geographic zone for
+  class quests, not the class-name zone header used by WoW's quest log. Fix: the
+  sender detects class quests via a reverse lookup built from `LOCALIZED_CLASS_NAMES_MALE`
+  and transmits an optional `classID` integer in `SQ_INIT` and `SQ_UPDATE` payloads.
+  Receivers store it on the quest entry; `GetZoneForQuestID` resolves it to the
+  receiver's localized class name via the new `CLASS_TOKEN_BY_ID` table in `WowAPI.lua`.
+  Fully backward-compatible: older receivers ignore the new field; older senders produce
+  `classID = nil` and receivers fall through to the existing AQL lookup. Questie bridge
+  players are out of scope — they do not run SQ and cannot transmit `classID`.
+
 ### Version 2.23.6 (April 2026)
 - Bug fix: Force Resync button failed to re-enable after the 30-second cooldown when
   `/sq sync` had been used to trigger the resync. Root cause: the `NotifyChange` schedule
