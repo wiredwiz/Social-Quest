@@ -141,6 +141,7 @@ function SocialQuestGroupData:OnUpdateReceived(sender, payload)
             isFailed     = payload.isFailed    == 1,
             snapshotTime = payload.snapshotTime,
             timerSeconds = payload.timerSeconds,
+            classID      = payload.classID,        -- nil for non-class quests
             objectives   = storedObjs,
         }
     end
