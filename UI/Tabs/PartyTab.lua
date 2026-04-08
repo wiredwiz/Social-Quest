@@ -266,6 +266,20 @@ function PartyTab:BuildTree(filterTable)
         end
     end
 
+    -- Build questID → classID lookup from remote players' quest entries.
+    -- Used by GetZoneForQuestID to resolve class-name zone headers for remote
+    -- players' class quests, where AQL's provider returns geographic zone instead.
+    local questClassIDs = {}
+    for _, playerData in pairs(SocialQuestGroupData.PlayerQuests) do
+        if playerData.quests then
+            for questID, qentry in pairs(playerData.quests) do
+                if qentry.classID and not questClassIDs[questID] then
+                    questClassIDs[questID] = qentry.classID
+                end
+            end
+        end
+    end
+
     local tree                = { zones = {} }
     local orderIdx            = 0
     local chainStepEntriesByZone = {}
@@ -297,7 +311,7 @@ function PartyTab:BuildTree(filterTable)
     end
 
     for questID in pairs(allQuestIDs) do
-        local zoneName = SocialQuestTabUtils.GetZoneForQuestID(questID)
+        local zoneName = SocialQuestTabUtils.GetZoneForQuestID(questID, questClassIDs[questID])
         local filtered = filterTable and filterTable.autoZone and zoneName ~= filterTable.autoZone
         if not filtered then
             if not tree.zones[zoneName] then
