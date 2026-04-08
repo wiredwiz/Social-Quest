@@ -25,6 +25,20 @@ local PREFIXES = {
 local GroupType = SocialQuestGroupComposition.GroupType
 local SQWowAPI = SocialQuestWowAPI
 
+-- Reverse lookup: localized class name (as used by AQL zone headers) → WoW numeric classID.
+-- Built at load time from LOCALIZED_CLASS_NAMES_MALE (always available before addon load).
+-- Used by buildInitPayload and buildQuestPayload to detect class quests.
+local localizedClassNameToID = {}
+do
+    local names = LOCALIZED_CLASS_NAMES_MALE
+    if names then
+        for classID, token in pairs(SQWowAPI.CLASS_TOKEN_BY_ID) do
+            local name = names[token]
+            if name then localizedClassNameToID[name] = classID end
+        end
+    end
+end
+
 local lastInitSent = {}   -- keyed by sender name; tracks when SQ_INIT was last sent per player
 
 -- Jitter-delayed SQ_INIT whisper handles, keyed by sender name.
@@ -66,6 +80,7 @@ local function buildQuestPayload(questInfo, eventType)
         -- reference for timer estimation: remaining = timerSeconds - (SQWowAPI.GetTime() - snapshotTime).
         snapshotTime = SQWowAPI.GetTime(),
         timerSeconds = questInfo.timerSeconds,  -- nil if no timer (serializes cleanly)
+        classID      = localizedClassNameToID[questInfo.zone],  -- nil for non-class quests
         objectives   = objs,
     }
 end
@@ -89,6 +104,7 @@ local function buildInitPayload()
             isFailed     = info.isFailed    and 1 or 0,
             snapshotTime = SQWowAPI.GetTime(),  -- stamp at transmission time, not AQL cache build time
             timerSeconds = info.timerSeconds,
+            classID      = localizedClassNameToID[info.zone],  -- nil for non-class quests
             objectives   = objs,
         }
     end
