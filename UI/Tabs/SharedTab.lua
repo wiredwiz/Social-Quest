@@ -205,6 +205,20 @@ function SharedTab:BuildTree(filterTable)
         questEngaged = mergedQuestEngaged
     end
 
+    -- Build questID → classID lookup from remote players' quest entries.
+    -- Used by GetZoneForQuestID to resolve class-name zone headers for remote
+    -- players' class quests.
+    local questClassIDs = {}
+    for _, playerData in pairs(SocialQuestGroupData.PlayerQuests) do
+        if playerData.quests then
+            for questID, qentry in pairs(playerData.quests) do
+                if qentry.classID and not questClassIDs[questID] then
+                    questClassIDs[questID] = qentry.classID
+                end
+            end
+        end
+    end
+
     -- Step 2: build tree from groups with 2+ engaged players.
     local tree     = { zones = {} }
     local orderIdx = 0
@@ -338,7 +352,7 @@ function SharedTab:BuildTree(filterTable)
         local count = 0
         for _ in pairs(engaged) do count = count + 1 end
         if count >= 2 then
-            local zoneName  = SocialQuestTabUtils.GetZoneForQuestID(questID)
+            local zoneName  = SocialQuestTabUtils.GetZoneForQuestID(questID, questClassIDs[questID])
             local filtered = filterTable and filterTable.autoZone and zoneName ~= filterTable.autoZone
             if not filtered then
                 local zone      = ensureZone(zoneName)
