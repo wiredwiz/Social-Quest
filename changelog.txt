@@ -1,6 +1,165 @@
 SocialQuest Changelog
 =====================
 
+Version 2.24.0 (April 2026)
+- New Feature: Class quests now appear under the correct class-name zone header
+  (e.g. "Warrior", "Priest") in the Party and Shared tabs. Previously, class
+  quests were grouped under a geographic zone name, making them hard to find.
+
+Version 2.23.6 (April 2026)
+- Bug fix: The Force Resync button in the Debug panel would not re-enable after
+  its 30-second cooldown when the resync had been triggered via /sq sync.
+
+Version 2.23.5 (April 2026)
+- New Feature: /sq sync slash command — quickly request a fresh quest snapshot
+  from all group members without opening the settings panel. Tells you how many
+  seconds remain if the sync is on cooldown.
+- Improvement: Typing an unrecognized /sq command now shows a helpful usage
+  message listing all supported commands instead of silently opening the window.
+
+Version 2.23.4 (April 2026)
+- Bug fix: Party members who have Questie but not SocialQuest could sometimes
+  fail to appear in the Group window after /reload if their response was slow.
+
+Version 2.23.3 (April 2026)
+- Improvement: Force Resync now also refreshes data from party members who have
+  Questie but not SocialQuest.
+
+Version 2.23.2 (April 2026)
+- Bug fix: Party members with Questie (but not SocialQuest) sometimes failed
+  to appear in the Group window after /reload.
+
+Version 2.23.1 (April 2026)
+- Bug fix: Party members with Questie (but not SocialQuest) incorrectly showed
+  "(shared, no data)" in quest tooltips instead of their actual quest progress.
+
+Version 2.23.0 (April 2026)
+- Bug fix: Party members who have Questie but not SocialQuest were triggering
+  false "Quest Accepted" announcements for all their pre-existing quests
+  immediately upon joining a group. This could flood chat with announcements
+  for quests they already had.
+
+Version 2.22.1 (April 2026)
+- Improvement: Quest tooltips now include a chain info line between the title
+  and the status. When a quest is part of a chain, it shows the chain name and
+  your current step (e.g. "The Cipher of Damnation (Step 2 of 5)").
+
+Version 2.22.0 (April 2026)
+- Improvement: Quest tooltips redesigned. The quest level now appears as [N]
+  right after the quest title. Quest type badges (Dungeon, Raid, Group N+)
+  appear right-aligned on the same line. Location moved to its own line.
+
+Version 2.21.0 (April 2026)
+- Bug fix: The local player now correctly appears in the "Party progress:"
+  section of quest tooltips alongside other group members.
+- Bug fix: Quest tooltips were sometimes missing the description and NPC
+  information when the quest was in the player's active log.
+
+Version 2.19.2 (April 2026)
+- Bug fix: Clicking a SocialQuest quest link in chat now correctly shows
+  Questie's enhanced tooltip when Questie is installed.
+
+Version 2.19.1 (April 2026)
+- Bug fix: Quest links in SocialQuest chat announcements are now properly
+  clickable again.
+
+Version 2.19.0 (April 2026)
+- Bug fix: Clicking a SocialQuest chat link now routes through WoW's full
+  link-handling pipeline, ensuring Questie's tooltip hook fires correctly.
+
+Version 2.18.28 (April 2026)
+- Bug fix: The Shared tab was blank (showing no quests) due to a missing
+  variable declaration.
+
+Version 2.18.27 (April 2026)
+- Bug fix: The Shared tab now correctly groups quests on MoP Classic when two
+  party members have different variant quest IDs for the same quest and neither
+  has full quest data from a provider.
+
+Version 2.18.26 (April 2026)
+- Bug fix: MoP Classic alias quest IDs (where the same quest has different IDs
+  per race/class character type) are now handled the same as Retail. Quests
+  correctly merge in Party and Shared tabs, and tooltip progress matches even
+  when party members have different variant IDs.
+
+Version 2.18.25 (April 2026)
+- Bug fix: Quest link announcements in chat no longer cause UI taint or lockups
+  on Retail WoW.
+
+Version 2.18.24 (April 2026)
+- New Feature: Quest names in SocialQuest chat announcements are now clickable.
+  Hovering shows the quest tooltip with party member progress. Recipients who
+  do not have SocialQuest see the quest name as plain readable text.
+
+Version 2.18.23 (April 2026)
+- Bug fix: The Group window no longer opens off-screen if it was last positioned
+  near the edge of the display.
+
+Version 2.18.22 (April 2026)
+- Bug fix: The [?] Wowhead button in quest rows now opens the correct
+  version-specific Wowhead URL (Retail, MoP Classic, TBC, or Classic Era).
+
+Version 2.18.21 (April 2026)
+- Cleanup: Removed temporary diagnostic logging from a previous investigation.
+
+Version 2.18.20 (April 2026)
+- Cleanup: Removed temporary diagnostic logging from a previous investigation.
+
+Version 2.18.19 (April 2026)
+- Bug fix: "Objective Complete" system message suppression now works on Retail
+  (the message includes a trailing period that was preventing the match).
+
+Version 2.18.18 (April 2026)
+- Bug fix: "Objective Complete" suppression now works on Retail, where the game
+  defines the UI handler differently from Classic versions.
+
+Version 2.18.17 (April 2026)
+- Bug fix: "Objective Complete" suppression now handles the capitalization
+  variant used by TBC Classic ("Objective complete", lowercase c).
+
+Version 2.18.16 (April 2026)
+- Bug fix: WoW's built-in "Objective Complete" UI message was not being
+  suppressed when SocialQuest's own objective-complete banner was enabled,
+  causing a duplicate notification.
+
+Version 2.18.15 (April 2026)
+- Bug fix: "Everyone has completed" banner could fire too early on a repeat run
+  of a quest if the quest had been abandoned and then re-accepted between runs.
+
+Version 2.18.14 (April 2026)
+- Bug fix: "Everyone has completed" banner could fire instantly when the first
+  player finished, if other party members had completed the same quest in a
+  previous play session.
+
+Version 2.18.13 (April 2026)
+- Bug fix: "Everyone has completed" banner was sometimes invisible because it
+  was pushed off the display by two other banners firing at the same time.
+  The banner is now delayed 2 seconds so it always appears as the clear final
+  notification once the dust settles.
+
+Version 2.18.12 (April 2026)
+- Bug fix: "Everyone has completed" banner fired incorrectly when only the local
+  player had the quest and no party members were engaged with it.
+
+Version 2.18.11 (April 2026)
+- Bug fix: Kill and collect quests with all objectives filled were incorrectly
+  showing "Complete" text in the Party and Shared tabs instead of full progress
+  bars.
+
+Version 2.18.10 (April 2026)
+- Bug fix: "Everyone has completed" banner was sometimes suppressed when two
+  players finished the quest at nearly the same moment.
+
+Version 2.18.8 (April 2026)
+- Bug fix: "Everyone has completed" banner never fired in cross-realm parties on
+  Retail due to three separate issues with how player names are matched across
+  realm boundaries.
+
+Version 2.18.4 (April 2026)
+- Bug fix: "Everyone has completed" banner never fired on Retail when party
+  members were in a cross-realm group, due to how player name/realm pairs are
+  formatted differently in cross-realm parties.
+
 Version 2.18.3 (April 2026)
 - Bug fix: chain header label in Party and Shared tabs showed the current step's title
   instead of the chain root name, changing as players advanced through the chain. Both
