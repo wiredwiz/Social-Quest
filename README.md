@@ -51,6 +51,7 @@
   |---|---|
   | `/sq` | Toggle the group quest window open/closed |
   | `/sq config` | Open the settings panel |
+  | `/sq sync` | Request a fresh quest snapshot from all group members |
  
   ---
 
@@ -61,6 +62,19 @@
 
   This allows you to easily map a custom key to toggle the SocialQuest Quest Window.
   
+  ---
+
+  ## WoW Version Support
+
+  SocialQuest runs on all active WoW version families:
+
+  | Version | Interface |
+  |---|---|
+  | Classic Era | 1.14.x |
+  | The Burning Crusade (Anniversary) | 2.5.x |
+  | Mists of Pandaria Classic | 5.4.x |
+  | Retail (The War Within) | 11.x |
+
   ---
 
   ## Quest Chain Support Requirements:
@@ -120,7 +134,13 @@
   | *Objectives complete* | Member has finished all objectives but not yet turned in |
   | *Turned In* | Member has already turned the quest in this session |
   | *Needs it Shared* | Member lacks the quest and you have it — you may be able to share it |
+  | *Reason label (e.g. "level too low")* | Member cannot receive the quest right now; the reason is shown |
   | *(shared, no data)* | Member appears to have the quest (via group data) but has no SocialQuest |
+
+  When a quest is shareable and at least one party member needs it, a **[Share]** button
+  appears on the quest row. Clicking it shares the quest with the group. Members who are
+  ineligible (wrong level, wrong class/race, missing a prerequisite) show a specific reason
+  label so you know at a glance why they cannot receive it.
 
   > **Data restriction:** Objective counts for party members only appear if they have
   > SocialQuest installed. Members without SocialQuest show a "no data" note for quests that
@@ -134,6 +154,28 @@
 
   Each quest row has a **[?] button** that opens a small popup with the quest's Wowhead URL.
   Select all and copy (`Ctrl+A`, `Ctrl+C`) to grab the link.
+
+  ### Searching and Filtering
+
+  A **search bar** appears at the top of the window below the tab strip. Typing filters
+  all three tabs by quest or chain title (case-insensitive). The search text is shared
+  across tabs and preserved across loading screens.
+
+  The window also offers an **Advanced Filter Language** for structured queries. Type a
+  filter expression and press Enter to activate it. Active filters appear as dismissible
+  labels in the header. Examples:
+
+  | Expression | Effect |
+  |---|---|
+  | `level>=60` | Show only quests at or above level 60 |
+  | `zone=Elwynn\|Deadmines` | Show quests in Elwynn Forest or Deadmines |
+  | `status=incomplete` | Show quests with objectives not yet finished |
+  | `type=dungeon` | Show dungeon quests |
+  | `type=kill&gather` | Show quests with both kill and gather objectives |
+  | `shareable=yes` | Show quests you can currently share with a party member |
+  | `player=Thad` | (Party/Shared tabs) Show only quests involving Thad |
+
+  Click the **[?]** button in the search bar header for a full syntax reference panel.
 
   ---
 
@@ -405,22 +447,3 @@
 
   ---
 
-  ### Flight Path Discovery
-
-  SocialQuest detects when you unlock a new flight path and broadcasts it to your party so
-  everyone can see your progress in real time.
-
-  When a party member discovers a new flight path, a **green banner** fires on your screen:
-  `Thralldar unlocked flight path: Shattrath City`
-
-  The detection works by comparing the flight paths available on the taxi map each time you open
-  it against a saved list of your previously known nodes. Only genuinely new discoveries trigger
-  a broadcast — opening the taxi map at a familiar location does not spam the party.
-
-  Per-character flight path data persists across sessions, so the addon remembers what you have
-  already discovered even after logging out.
-
-  | Setting | Default | Description |
-  |---|---|---|
-  | Announce flight path discoveries | On | Broadcast to your party when you unlock a new flight path. |
-  | Show banner for party discoveries | On | Display a banner when a party member discovers a new flight path. |

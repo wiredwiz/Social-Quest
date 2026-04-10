@@ -52,15 +52,80 @@ local function formatTimeRemaining(timerSeconds, snapshotTime)
     return string.format("%d:%02d", math.floor(remaining / 60), math.floor(remaining % 60))
 end
 
+-- Returns true when a quest has no trackable numeric objectives:
+-- nil/empty objectives array, or all entries have numRequired == 0.
+local function isNoObjectiveQuest(objectives)
+    if not objectives or #objectives == 0 then return true end
+    for _, obj in ipairs(objectives) do
+        if obj.numRequired and obj.numRequired > 0 then return false end
+    end
+    return true
+end
+
+-- Retail-only: tracks which questID has its detail panel confirmed showing.
+-- Set via hooksecurefunc on QuestMapFrame_ShowQuestDetails (fires when AQL navigates).
+-- Cleared when the back button is pressed or the quest log closes.
+-- Needed because C_QuestLog.GetSelectedQuest() persists after Back is pressed,
+-- making it unreliable as a "detail is showing" signal on Retail.
+--
+-- Spurious-fire problem: Blizzard calls QuestMapFrame_ShowQuestDetails again
+-- immediately after QuestMapFrame_CloseQuestDetails as part of its own back-navigation
+-- bookkeeping. This re-sets _retailDetailQuestID in the same game frame, causing the
+-- toggle-close to fire incorrectly on the next SQ click. Fix: record the timestamp of
+-- the last CloseQuestDetails call and ignore any ShowQuestDetails that fires within
+-- 100ms of it. That window is far longer than the same-frame spurious Blizzard fire,
+-- and far shorter than any human-initiated re-click.
+local _retailDetailQuestID = nil
+local _retailDetailClosedAt = -1
+local _retailDetailHooksReady = false
+
+local function ensureRetailDetailHooks()
+    if _retailDetailHooksReady then return end
+    _retailDetailHooksReady = true
+
+    if QuestMapFrame_ShowQuestDetails then
+        hooksecurefunc("QuestMapFrame_ShowQuestDetails", function(questID)
+            if GetTime() - _retailDetailClosedAt < 0.1 then return end
+            _retailDetailQuestID = questID
+        end)
+    end
+
+    if QuestMapFrame_CloseQuestDetails then
+        hooksecurefunc("QuestMapFrame_CloseQuestDetails", function()
+            _retailDetailQuestID = nil
+            _retailDetailClosedAt = GetTime()
+        end)
+    end
+
+    if WorldMapFrame then
+        WorldMapFrame:HookScript("OnHide", function()
+            _retailDetailQuestID = nil
+            _retailDetailClosedAt = -1
+        end)
+    end
+end
+
 local function openQuestLogToQuest(questID)
     local AQL = SocialQuest.AQL
     if not AQL then return end
-    -- Toggle: if the log is shown, the quest is visible (zone not collapsed), and already
-    -- selected, close it. GetQuestLogIndex returns nil when the quest's zone is collapsed,
-    -- which causes the condition to fail and fall through to the expand+navigate path.
-    if AQL:IsQuestLogShown() and AQL:GetQuestLogIndex(questID) and AQL:GetSelectedQuestId() == questID then
-        AQL:HideQuestLog()
-        return
+    -- Toggle: if the log is open and this quest's detail panel is confirmed showing, close it.
+    -- On Retail we use hook-based tracking (_retailDetailQuestID) because
+    -- C_QuestLog.GetSelectedQuest() persists the last-selected questID even after the user
+    -- presses Back to return to the quest list — using it as the toggle signal would close
+    -- the log when it should navigate to the detail panel instead.
+    -- On TBC/Classic, GetSelectedQuestLogEntryId() accurately reflects the current selection.
+    if SQWowAPI.IS_RETAIL then
+        ensureRetailDetailHooks()
+        if AQL:IsQuestLogShown() and _retailDetailQuestID == questID then
+            AQL:HideQuestLog()
+            _retailDetailQuestID = nil
+            return
+        end
+    else
+        if AQL:IsQuestLogShown() and AQL:GetSelectedQuestLogEntryId() == questID then
+            AQL:HideQuestLog()
+            return
+        end
     end
     -- Save collapsed state, expand all to make the quest visible, navigate, restore.
     local zones = AQL:GetQuestLogZones()
@@ -71,8 +136,9 @@ local function openQuestLogToQuest(questID)
     -- live log, guaranteed to have a zone. Keep that zone expanded.
     local targetZone
     if logIndex then
-        AQL:SetQuestLogSelection(logIndex)
-        targetZone = AQL:GetQuest(questID).zone
+        AQL:OpenQuestLogById(questID)
+        local questInfo = AQL:GetQuest(questID)
+        targetZone = questInfo and questInfo.zone
     end
     -- Restore collapsed state for all other zones. If logIndex was nil,
     -- targetZone is nil and everything restores to its original state.
@@ -160,14 +226,19 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     end)
     x = x + 24
 
-    -- Determine badge text. "Complete" trumps "Group".
-    -- (Complete) is shown on Mine tab only (callbacks.onTitleShiftClick is present
-    -- only there). On Party/Shared, completion is shown in the player row instead.
+    -- Determine badge text. Priority: (Complete) > (Group) > (In Progress).
+    -- (Complete) and (In Progress) are Mine tab only (callbacks.onTitleShiftClick
+    -- is present only there). (Group) shows on all tabs.
+    -- On Party/Shared, per-player status is shown in the player rows instead.
     local badgeText = ""
     if questEntry.isComplete and callbacks and callbacks.onTitleShiftClick then
         badgeText = SocialQuestColors.GetUIColor("completed") .. L["(Complete)"] .. C.reset
     elseif questEntry.suggestedGroup and questEntry.suggestedGroup > 0 then
         badgeText = C.chain .. L["(Group)"] .. C.reset
+    elseif not questEntry.isComplete
+        and callbacks and callbacks.onTitleShiftClick
+        and isNoObjectiveQuest(questEntry.objectives) then
+        badgeText = C.unknown .. L["(In Progress)"] .. C.reset
     end
     local badgeWidth = badgeText ~= "" and 80 or 0
     -- Share button width (0 when no onShare callback).
@@ -180,10 +251,14 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
 
     -- Build title string: title [Step X of Y] [timer].
     local titleText = questEntry.title or "Quest"
-    local ci = questEntry.chainInfo
-    if ci and ci.knownStatus == SocialQuest.AQL.ChainStatus.Known then
-        titleText = titleText
-            .. string.format(L[" (Step %s of %s)"], tostring(ci.step or "?"), tostring(ci.length or "?"))
+    local chainResult = questEntry.chainInfo
+    if chainResult and chainResult.knownStatus == SocialQuest.AQL.ChainStatus.Known then
+        local engaged = SocialQuestTabUtils.BuildEngagedSet(nil)
+        local ci = SocialQuestTabUtils.SelectChain(chainResult, engaged)
+        if ci then
+            titleText = titleText
+                .. string.format(L[" (Step %s of %s)"], tostring(ci.step or "?"), tostring(ci.length or "?"))
+        end
     end
     local timeStr = formatTimeRemaining(questEntry.timerSeconds, questEntry.snapshotTime)
     if timeStr then
@@ -226,8 +301,9 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     if badgeText ~= "" then
         local badge = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         badge:SetPoint("TOPRIGHT", contentFrame, "TOPRIGHT", -8, -y)
-        badge:SetWidth(badgeWidth)
+        badge:SetSize(badgeWidth, ROW_H)
         badge:SetJustifyH("RIGHT")
+        badge:SetJustifyV("MIDDLE")
         badge:SetText(badgeText)
     end
 
@@ -268,39 +344,58 @@ function RowFactory.AddObjectiveRow(contentFrame, y, objectiveEntry, indent)
     return y + fs:GetStringHeight() + 2
 end
 
+-- Two-column status row: player name in left column, status text left-aligned at
+-- bar start (x + nameColumnWidth + 4). Falls back to a single left-aligned string
+-- when nameColumnWidth is nil (e.g. Mine tab peer rows called without a name column).
+-- color: a WoW color escape sequence string (e.g. C.unknown or GetUIColor("completed")).
+local function renderStatusRow(contentFrame, y, x, nameColumnWidth, displayName, statusText, color)
+    local C = SocialQuestColors
+    if nameColumnWidth then
+        local barX = x + nameColumnWidth + 4
+        local nameFs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        nameFs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
+        nameFs:SetSize(nameColumnWidth, ROW_H)
+        nameFs:SetJustifyH("LEFT")
+        nameFs:SetJustifyV("MIDDLE")
+        nameFs:SetText(C.white .. displayName .. C.reset)
+        local statusFs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        statusFs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", barX, -y)
+        statusFs:SetSize(CONTENT_WIDTH - barX - 4, ROW_H)
+        statusFs:SetJustifyH("LEFT")
+        statusFs:SetJustifyV("MIDDLE")
+        statusFs:SetText(color .. statusText .. C.reset)
+    else
+        local fs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
+        fs:SetWidth(CONTENT_WIDTH - x - 4)
+        fs:SetJustifyH("LEFT")
+        fs:SetText(C.white .. displayName .. C.reset .. " " .. color .. statusText .. C.reset)
+    end
+    return y + ROW_H + 2
+end
+
 -- Player row. Display priority (first matching wins):
---   1. playerEntry.hasCompleted → "[Name] FINISHED" (green)
---   2. playerEntry.needsShare   → "[Name] Needs it Shared" (grey)
---   2b. playerEntry.ineligReason (needsShare=false, ineligReason~=nil) → "[Name] [reason]" (muted amber)
---   3. hasSocialQuest==false and no objectives → "[Name] (no data)" (grey)
---   4. otherwise → "[Name]" label (+ "Step X of Y" when step/chainLength set),
---                  followed by objective rows.
--- playerEntry fields: name, isMe, hasSocialQuest, hasCompleted, needsShare,
---                     ineligReason (optional: {code, questID?} — set when ineligible),
---                     isComplete (optional), objectives, step (optional), chainLength (optional).
--- nameColumnWidth (optional): pixel width of the name column. When provided,
--- in-progress objectives render as two-column bar rows (name left, bar right).
--- When nil, falls back to plain single-column text layout.
+--   1. playerEntry.hasCompleted       → two-column: name | "Finished" (green)
+--   2. playerEntry.isComplete         → two-column: name | "Complete" (green)
+--   3. playerEntry.needsShare         → "[Name] Needs it Shared" (grey)
+--   3b. playerEntry.ineligReason      → "[Name] [reason]" (muted amber)
+--   4. hasSocialQuest + isNoObjective → two-column: name | "In Progress" (dimmed)
+--   5. !hasSocialQuest + no objectives → "[Name] (no data)" (grey)
+--   6. otherwise                      → name label + objective bar rows
+-- renderStatusRow provides two-column layout when nameColumnWidth is set;
+-- falls back to single left-aligned string when nameColumnWidth is nil.
 function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent, nameColumnWidth)
     local C    = SocialQuestColors
     local x    = indent or 0
     local displayName = RowFactory.GetDisplayName(playerEntry)
 
     if playerEntry.hasCompleted then
-        local fs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
-        fs:SetWidth(CONTENT_WIDTH - x - 4)
-        fs:SetJustifyH("LEFT")
-        fs:SetText(SocialQuestColors.GetUIColor("completed") .. string.format(L["%s FINISHED"], displayName) .. C.reset)
-        return y + ROW_H + 2
+        return renderStatusRow(contentFrame, y, x, nameColumnWidth, displayName,
+            L["Finished"], SocialQuestColors.GetUIColor("completed"))
 
-    elseif playerEntry.isComplete then
-        local fs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
-        fs:SetWidth(CONTENT_WIDTH - x - 4)
-        fs:SetJustifyH("LEFT")
-        fs:SetText(C.white .. displayName .. C.reset .. " " .. SocialQuestColors.GetUIColor("completed") .. L["Complete"] .. C.reset)
-        return y + ROW_H + 2
+    elseif playerEntry.isComplete and isNoObjectiveQuest(playerEntry.objectives) then
+        return renderStatusRow(contentFrame, y, x, nameColumnWidth, displayName,
+            L["Complete"], SocialQuestColors.GetUIColor("completed"))
 
     elseif playerEntry.needsShare then
         local fs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -327,6 +422,11 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent, nameColum
         fs:SetJustifyH("LEFT")
         fs:SetText(amber .. displayName .. "|r " .. amber .. "[" .. reasonText .. "]|r")
         return y + ROW_H + 2
+
+    elseif playerEntry.hasSocialQuest and isNoObjectiveQuest(playerEntry.objectives) then
+        -- Quest has no numeric objectives and is not yet complete: nothing to track.
+        return renderStatusRow(contentFrame, y, x, nameColumnWidth, displayName,
+            L["In Progress"], C.unknown)
 
     elseif not playerEntry.hasSocialQuest
         and (not playerEntry.objectives or #playerEntry.objectives == 0) then

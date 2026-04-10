@@ -5,8 +5,21 @@
 SocialQuestTabUtils = {}
 
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
+local SQWowAPI = SocialQuestWowAPI
 
-local WOWHEAD_QUEST_BASE = "https://www.wowhead.com/tbc/quest="
+-- Version-aware Wowhead quest URL base. Computed once at load time since the
+-- WoW version never changes during a session.
+local WOWHEAD_QUEST_BASE
+if SQWowAPI.IS_RETAIL then
+    WOWHEAD_QUEST_BASE = "https://www.wowhead.com/quest="
+elseif SQWowAPI.IS_MOP then
+    WOWHEAD_QUEST_BASE = "https://www.wowhead.com/mop-classic/quest="
+elseif SQWowAPI.IS_TBC then
+    WOWHEAD_QUEST_BASE = "https://www.wowhead.com/tbc/quest="
+else
+    -- Classic Era fallback
+    WOWHEAD_QUEST_BASE = "https://www.wowhead.com/classic/quest="
+end
 
 -- Builds the Wowhead quest URL from a questID.
 -- Single owner of the URL format so it never gets out of sync with stored data.
@@ -18,7 +31,16 @@ end
 -- Falls back from active-quest cache → AQL:GetQuestInfo (which includes provider lookup)
 -- → "Other Quests". The provider fallback resolves zone for remote-only quests (quests
 -- a party member has that the local player does not).
-function SocialQuestTabUtils.GetZoneForQuestID(questID)
+-- classID is optional. When provided (remote player's quest entry), it is used
+-- to resolve the localized class name directly, bypassing AQL. This covers the
+-- case where AQL's provider lookup returns a geographic zone instead of the
+-- class-name zone header used by WoW's quest log.
+function SocialQuestTabUtils.GetZoneForQuestID(questID, classID)
+    if classID then
+        local token = SQWowAPI.CLASS_TOKEN_BY_ID[classID]
+        local name  = token and LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[token]
+        if name then return name end
+    end
     local AQL = SocialQuest.AQL
     -- Fast path: active quest cache.
     local info = AQL:GetQuest(questID)
@@ -29,18 +51,43 @@ function SocialQuestTabUtils.GetZoneForQuestID(questID)
     return L["Other Quests"]
 end
 
--- Returns chainInfo for any questID; queries the provider for remote quests
--- not present in the local quest log.
-function SocialQuestTabUtils.GetChainInfoForQuestID(questID)
-    local AQL = SocialQuest.AQL
-    local ci  = AQL:GetChainInfo(questID)
-    if ci.knownStatus == AQL.ChainStatus.Known then return ci end
-    local provider = AQL.provider
-    if provider then
-        local ok, result = pcall(provider.GetChainInfo, provider, questID)
-        if ok and result and result.knownStatus == AQL.ChainStatus.Known then return result end
+-- Picks the best chain entry from a GetChainInfo result for the given engaged set.
+-- Compatible with both AQL 3.0+ (wrapper with chains array) and AQL 2.x (bare ChainInfo).
+-- Returns nil when chainResult is nil or knownStatus != Known.
+function SocialQuestTabUtils.SelectChain(chainResult, engaged)
+    if not chainResult or chainResult.knownStatus ~= SocialQuest.AQL.ChainStatus.Known then
+        return nil
     end
-    return ci
+    -- AQL 2.x returned a bare ChainInfo directly (no chains array, no SelectBestChain).
+    if not chainResult.chains then
+        return chainResult
+    end
+    -- AQL 3.0+: wrapper; SelectBestChain picks the best entry for this player's engaged set.
+    return SocialQuest.AQL:SelectBestChain(chainResult, engaged)
+end
+
+-- Builds an engaged quest set (active + completed) for a named player,
+-- or the local player when playerName is nil.
+-- Returns {} (empty, safe to iterate) when the player is not in PlayerQuests.
+function SocialQuestTabUtils.BuildEngagedSet(playerName)
+    local AQL = SocialQuest.AQL
+    if not playerName then
+        -- _GetCurrentPlayerEngagedQuests is a private method present in some AQL builds.
+        -- Fall back to public API for AQL 2.x/3.0 compatibility.
+        if AQL._GetCurrentPlayerEngagedQuests then
+            return AQL:_GetCurrentPlayerEngagedQuests()
+        end
+        local engaged = {}
+        for qid in pairs(AQL:GetAllQuests()) do engaged[qid] = true end
+        for qid in pairs(AQL:GetCompletedQuests()) do engaged[qid] = true end
+        return engaged
+    end
+    local pdata = SocialQuestGroupData.PlayerQuests[playerName]
+    if not pdata then return {} end
+    local engaged = {}
+    for qid in pairs(pdata.quests or {}) do engaged[qid] = true end
+    for qid in pairs(pdata.completedQuests or {}) do engaged[qid] = true end
+    return engaged
 end
 
 -- Builds objective rows for the local player from an AQL questInfo snapshot.
@@ -74,14 +121,29 @@ function SocialQuestTabUtils.BuildRemoteObjectives(pquest, localInfo)
         local localObj = localObjs[i]
         local text
         if localObj and localObj.text and localObj.text ~= "" then
-            -- WoW objective text is "Description: X/Y". Strip the local player's
-            -- embedded count and substitute the remote player's values so the bar
-            -- overlay shows "6/8" instead of "0/8" when the local player is at 0.
-            local baseName = localObj.text:match("^(.-)%s*:%s*%d+/%d+%s*$")
-            if baseName then
-                text = baseName .. ": " .. tostring(obj.numFulfilled or 0) .. "/" .. tostring(obj.numRequired or 1)
+            -- WoW objective text embeds the local player's count. Strip it and
+            -- substitute the remote player's values. Two formats are in use:
+            --   count-last:  "Description: X/Y"  (TBC, some Retail quests)
+            --   count-first: "X/Y Description"   (Retail C_QuestLog.GetQuestObjectives)
+            -- If neither pattern matches but the text contains a count, fall back to
+            -- count-only rather than exposing the local player's stale number.
+            -- Strip the local player's embedded count and substitute the remote
+            -- player's value, preserving the original format so all rows look
+            -- identical regardless of whether the player is local or remote.
+            -- count-last:  "Description: X/Y"  → "Description: N/M"
+            -- count-first: "X/Y Description"   → "N/M Description"
+            local countLast  = localObj.text:match("^(.-)%s*:%s*%d+/%d+%s*$")
+            local countFirst = localObj.text:match("^%d+/%d+%s+(.+)$")
+            if countLast and countLast ~= "" then
+                text = countLast .. ": " .. tostring(obj.numFulfilled or 0) .. "/" .. tostring(obj.numRequired or 1)
+            elseif countFirst and countFirst ~= "" then
+                text = tostring(obj.numFulfilled or 0) .. "/" .. tostring(obj.numRequired or 1) .. " " .. countFirst
+            elseif localObj.text:find("%d+/%d+") then
+                -- Has embedded count but neither format matched; count-only is safer
+                -- than showing the local player's stale count for the remote player.
+                text = tostring(obj.numFulfilled or 0) .. "/" .. tostring(obj.numRequired or 1)
             else
-                text = localObj.text  -- event/NPC objectives with no count; use as-is
+                text = localObj.text  -- event/NPC/talk objective; no count to substitute
             end
         else
             text = tostring(obj.numFulfilled or 0) .. "/" .. tostring(obj.numRequired or 1)
@@ -174,7 +236,7 @@ function SocialQuestTabUtils.MatchesTypeFilter(entry, descriptor)
 
     -- group/timed/solo/chain: read from entry fields directly (no AQL call needed).
     -- suggestedGroup and timerSeconds are denormalized onto every entry by each tab's
-    -- BuildTree; chainInfo is populated from GetChainInfoForQuestID by each tab.
+    -- BuildTree; chainInfo is populated from AQL:GetChainInfo by each tab.
     if value == "group" then
         matched = (entry.suggestedGroup or 0) >= 2
     elseif value == "solo" then

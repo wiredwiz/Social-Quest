@@ -83,7 +83,7 @@ color and the text color should be chosen to contrast well so that it stays read
 
 ---
 
-### 6. One-click quest share button
+### 6. ~~One-click quest share button~~ (*DONE*)
 
 **The gap:** The "Needs it Shared" row tells you a party member needs the quest, but you must manually open the quest log, find the quest, and right-click to share — 4-6 clicks across two windows.
 
@@ -173,7 +173,7 @@ provided a little "x" button inside on the right edge that when clicked, would c
 
 ---
 
-### 14. Quest log hover tooltip enhancement
+### 14. ~~Quest log hover tooltip enhancement~~ (*DONE*)
 
 **The gap:** Hovering a quest link in chat already shows group progress via `ItemRefTooltip` (the existing `Tooltips.lua` hook). But hovering a quest entry directly in the quest log does nothing — the player must open the SQ window and find the quest there to see who has it and where they stand.
 
@@ -183,7 +183,7 @@ provided a little "x" button inside on the right edge that when clicked, would c
 
 ---
 
-### 15. `/sq sync` slash command
+### 15. ~~`/sq sync` slash command~~ (*DONE*)
 
 **The gap:** The Force Resync button lives inside `/sq config` → Resync tab. A player who notices stale data mid-session has to open the config panel, navigate to the right tab, and click the button — several steps for a one-shot operation that should be instant.
 
@@ -209,7 +209,7 @@ provided a little "x" button inside on the right edge that when clicked, would c
 
 ---
 
-### 18. Advanced filter language for the search bar
+### 18. ~~Advanced filter language for the search bar~~ (*DONE*)
 
 **The gap:** The search bar filters only by title substring. Players who want to see "all group quests in Hellfire Peninsula" or "all quests between level 60 and 65 that Bob needs" must combine the zone auto-filter, the Party tab, and their own memory. There is no way to compound multiple criteria or filter on any field other than title without the unbuilt flyout settings panel (#11).
 
@@ -341,6 +341,41 @@ The panel is a standard `BasicFrameTemplate` frame registered in `UISpecialFrame
 
 ---
 
+### 22. Zone grouping display toggles
+
+**The gap:** The quest window always groups quests by zone using WoW's default behavior — class quests appear under their class zone header, and the zone is always determined by the quest giver's location. Players who want to organize quests differently — by turn-in location, or by where their objectives are — have no control over these groupings.
+
+**The idea:** A set of zone-grouping controls in the flyout settings panel (#11) or `/sq config` → Social Quest Window:
+
+1. **Show class quests in class zone grouping** (toggle, default ON): Mirrors WoW's default behavior. When toggled off, class quests are classified under their actual geographic zone like any other quest.
+2. **Quest zone source** (radio, two options): *(a)* Use quest giver's location *(default)* — the zone where the quest is picked up determines grouping; *(b)* Use quest turn-in location — the zone of the turn-in NPC determines grouping.
+3. **Show quest in every zone containing an objective** (toggle, default OFF): When enabled, a quest also appears under every zone header where one of its kill/collect/interact objectives is located, potentially causing a quest to display in multiple zone sections simultaneously.
+4. **Suppress in primary zone while objectives are incomplete** (toggle, default OFF, indented, enabled only when #3 is ON): When enabled, the quest is hidden from its primary zone grouping while any objectives remain incomplete — surfacing it only in the objective zones. Once all objectives are complete, it reappears in the primary zone for turn-in awareness.
+
+**Implementation notes:** All four settings stored in AceDB profile under `db.window.zoneGrouping.*`. The quest zone source and class quest logic are applied during the zone resolution step in each tab's `BuildTree` (the lookup that currently calls `AQL:GetQuestInfo(questID).zone`). Objective zone data requires Questie or Grail to provide per-objective map coordinates — verify availability at implementation time; if unavailable, toggles #3 and #4 are visible but greyed out with a tooltip indicating the required addon. No protocol changes.
+
+---
+
+### 23. Quest difficulty / time-sink badging
+
+**The gap:** All quests in the window look identical regardless of how time-intensive they are. A kill quest with mobs next door is indistinguishable from a multi-step quest requiring travel across two zones, leaving players to rely on memory or prior experience when deciding which quests to prioritize.
+
+**The idea:** A config toggle (default OFF) that shows a time-sink badge alongside each quest title in the SQ window. When enabled, each quest with sufficient data receives one of a small set of tier labels — for example: Fast, Normal, Long, Heavy Travel — rendered as a small colored tag or symbol to the left of the quest title. Players can scan at a glance to find quick wins or identify the quests that will eat up a session.
+
+**Implementation notes:** Difficulty scoring is synthesized from available Questie/Grail data: estimated travel distance to objectives (from map coordinates), total objective counts, required kill quantities, and whether the turn-in zone differs from the quest giver zone. The exact tier thresholds and weighting formula should be tuned at implementation time based on what fields Questie/Grail expose. Store the toggle as `db.window.showDifficultyBadge` (default `false`). Badge rendering added to `RowFactory.AddQuestRow` alongside the level bracket (#21). Quests without sufficient objective location data show no badge — the feature degrades gracefully. No protocol changes.
+
+---
+
+### 24. Group size recommendation in SQ quest data
+
+**The gap:** SQ transmits quest state (accepted, progress, completed) but not the quest's recommended group size. Players have no way to see "this quest recommends 3 players" directly in the SQ window or tooltips — they must look it up separately.
+
+**The idea:** Transmit the quest's recommended group size as an additional field in SQ quest data. Each SQ player resolves the group size locally from AQL/Questie data and includes it when broadcasting `SQ_INIT` and `SQ_UPDATE`. On the receiving end, the group size is surfaced in the quest window title row and in quest tooltips — for example, `[Wanted: Arazzius the Cruel] (3)` or a dedicated "Group: 3" line in the tooltip block — letting all party members see at a glance which quests are designed for a group.
+
+**Implementation notes:** Add `groupSize` (integer or nil) to the `SQ_INIT` and `SQ_UPDATE` payloads. Resolve from `AQL:GetQuestInfo(questID).groupSize` (or the equivalent Questie/Grail field — verify field name at implementation time). Store as `entry.groupSize` in `PlayerQuests`. Display in `RowFactory.AddQuestRow` when `db.window.showGroupSize` is true (default `false`), appending `(N)` or a `[Group: N]` badge after the title. Also append in the tooltip group progress block in `Tooltips.lua`. If `groupSize` is nil, display nothing. Protocol change: `groupSize` field added to `SQ_INIT` and `SQ_UPDATE` payloads; backward-compatible (nil on older clients, displayed normally on newer clients).
+
+---
+
 ## Summary
 
 | # | Feature | Complexity | Impact | Protocol change? |
@@ -350,7 +385,7 @@ The panel is a standard `BasicFrameTemplate` frame registered in `UISpecialFrame
 | 3 | Chain "what's next" notification | Low | High | No |
 | 4 | Zone quest summary | Medium | High | No |
 | 5 | ~~Dungeon quest auto-filter~~ | — | — | *DONE* |
-| 6 | One-click share button | Low | High | No |
+| 6 | ~~One-click share button~~ | — | — | *DONE* |
 | 7 | Session stats | Low | Medium | No |
 | 8 | Objective countdown mode | Very low | Medium | No |
 | 9 | Party zone divergence | Medium | High | Yes (SQ_ZONE) |
@@ -358,17 +393,20 @@ The panel is a standard `BasicFrameTemplate` frame registered in `UISpecialFrame
 | 11 | Flyout settings panel | Medium | Medium | No |
 | 12 | ~~Search/filter bar~~ | — | — | *DONE* |
 | 13 | Do-Not-Disturb toggle | Very low | Medium | No |
-| 14 | Quest log hover tooltip | Very low | Medium | No |
-| 15 | `/sq sync` slash command | Very low | Medium | No |
+| 14 | ~~Quest log hover tooltip~~ | — | — | *DONE* |
+| 15 | ~~`/sq sync` slash command~~ | — | — | *DONE* |
 | 16 | Quest failure reason | Very low | Medium | No |
 | 17 | Font size setting | Low | Medium | No |
-| 18 | Advanced filter language | Medium-High | High | No |
+| 18 | ~~Advanced filter language~~ | — | — | *DONE* |
 | 19 | Zone quest count in headers | Very low | Low | No |
 | 20 | Friend online/offline banners | Low | Medium | No |
 | 21 | Quest suggested level in window | Very low | Low | No |
+| 22 | Zone grouping display toggles | Medium | High | No |
+| 23 | Quest difficulty / time-sink badging | Medium | Medium | No |
+| 24 | Group size recommendation | Low | Medium | Yes (SQ_INIT, SQ_UPDATE) |
 
-**Quick wins (start here):** #2 (almost-done highlight), #6 (one-click share), #3 (chain what's-next notification), #8 (objective countdown), #13 (do-not-disturb), #14 (quest log tooltip), #15 (/sq sync), #16 (failure reason), #17 (font size), #19 (zone quest count), #21 (quest level display) — all low/very-low complexity, no protocol changes.
+**Quick wins (start here):** #2 (almost-done highlight), #3 (chain what's-next notification), #8 (objective countdown), #13 (do-not-disturb), #16 (failure reason), #17 (font size), #19 (zone quest count), #21 (quest level display), #24 (group size recommendation) — all low/very-low complexity.
 
-**High-value medium lifts:** #9 (zone divergence), #11 (flyout settings), #18 (advanced filter language — includes label factory, error UX, and help window).
+**High-value medium lifts:** #9 (zone divergence), #11 (flyout settings), #18 (advanced filter language — includes label factory, error UX, and help window), #22 (zone grouping toggles), #23 (time-sink badging), #24 (group size recommendation).
 
 **Biggest feature:** #4 (zone quest summary) — most planning effort required but highest pre-session value for organized groups.

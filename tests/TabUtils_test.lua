@@ -22,11 +22,26 @@ LibStub = setmetatable({}, {
 local AQL = {
     ChainStatus = { Known = "known", Unknown = "unknown" },
     _questInfoMap = {},
+    _questMap     = {},
     GetQuestInfo  = function(self, questID) return self._questInfoMap[questID] end,
+    GetQuest      = function(self, questID) return self._questMap[questID] end,
+    _GetCurrentPlayerEngagedQuests = function(self)
+        return { [100] = true }
+    end,
+    SelectBestChain = function(self, chainResult, engaged)
+        return chainResult.chains and chainResult.chains[1] or nil
+    end,
 }
 
 SocialQuest = { AQL = AQL }
 SocialQuestGroupData = { PlayerQuests = {} }
+SocialQuestWowAPI = {
+    IS_TBC = true, IS_RETAIL = false, IS_MOP = false, IS_CLASSIC_ERA = false,
+    CLASS_TOKEN_BY_ID = {
+        [1]  = "WARRIOR",
+        [5]  = "PRIEST",
+    },
+}
 
 dofile("UI/TabUtils.lua")
 
@@ -268,6 +283,143 @@ assert_false("type compound_and group only",
     T.MatchesTypeFilter({ suggestedGroup=5, timerSeconds=0   }, typeAnd))
 assert_false("type compound_and timed only",
     T.MatchesTypeFilter({ suggestedGroup=1, timerSeconds=120 }, typeAnd))
+
+-- ── SelectChain ───────────────────────────────────────────────────────────────
+
+-- nil chainResult → nil
+assert_eq("SelectChain nil result", T.SelectChain(nil, {}), nil)
+
+-- knownStatus != Known → nil
+assert_eq("SelectChain unknown status",
+    T.SelectChain({ knownStatus = AQL.ChainStatus.Unknown }, {}), nil)
+
+-- AQL 2.x bare ChainInfo (no chains field): returned as-is when knownStatus == Known
+local bareCI = { knownStatus = AQL.ChainStatus.Known, chainID = 10, step = 2, length = 5 }
+assert_eq("SelectChain bare ChainInfo is returned directly", T.SelectChain(bareCI, {}), bareCI)
+
+-- AQL 3.0+ wrapper with chains array: delegates to AQL:SelectBestChain → chains[1]
+local wrappedCI = {
+    knownStatus = AQL.ChainStatus.Known,
+    chains = { { chainID = 20, step = 1, length = 3 } },
+}
+local scResult = T.SelectChain(wrappedCI, { [100] = true })
+assert_eq("SelectChain wrapper chainID", scResult and scResult.chainID, 20)
+assert_eq("SelectChain wrapper step",    scResult and scResult.step,    1)
+
+-- wrapper with empty chains → SelectBestChain returns nil (chains[1] is nil)
+local emptyWrapper = { knownStatus = AQL.ChainStatus.Known, chains = {} }
+assert_eq("SelectChain wrapper empty chains → nil", T.SelectChain(emptyWrapper, {}), nil)
+
+-- ── BuildEngagedSet ───────────────────────────────────────────────────────────
+
+-- nil playerName → delegates to AQL:_GetCurrentPlayerEngagedQuests → { [100]=true }
+local localSet = T.BuildEngagedSet(nil)
+assert_true("BuildEngagedSet nil playerName returns local set (quest 100)", localSet[100] == true)
+
+-- playerName not in PlayerQuests → empty set (not nil, safe to iterate)
+SocialQuestGroupData.PlayerQuests = {}
+local missingSet = T.BuildEngagedSet("NoSuchPlayer")
+local missingCount = 0
+for _ in pairs(missingSet) do missingCount = missingCount + 1 end
+assert_eq("BuildEngagedSet missing player returns empty set", missingCount, 0)
+
+-- player with both quests and completedQuests → union of both
+SocialQuestGroupData.PlayerQuests["Alice"] = {
+    quests          = { [201] = { questID = 201 }, [202] = { questID = 202 } },
+    completedQuests = { [300] = true },
+}
+local aliceSet = T.BuildEngagedSet("Alice")
+assert_true("BuildEngagedSet Alice active quest 201",    aliceSet[201] == true)
+assert_true("BuildEngagedSet Alice active quest 202",    aliceSet[202] == true)
+assert_true("BuildEngagedSet Alice completed quest 300", aliceSet[300] == true)
+assert_eq  ("BuildEngagedSet Alice no stray quest 999",  aliceSet[999], nil)
+
+-- player with only completedQuests (quests field is nil)
+SocialQuestGroupData.PlayerQuests["Bob"] = {
+    quests          = nil,
+    completedQuests = { [400] = true },
+}
+local bobSet = T.BuildEngagedSet("Bob")
+assert_true("BuildEngagedSet Bob completed quest 400", bobSet[400] == true)
+local bobCount = 0
+for _ in pairs(bobSet) do bobCount = bobCount + 1 end
+assert_eq("BuildEngagedSet Bob exactly one entry", bobCount, 1)
+
+-- player with both tables empty → empty set
+SocialQuestGroupData.PlayerQuests["Carol"] = {
+    quests          = {},
+    completedQuests = {},
+}
+local carolSet = T.BuildEngagedSet("Carol")
+local carolCount = 0
+for _ in pairs(carolSet) do carolCount = carolCount + 1 end
+assert_eq("BuildEngagedSet Carol empty tables → empty set", carolCount, 0)
+
+-- reset shared state so other tests in future runs start clean
+SocialQuestGroupData.PlayerQuests = {}
+
+-- ── GetZoneForQuestID ─────────────────────────────────────────────────────────
+
+-- Reset AQL maps and set up LOCALIZED_CLASS_NAMES_MALE global for tests.
+AQL._questMap     = {}
+AQL._questInfoMap = {}
+LOCALIZED_CLASS_NAMES_MALE = { WARRIOR = "Warrior", PRIEST = "Priest" }
+
+-- classID=1 (Warrior) → "Warrior"
+assert_eq("GetZone classID=1 returns Warrior",
+    T.GetZoneForQuestID(999, 1), "Warrior")
+
+-- classID=5 (Priest) → "Priest"
+assert_eq("GetZone classID=5 returns Priest",
+    T.GetZoneForQuestID(999, 5), "Priest")
+
+-- classID nil, AQL:GetQuest has zone → returns that zone
+AQL._questMap = { [42] = { zone = "Elwynn Forest" } }
+assert_eq("GetZone nil classID uses AQL GetQuest zone",
+    T.GetZoneForQuestID(42, nil), "Elwynn Forest")
+AQL._questMap = {}
+
+-- classID nil, GetQuest nil, AQL:GetQuestInfo has zone → returns that zone
+AQL._questInfoMap = { [55] = { zone = "Stormwind City" } }
+assert_eq("GetZone nil classID falls through to AQL GetQuestInfo",
+    T.GetZoneForQuestID(55, nil), "Stormwind City")
+AQL._questInfoMap = {}
+
+-- classID nil, no AQL data → "Other Quests"
+assert_eq("GetZone nil classID no AQL data returns Other Quests",
+    T.GetZoneForQuestID(999, nil), "Other Quests")
+
+-- classID provided but LOCALIZED_CLASS_NAMES_MALE is nil → falls back to AQL
+LOCALIZED_CLASS_NAMES_MALE = nil
+AQL._questMap = { [100] = { zone = "Dun Morogh" } }
+assert_eq("GetZone classID with nil LOCALIZED table falls back to AQL",
+    T.GetZoneForQuestID(100, 1), "Dun Morogh")
+AQL._questMap = {}
+LOCALIZED_CLASS_NAMES_MALE = { WARRIOR = "Warrior", PRIEST = "Priest" }
+
+-- classID for unknown class (not in CLASS_TOKEN_BY_ID) → falls back to AQL
+AQL._questMap = { [77] = { zone = "Feralas" } }
+assert_eq("GetZone unknown classID falls back to AQL",
+    T.GetZoneForQuestID(77, 99), "Feralas")
+AQL._questMap = {}
+
+-- classID valid but token absent from LOCALIZED_CLASS_NAMES_MALE
+-- (e.g. DEATHKNIGHT on a TBC client whose locale table has no DEATHKNIGHT entry)
+-- CLASS_TOKEN_BY_ID has [6]="DEATHKNIGHT" but our test stub does not include
+-- LOCALIZED_CLASS_NAMES_MALE["DEATHKNIGHT"], so name resolves nil → falls back to AQL.
+-- Note: SocialQuestWowAPI.CLASS_TOKEN_BY_ID stub only has [1] and [5], so use classID=6
+-- which would be in the production table but is absent from the test stub entirely —
+-- causing token=nil and falling through. Instead, temporarily add [6] to the stub and
+-- omit it from LOCALIZED_CLASS_NAMES_MALE to test the locale-miss path.
+do
+    SocialQuestWowAPI.CLASS_TOKEN_BY_ID[6] = "DEATHKNIGHT"
+    -- LOCALIZED_CLASS_NAMES_MALE has WARRIOR and PRIEST but not DEATHKNIGHT
+    AQL._questMap = { [88] = { zone = "Eastern Plaguelands" } }
+    assert_eq("GetZone token not in locale table falls back to AQL",
+        T.GetZoneForQuestID(88, 6), "Eastern Plaguelands")
+    AQL._questMap = {}
+    SocialQuestWowAPI.CLASS_TOKEN_BY_ID[6] = nil  -- restore stub state
+end
 
 -- ── Results ───────────────────────────────────────────────────────────────────
 

@@ -75,13 +75,16 @@ L["(Group)"]                                = true
 -- %s args: (1) step number, (2) chain length. Both are already tostring'd before format.
 L[" (Step %s of %s)"]                       = true
 -- %s = player character name
-L["%s FINISHED"]                            = true   -- permanent: quest turned in
+L["Finished"]                               = true   -- player row: quest turned in
+L["In Progress"]                            = true   -- player row: no-objective quest, not yet done
+L["(In Progress)"]                          = true   -- Mine tab title badge
 L["Completed"]                              = true   -- in-progress: objectives done, not yet turned in
 L["%s Needs it Shared"]                     = true
 L["%s (no data)"]                           = true
 
 -- UI/Tooltips.lua
 L["Group Progress"]                         = true
+L["Party progress"]                         = true
 L["(shared, no data)"]                      = true
 L["Objectives complete"]                    = true
 L["(no data)"]                              = true
@@ -354,3 +357,28 @@ L["share.reason.wrong_class"]      = true   -- player's class cannot take this q
 L["share.reason.quest_log_full"]   = true   -- player already has 25 quests (TBC cap)
 L["share.reason.exclusive_quest"]  = true   -- player completed a mutually exclusive quest
 L["share.reason.already_advanced"] = true   -- player is already past this step in the chain
+
+-- UI/Options.lua — Tooltips group
+L["Tooltips"]                                         = true
+L["Enhance Questie/Blizzard tooltips"]               = true
+L["Append party progress to existing quest tooltips. Adds party member status below Questie's or WoW's tooltip."] = true
+L["Replace Blizzard quest tooltips"]                  = true
+L["When clicking a quest link, show SocialQuest's full tooltip instead of WoW's basic tooltip."] = true
+L["Replace Questie quest tooltips"]                   = true
+L["When clicking a questie link, show SocialQuest's full tooltip instead of Questie's tooltip. Not available when Questie is not installed."] = true
+
+-- UI/Tooltips.lua — BuildTooltip status lines
+L["You are on this quest"]                            = true
+L["You have completed this quest"]                    = true
+L["You are eligible for this quest"]                  = true
+L["You are not eligible for this quest"]              = true
+
+-- UI/Tooltips.lua — BuildTooltip NPC labels
+L["Quest Giver:"]                                     = true
+L["Turn In:"]                                         = true
+
+-- UI/Tooltips.lua — BuildTooltip title and location lines
+L["Location:"]                                        = true
+L["(Dungeon)"]                                        = true
+L["(Raid)"]                                           = true
+L["(Group %d+)"]                                      = true

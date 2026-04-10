@@ -1,8 +1,8 @@
-## Interface: 20505
+## Interface: 120001
 ## Title: SocialQuest
-## Notes: Social quest coordination for WoW Burning Crusade Anniversary.
+## Notes: Social quest coordination for WoW Retail.
 ## Author: Thad Ryker
-## Version: 2.24.0
+## Version: 2.23.1
 ## Category: Quests
 ## IconTexture: Interface\AddOns\SocialQuest\Logo.png
 ## Dependencies: Ace3, AbsoluteQuestLog

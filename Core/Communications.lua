@@ -25,6 +25,20 @@ local PREFIXES = {
 local GroupType = SocialQuestGroupComposition.GroupType
 local SQWowAPI = SocialQuestWowAPI
 
+-- Reverse lookup: localized class name (as used by AQL zone headers) → WoW numeric classID.
+-- Built at load time from LOCALIZED_CLASS_NAMES_MALE (always available before addon load).
+-- Used by buildInitPayload and buildQuestPayload to detect class quests.
+local localizedClassNameToID = {}
+do
+    local names = LOCALIZED_CLASS_NAMES_MALE
+    if names then
+        for classID, token in pairs(SQWowAPI.CLASS_TOKEN_BY_ID) do
+            local name = names[token]
+            if name then localizedClassNameToID[name] = classID end
+        end
+    end
+end
+
 local lastInitSent = {}   -- keyed by sender name; tracks when SQ_INIT was last sent per player
 
 -- Jitter-delayed SQ_INIT whisper handles, keyed by sender name.
@@ -35,9 +49,8 @@ local pendingResponses = {}
 
 -- Called from SocialQuest:OnEnable().
 function SocialQuestComm:Initialize()
-    local AceComm = LibStub("AceComm-3.0")
     for _, prefix in ipairs(PREFIXES) do
-        AceComm:RegisterComm(prefix, function(pfx, msg, dist, sender)
+        SocialQuest:RegisterComm(prefix, function(pfx, msg, dist, sender)
             SocialQuestComm:OnCommReceived(pfx, msg, dist, sender)
         end)
     end
@@ -67,6 +80,7 @@ local function buildQuestPayload(questInfo, eventType)
         -- reference for timer estimation: remaining = timerSeconds - (SQWowAPI.GetTime() - snapshotTime).
         snapshotTime = SQWowAPI.GetTime(),
         timerSeconds = questInfo.timerSeconds,  -- nil if no timer (serializes cleanly)
+        classID      = localizedClassNameToID[questInfo.zone],  -- nil for non-class quests
         objectives   = objs,
     }
 end
@@ -90,6 +104,7 @@ local function buildInitPayload()
             isFailed     = info.isFailed    and 1 or 0,
             snapshotTime = SQWowAPI.GetTime(),  -- stamp at transmission time, not AQL cache build time
             timerSeconds = info.timerSeconds,
+            classID      = localizedClassNameToID[info.zone],  -- nil for non-class quests
             objectives   = objs,
         }
     end
@@ -200,6 +215,9 @@ function SocialQuestComm:OnMemberJoined(fullName, groupType)
         local db = SocialQuest.db.profile
         if db.party.transmit then
             self:SendFullInit("WHISPER", fullName)
+            -- Stamp the cooldown so the PARTY SQ_INIT jitter path (reload recovery)
+            -- does not send a duplicate whisper within 15 seconds of this direct send.
+            lastInitSent[fullName] = SQWowAPI.GetTime()
             SocialQuest:Debug("Comm", "OnMemberJoined (party): sent SQ_INIT whisper to " .. fullName)
         end
     end
@@ -234,12 +252,51 @@ end
 function SocialQuestComm:GetActiveChannel()
     if SQWowAPI.IsInRaid() then
         return "RAID"
-    elseif SQWowAPI.IsInGroup(SQWowAPI.PARTY_CATEGORY_INSTANCE) then
+    elseif SQWowAPI.PARTY_CATEGORY_INSTANCE
+       and SQWowAPI.IsInGroup(SQWowAPI.PARTY_CATEGORY_INSTANCE) then
         return "INSTANCE_CHAT"
     elseif SQWowAPI.IsInGroup(SQWowAPI.PARTY_CATEGORY_HOME) then
         return "PARTY"
     end
     return nil
+end
+
+local _lastResyncTime = 0
+local RESYNC_COOLDOWN  = 30
+
+-- Returns true when a ResyncAll() was triggered less than RESYNC_COOLDOWN seconds ago.
+-- Used by the Force Resync button's disabled callback and the /sq sync command.
+function SocialQuestComm:IsResyncOnCooldown()
+    return SQWowAPI.GetTime() - _lastResyncTime < RESYNC_COOLDOWN
+end
+
+-- Returns the whole seconds remaining on the resync cooldown, or 0 if not on cooldown.
+-- Used by /sq sync to print a helpful wait message.
+function SocialQuestComm:GetResyncCooldownRemaining()
+    local remaining = RESYNC_COOLDOWN - (SQWowAPI.GetTime() - _lastResyncTime)
+    return remaining > 0 and math.ceil(remaining) or 0
+end
+
+-- Triggers a full resync of all group members: sends SQ_REQUEST to SQ members
+-- and QC_ID_REQUEST_FULL_QUESTLIST to Questie bridge members.
+-- Shared cooldown prevents spamming from both the Force Resync button and /sq sync.
+-- Schedules AceConfig NotifyChange after the cooldown so the Force Resync button
+-- re-enables automatically regardless of which caller (button or /sq sync) fired this.
+-- Returns false (no-op) when on cooldown; true otherwise.
+function SocialQuestComm:ResyncAll()
+    if self:IsResyncOnCooldown() then
+        SocialQuest:Debug("Resync", "ResyncAll: on cooldown, no-op")
+        return false
+    end
+    _lastResyncTime = SQWowAPI.GetTime()
+    self:SendResyncRequest()
+    SocialQuestBridgeRegistry:ForceResync()
+    -- +0.5s buffer ensures the timer fires after IsResyncOnCooldown() returns false,
+    -- avoiding a boundary race where the timer fires fractionally early.
+    SocialQuest:ScheduleTimer(function()
+        LibStub("AceConfigRegistry-3.0"):NotifyChange("SocialQuest")
+    end, RESYNC_COOLDOWN + 0.5)
+    return true
 end
 
 function SocialQuestComm:SendResyncRequest()
@@ -267,8 +324,14 @@ end
 
 function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
     -- Ignore our own messages.
+    -- On Retail, UnitFullName("player") returns nil realm even in cross-realm parties,
+    -- but CHAT_MSG_ADDON includes the realm for all senders.  Fall back to
+    -- GetNormalizedRealmName() so the self-filter catches "Name-Realm" senders.
     local myName, myRealm = SQWowAPI.UnitFullName("player")
-    local myFullName = myRealm and (myName .. "-" .. myRealm) or myName
+    if not myRealm or myRealm == "" then
+        myRealm = SQWowAPI.GetNormalizedRealmName()
+    end
+    local myFullName = (myRealm and myRealm ~= "") and (myName .. "-" .. myRealm) or myName
     if sender == myName or sender == myFullName then return end
 
     local ok, payload = LibStub("AceSerializer-3.0"):Deserialize(msg)
@@ -281,13 +344,25 @@ function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
         local _sqN = 0
         for _ in pairs(payload.quests or {}) do _sqN = _sqN + 1 end
         SocialQuest:Debug("Comm", "Received SQ_INIT from " .. sender .. " (" .. _sqN .. " quests, dist=" .. distribution .. ")")
+        -- SQ_INIT via a group channel may arrive before GROUP_ROSTER_UPDATE creates
+        -- the stub for the sender.  Create it now so OnInitReceived does not silently
+        -- drop the message and leave the player showing as a bridge user.
+        -- Whisper SQ_INIT intentionally keeps the existing guard — it should only
+        -- arrive as a response to our SQ_REQUEST, meaning the sender is already known.
+        if distribution ~= "WHISPER" and not SocialQuestGroupData:IsInGroup(sender) then
+            SocialQuestGroupData:OnMemberJoined(sender, nil)
+        end
         SocialQuestGroupData:OnInitReceived(sender, payload)
 
         -- Raid/BG broadcasts: schedule a jittered whisper response so that up to
         -- 39 existing members don't all respond simultaneously (storm prevention).
-        -- Party and whisper distributions need no response here:
-        --   Party:   OnMemberJoined already sent a direct whisper to new members.
-        --   Whisper: This is their response to us; no further response needed.
+        -- Party: also schedule a jittered whisper response to handle the /reload case —
+        --   after a reload the reloading player broadcasts SQ_INIT to PARTY, but existing
+        --   members don't receive GROUP_ROSTER_UPDATE (they never left), so OnMemberJoined
+        --   never fires and no whisper is sent.  The PARTY jitter path covers this gap.
+        --   OnMemberJoined's direct whisper still runs on fresh joins; the 15-second
+        --   cooldown (set by OnMemberJoined via lastInitSent) suppresses the duplicate.
+        -- Whisper: This is their response to us; no further response needed.
         if distribution == "RAID" or distribution == "INSTANCE_CHAT" then
             if lastInitSent[sender] and (SQWowAPI.GetTime() - lastInitSent[sender] < 15) then
                 SocialQuest:Debug("Comm", "SQ_INIT from " .. sender .. " — response suppressed (cooldown)")
@@ -301,6 +376,22 @@ function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
                     self:SendFullInit("WHISPER", sender)
                     SocialQuest:Debug("Comm", "Sent jittered SQ_INIT whisper to " .. sender)
                 end, math.random(1, 8))
+            end
+        elseif distribution == "PARTY" then
+            local db = SocialQuest.db.profile
+            if db.party.transmit then
+                if lastInitSent[sender] and (SQWowAPI.GetTime() - lastInitSent[sender] < 15) then
+                    SocialQuest:Debug("Comm", "SQ_INIT from " .. sender .. " (PARTY) — response suppressed (cooldown)")
+                else
+                    if pendingResponses[sender] then
+                        SocialQuest:CancelTimer(pendingResponses[sender])
+                    end
+                    pendingResponses[sender] = SocialQuest:ScheduleTimer(function()
+                        pendingResponses[sender] = nil
+                        self:SendFullInit("WHISPER", sender)
+                        SocialQuest:Debug("Comm", "Sent jittered SQ_INIT whisper to " .. sender .. " (PARTY broadcast response)")
+                    end, math.random(1, 4))
+                end
             end
         end
 
@@ -364,6 +455,10 @@ function SocialQuestComm:OnCommReceived(prefix, msg, distribution, sender)
         local entry = SocialQuestGroupData.PlayerQuests[sender]
         if entry then
             entry.completedQuests = payload.completedQuests or {}
+            -- A SQ_RESP_COMPLETE proves the sender has SocialQuest installed.
+            -- Set hasSocialQuest so checkAllCompleted's suppression gate does not fire.
+            entry.hasSocialQuest = true
+            entry.dataProvider   = entry.dataProvider or SocialQuest.DataProviders.SocialQuest
         end
         SocialQuestGroupFrame:RequestRefresh()
 

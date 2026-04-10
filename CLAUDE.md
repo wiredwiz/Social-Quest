@@ -16,7 +16,32 @@
 
 >**Unit Tests:** Before committing any code change and before bumping the version number, always run the full Lua unit test suite and confirm all tests pass. Run from the repo root: `lua tests/FilterParser_test.lua` and `lua tests/TabUtils_test.lua`. Both must pass (0 failures) before the change is considered done. If a Lua runtime is not available in the environment, note this explicitly and flag to the user that tests could not be verified.
 
+>**AQL is the sole source of truth for all quest data. NEVER bypass AQL to fix quest API issues.** SocialQuest must never call WoW quest APIs directly to work around AQL failures — always fix the root cause in AQL (`AbsoluteQuestLog`). Any quest title, info, objectives, chain, or history lookup must go through AQL's public API. Adding `SQWowAPI` wrappers that duplicate AQL's quest resolution is forbidden.
+
 >**Multi-Version Design:** All new development must be designed with future support for Retail WoW and all other currently active WoW versions in mind — not only TBC. This does not mean implementing Retail support today; TBC is the only actively supported version. It means: (1) all WoW API calls route through `SQWowAPI` / `SQWowUI` wrappers so version-specific branching stays in one place; (2) new data structures, bitmask tables, and lookup tables include stubs for races/classes/features that don't exist in TBC but do in Retail (clearly commented as stubs); (3) avoid hardcoding assumptions that are TBC-specific (e.g., "only 10 races", "only 9 classes") when the pattern can accommodate future values at zero cost; (4) when a Retail API equivalent is unknown, add a comment `-- TODO: verify Retail API` rather than silently omitting the case.
+
+---
+
+## Known Performance Issues (Deferred — Do Not Fix Without Instruction)
+
+Observed in April 2026: clients freeze for ~10 seconds on group join and again on group
+leave when a Questie-only player groups with a SQ player. Two root causes identified
+spanning AQL and SQ:
+
+### AQL-side (see AQL CLAUDE.md for full details)
+- **`GrailProvider.buildReverseMap()`** — iterates 10,000+ Grail quests synchronously on
+  first `GetChainInfo()` call, triggered by `QuestCache:Rebuild()` on `GROUP_ROSTER_UPDATE`.
+  Primary cause of the join freeze.
+- **`QuestCache:_buildEntry()`** — calls chain provider per quest with no caching or
+  batching, compounding the GrailProvider cost across every quest in the active log.
+
+### SQ-side
+- **`QuestieBridge.GetSnapshot()` in `Core/QuestieBridge.lua`** — pivots Questie's
+  `remoteQuestLogs` (quest×player) into player×quest format by iterating every quest for
+  every player with no filtering. O(quests × players). Runs at t+4s/t+8s after Questie
+  request, causing the delayed secondary freeze after group join.
+- **Fix direction:** Build snapshot incrementally or filter to active-log quests only
+  before pivoting the full table.
 
 ---
 
@@ -205,6 +230,593 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 ---
 
 ## Version History
+
+### Version 2.24.0 (April 2026)
+- Feature: class quest zone resolution. Remote players' class quests now appear
+  under the correct localized class-name zone header ("Warrior", "Priest", etc.)
+  in the Party and Shared tabs instead of under a geographic zone or "Other Quests".
+  Root cause: AQL's provider lookup (Questie/Grail) returns the geographic zone for
+  class quests, not the class-name zone header used by WoW's quest log. Fix: the
+  sender detects class quests via a reverse lookup built from `LOCALIZED_CLASS_NAMES_MALE`
+  and transmits an optional `classID` integer in `SQ_INIT` and `SQ_UPDATE` payloads.
+  Receivers store it on the quest entry; `GetZoneForQuestID` resolves it to the
+  receiver's localized class name via the new `CLASS_TOKEN_BY_ID` table in `WowAPI.lua`.
+  Fully backward-compatible: older receivers ignore the new field; older senders produce
+  `classID = nil` and receivers fall through to the existing AQL lookup. Questie bridge
+  players are out of scope — they do not run SQ and cannot transmit `classID`.
+
+### Version 2.23.6 (April 2026)
+- Bug fix: Force Resync button failed to re-enable after the 30-second cooldown when
+  `/sq sync` had been used to trigger the resync. Root cause: the `NotifyChange` schedule
+  (needed for AceConfig to re-evaluate the `disabled` callback) lived in the button's
+  `func` in `Options.lua`, so it never ran when `ResyncAll()` was called from `/sq sync`.
+  Fix: moved `AceConfigRegistry:NotifyChange` scheduling into `ResyncAll()` itself, with
+  a +0.5s buffer beyond `RESYNC_COOLDOWN` to avoid a boundary race where the timer fires
+  fractionally before `IsResyncOnCooldown()` returns false. The button's `func` no longer
+  needs its own `ScheduleTimer` call.
+
+### Version 2.23.5 (April 2026)
+- Feature: `/sq sync` slash command. Calls `SocialQuestComm:ResyncAll()`. If on cooldown,
+  prints remaining seconds ("Sync is on cooldown. Try again in N seconds."). If not in a
+  group, prints "You must be in a group to sync." Otherwise fires resync and confirms with
+  "Requesting a fresh quest snapshot from all group members." `GetResyncCooldownRemaining()`
+  added to `Communications.lua` to expose remaining cooldown seconds.
+- UX: `/sq <unknown>` now prints a usage message listing supported commands instead of
+  silently opening the group window. `/sq` (no argument) still opens/closes the window.
+  The `diagnose` command is intentionally omitted from the usage message.
+
+### Version 2.23.4 (April 2026)
+- Bug fix: Questie bridge player failed to populate intermittently after `/reload`.
+  Root cause: the t+10s request send only had hydration polls at t+14s and t+20s;
+  if the remote player's response arrived after t+20s (slow client or high latency),
+  `remoteQuestLogs` was populated but never read. Added two additional safety-net
+  hydration polls at t+30s and t+40s (relative to group join) within the t+10s send
+  callback, covering slow responders without sending extra requests.
+
+### Version 2.23.3 (April 2026)
+- Feature: Force Resync now also resyncs Questie bridge players. `QuestieBridge:ForceResync()`
+  sends `QC_ID_REQUEST_FULL_QUESTLIST` immediately (no staged delays — Questie is already
+  initialized at resync time) and polls for data 4 seconds later. Wired through
+  `SocialQuestBridgeRegistry:ForceResync()` which forwards to all active bridges.
+- Refactor: resync cooldown and orchestration centralized in `Communications.lua`.
+  `SocialQuestComm:ResyncAll()` enforces the 30-second shared cooldown, calls
+  `SendResyncRequest()` for SQ members, and calls `BridgeRegistry:ForceResync()` for
+  bridge members. `SocialQuestComm:IsResyncOnCooldown()` exposes the cooldown state for
+  both the Force Resync button and the future `/sq sync` command. `Options.lua` no longer
+  owns the cooldown timer (`lastResyncTime` removed); both callers share one gate.
+
+### Version 2.23.2 (April 2026)
+- Bug fix: Questie bridge data not appearing in the Group window after `/reload`.
+  Root cause: `OnBridgeHydrate` in `Core/GroupData.lua` was setting
+  `pdata.bridgeInitializing = false` (added in v2.23.0) after populating quest data.
+  This was intended to close the initial-sync suppression window for V1 multi-frame
+  responses, but it is both redundant and incorrect. After hydration, all quests are
+  already in `pdata.quests` with `existing ~= nil`, so `isNew` is never `true` for
+  them in `OnBridgeQuestUpdate` regardless of `bridgeInitializing` state. Setting it
+  to `false` in `OnBridgeHydrate` prematurely closes the window and breaks the
+  suppression for any subsequent `RegisterTooltip` callbacks that arrive after
+  hydration (V1 multi-frame blocks). Fix: removed the assignment; `bridgeInitializing`
+  now remains `nil` after hydration, preserving the correct suppression semantics
+  exclusively in `OnBridgeQuestUpdate`.
+
+### Version 2.23.1 (April 2026)
+- Bug fix: tooltip party progress section showed "(shared, no data)" for Questie bridge
+  players instead of their actual quest progress. Root cause: `renderPartyProgress` in
+  `UI/Tooltips.lua` branched on `not entry.hasSocialQuest` to show the no-data label,
+  but Questie bridge entries also have `hasSocialQuest = false` — they have real objective
+  data in `entry.quests` populated by `OnBridgeQuestUpdate`/`OnBridgeHydrate`. Fix: added
+  `and not entry.dataProvider` to the condition so the no-data label only fires for pure
+  stubs (no SQ, no bridge data source). Bridge players now fall through to the normal
+  objectives rendering path showing their actual progress.
+
+### Version 2.23.0 (April 2026)
+- Bug fix: false "accepted" announcements for Questie bridge members' pre-existing quests
+  on group join. Root cause: `OnBridgeQuestUpdate` in `Core/GroupData.lua` fires
+  `ET.Accepted` for any quest where `existing == nil`. When a member joins with SQ
+  disabled (or Questie-only), their first Questie packet hits an empty stub so every
+  quest has `isNew = true` and all pre-existing quests are announced as newly accepted.
+  Fix: two complementary mechanisms in `Core/GroupData.lua`. (1) `OnBridgeQuestUpdate`
+  sets `pdata.bridgeInitializing = true` on the first call for a member and schedules a
+  0-tick `SQWowAPI.TimerAfter(0)` to clear it. Questie V1 responses are reassembled by
+  AceComm into a single handler where `RegisterTooltip` fires synchronously for all
+  quests; the 0-tick timer fires at the next frame boundary after the entire batch
+  completes, precisely marking "initial sync done" without a fixed time window.
+  (2) `OnBridgeHydrate` sets `pdata.bridgeInitializing = false` when it populates a
+  player's snapshot. After hydration, `pdata.quests` contains all known quests so
+  subsequent `RegisterTooltip` calls find `existing ~= nil` and `isNew` is never true
+  for pre-existing quests — covering any future multi-frame Questie protocol.
+  `ET.Accepted` is suppressed while `bridgeInitializing` is `true` or `nil`; fires
+  normally once `false`. Timer self-invalidates on leave/rejoin via `pdata` identity.
+
+### Version 2.22.1 (April 2026)
+- Feature: chain line added to `BuildTooltip` between the title line and the status line.
+  When `AQL:GetChainInfo` returns `knownStatus = Known` and the chain has more than one
+  step, displays `<Chain Root Title> (Step X of Y)` in light periwinkle (`0.8, 0.8, 1.0`).
+  Chain name resolved from `chain.steps[1].title`, falling back to multi-quest step format
+  and then `AQL:GetQuestTitle(chain.chainID)`. Reuses existing locale key
+  `L[" (Step %s of %s)"]`. No new locale strings required.
+
+### Version 2.22.0 (April 2026)
+- Feature: tooltip title line redesigned. Level is now shown as `[N]` between the title
+  and the SQ badge on the title line itself. Quest type badge (`(Dungeon)`, `(Raid)`,
+  `(Group N+)`, or `(Group)`) is right-aligned in light blue via `AddDoubleLine`. Group
+  size comes from `questInfo.suggestedGroup` when > 0. The old combined level/zone/badge
+  line is replaced by a plain `Location: <Zone>` line (line 3). `buildLevelLine` helper
+  removed. All 12 locale files updated with new keys (`Location:`, `(Dungeon)`, `(Raid)`,
+  `(Group %d+)`) replacing the old `Level %d`, `[Dungeon]`, `[Raid]`, `[Group]` keys.
+  Note: main TBC `SocialQuest.toc` was found at 2.19.2 (missed in prior bumps); brought
+  forward to 2.22.0 alongside the other three TOC files.
+
+### Version 2.21.0 (April 2026)
+- Bug fix: local player now included in the "Party progress:" section of SQ tooltips.
+  Previously `renderPartyProgress` in `UI/Tooltips.lua` skipped the local player with
+  a comment that Questie/WoW already showed their progress. This was incorrect for the
+  Replace tooltip mode where SQ renders its own full tooltip. The local player is now
+  added first using live `AQL:GetQuest` data (authoritative for self) before iterating
+  remote party members from `PlayerQuests`.
+- Bug fix: description (and NPC/type-badge fields) no longer missing from `BuildTooltip`
+  when the quest is in the player's active log. `AQL:GetQuestInfo` Tier 1 (cache path)
+  returns the raw `QuestCache` entry, which does not include Details-capability fields
+  (`description`, `starterNPC`, `starterZone`, `finisherNPC`, `finisherZone`, `isDungeon`,
+  `isRaid`). `BuildTooltip` now calls the new `AQL:GetQuestDetails(questID)` when
+  `questInfo.description` is nil, shallow-copies the cache result, and merges the detail
+  fields so all sections of the tooltip render correctly regardless of whether the quest
+  is in the player's log. Requires AQL 3.7.0.
+
+### Version 2.19.2 (April 2026)
+- Bug fix: quest links in chat now show Questie's custom tooltip when clicked.
+  Reverted 2.19.1's chat filter change — links are again `|Hsocialquest:|` (not `|Hquest:|`).
+  Restored the `SetItemRef` hook for `socialquest:` links with the correct fix: Questie's
+  `SetHyperlink` override only renders its enhanced tooltip for `questie:` link format; for
+  `quest:` format it falls through to the basic WoW handler. The hook now calls
+  `ItemRefTooltip:SetHyperlink("questie:questID:level")` when `QuestieLoader` is present
+  (triggering Questie's enhanced tooltip), and falls back to `quest:` format otherwise.
+  SQ's `SetHyperlink` hook already matched `questie:` links (unchanged) so party progress
+  is appended after Questie's tooltip in both cases.
+
+### Version 2.19.1 (April 2026)
+- Bug fix: clicking a quest link in chat now shows Questie's custom tooltip correctly and
+  the link itself is clickable. Two fixes in `UI/Tooltips.lua`: (1) Chat filter now
+  produces native `|Hquest:questID:level|h` links instead of `|Hsocialquest:|` links.
+  Using `quest:` lets WoW's native SetItemRef pipeline handle clicks, so Questie's own
+  SetItemRef hook fires and renders its enhanced tooltip; SQ's SetHyperlink hook on
+  ItemRefTooltip still fires afterwards to append party progress. (2) Removed the
+  `SetItemRef` hook for `socialquest:` links entirely — it is no longer needed since the
+  chat filter produces native `quest:` links. Note: calling `SetItemRef` from inside a
+  `hooksecurefunc("SetItemRef")` callback (2.19.0) is illegal — SetItemRef is a protected
+  function and the call caused a silent taint error, leaving the link non-functional.
+
+### Version 2.19.0 (April 2026)
+- Bug fix: clicking a `socialquest:` quest link in chat now shows Questie's custom tooltip
+  instead of the basic WoW tooltip. Root cause: the `SetItemRef` hook was calling
+  `ItemRefTooltip:SetHyperlink("quest:...")` directly, bypassing Questie's own `SetItemRef`
+  hook which intercepts `quest:` links to render its enhanced tooltip. Fix: replaced the
+  three-line direct manipulation with a single `SetItemRef("quest:questID:level", text, button)`
+  call, routing through WoW's full link-handling pipeline so Questie's hook fires first and
+  SQ's existing `SetHyperlink` hook on `ItemRefTooltip` appends party progress afterwards.
+
+### Version 2.18.28 (April 2026)
+- Bug fix: `SQWowAPI` was never declared in `UI/Tabs/SharedTab.lua`. Every alias-handling
+  code path added in 2.18.26 (chainTitleToID normalization, title fallback, objectives
+  fingerprint, two-phase questEngaged merge) referenced `SQWowAPI.IS_RETAIL` and
+  `SQWowAPI.IS_MOP`, which crashed at runtime because the local was absent. WoW's error
+  handler swallowed the crash and rendered an empty Shared tab. Fix: added
+  `local SQWowAPI = SocialQuestWowAPI` at the top of the file, matching the existing
+  declaration in `PartyTab.lua`.
+
+### Version 2.18.27 (April 2026)
+- Bug fix: Shared tab now correctly shows quests shared by two players with alias questIDs
+  on MoP Classic even when the remote alias questID's title cannot be resolved (not in the
+  local log and no provider coverage). Added objectives fingerprint (`numRequired` count
+  and per-objective values) as a secondary matching key. Two new fallback paths in
+  `UI/Tabs/SharedTab.lua`: (1) `addEngagement` else-branch now tries objectives fingerprint
+  against existing `chainEngaged` entries when both title-based matching and chain
+  resolution fail — covers the common MoP case where one alias resolves a chain and the
+  other does not. (2) The `questEngaged` merge pass is now two-phase: Phase 1 builds
+  canonical entries from questIDs with resolvable titles (indexing their objectives sig);
+  Phase 2 merges questIDs with unresolvable titles into the canonical entry by objectives
+  fingerprint match — covers non-chain quests where neither player has provider coverage.
+  Both paths are gated on `IS_RETAIL or IS_MOP` and only activate when
+  `#objectives > 0` (no-op for talk/travel quests that have no numeric objectives).
+
+### Version 2.18.26 (April 2026)
+- Bug fix: MoP Classic alias quest IDs now handled the same as Retail. On MoP Classic,
+  Blizzard assigns different questIDs for the same logical quest per race/class character
+  type (same as Retail). Five fixes: (1) `UI/Tooltips.lua` `resolveQuestData` title-based
+  alias fallback extended to `IS_MOP`, so clicking a quest link shows party progress for
+  players whose alias questID differs from the link's ID. (2) `UI/Tabs/PartyTab.lua`
+  chain insertion adds title-based chainID normalization (`chainTitleToIDByZone`): when a
+  new chain would be created with a step-1 title matching an existing chain, the incoming
+  chainID is redirected to the canonical one so both alias questIDs merge into one block
+  instead of two. (3) `UI/Tabs/PartyTab.lua` post-processing pass after the main loop
+  moves any ungrouped `zone.quests` entry whose title matches a chain step into that step,
+  covering the case where one alias resolves chain info and the other does not. (4)
+  `UI/Tabs/SharedTab.lua` `addEngagement` adds the same title-based chain normalization
+  (`chainTitleToID`) before inserting into `chainEngaged`. (5) `UI/Tabs/SharedTab.lua`
+  `addEngagement` `else` branch gains a title-based fallback to route a failed-chain-
+  resolution questID into an existing `chainEngaged` entry with the same title. All alias
+  logic gated on `IS_RETAIL or IS_MOP`.
+
+### Version 2.18.25 (April 2026)
+- Fix: quest link chat announcements no longer taint or lock up the Retail client.
+  Root cause (2.18.24): `BuildQuestLink` sent `|Hsocialquest:...|h` directly through
+  `SendChatMessage`, which Retail rejects at the client level causing taint/lockup.
+  `BuildQuestLink` now sends plain text `[[level] Quest Name (questID)]` on all
+  versions — no `|H` codes ever go through `SendChatMessage`. A new
+  `ChatFrame_AddMessageEventFilter` registered in `Tooltips.lua:Initialize()` intercepts
+  incoming messages on each client and replaces the marker with
+  `|cffffff00|Hsocialquest:questID:level|h...|h|r` before display, making it clickable
+  locally. The `SetItemRef` hook for `socialquest:` links is moved outside the
+  IS_RETAIL guard so it handles clicks on both Retail and TBC. Architecture matches
+  Questie's `ChatFilter.lua` pattern exactly.
+
+### Version 2.18.24 (April 2026)
+- Feature: clickable quest links in SQ outbound chat announcements. On non-Retail,
+  SQ now sends `|Hquestie:questID:senderGUID|h[level] Quest Name|h|r` format —
+  Questie users get a clickable tooltip; others see `[level] Quest Name` as readable
+  plain text. On Retail, SQ sends `|Hsocialquest:questID:level|h` with a `SetItemRef`
+  hook in `Tooltips.lua` that forwards clicks to the native quest tooltip.
+- Feature: quest link tooltip augmentation now works for all quest link types (native
+  `|Hquest:|`, Questie `|Hquestie:|`, and SQ's `|Hsocialquest:|`). Party member
+  progress is appended below Questie's "Your progress:" section in matching visual
+  style — plain "Party progress:" header, `" - Name: desc: X/Y"` objective lines.
+  Only fires in a party group (never in raid or BG). Local player is skipped (already
+  shown by Questie/WoW). On Retail, alias resolution via title-based scan handles
+  variant quest IDs. All tooltip augmentation wrapped in `pcall` to prevent SQ errors
+  from corrupting the base WoW or Questie tooltip.
+
+### Version 2.18.23 (April 2026)
+- Feature: group window and `/sq diagnose` console no longer open off-screen.
+  Added `SQWowUI.ClampFrameToScreen(frame)` to `Core/WowUI.lua`. Reads the
+  frame's actual rendered edges after positioning and applies the minimum X/Y
+  shift to bring all four edges within `UIParent` bounds. Called at the end of
+  `applyFrameState()` in `UI/GroupFrame.lua` (covers both `Toggle()` and
+  `RestoreAfterTransition()`) and at the end of the console restore block in
+  `SocialQuest.lua`. No persistent `SetClampedToScreen` is used — correction
+  fires once at open time only. Dragging partially off-screen during a session
+  is still allowed; the window is nudged back on-screen at the next open.
+
+### Version 2.18.22 (April 2026)
+- Bug fix: Wowhead quest URL is now version-aware. `SocialQuestTabUtils.WowheadUrl`
+  in `UI/TabUtils.lua` previously hardcoded the TBC path (`/tbc/quest=`) for all WoW
+  versions. The base URL is now selected at load time from `SQWowAPI` version flags:
+  Retail → `wowhead.com/quest=`, MoP Classic → `wowhead.com/mop-classic/quest=`,
+  TBC → `wowhead.com/tbc/quest=`, Classic Era → `wowhead.com/classic/quest=`.
+
+### Version 2.18.21 (April 2026)
+- Cleanup: removed diagnostic debug messages from `checkAllCompleted` and `OnQuestEvent`
+  added during the "Everyone has completed" investigation. Retained suppression-reason
+  messages ("not in group", "member without data source", "local player not done",
+  "remote player not done", "no remote players engaged", "display.finished off") and
+  the success banner log. Removed entry log, local state dump, per-player loop log,
+  post-loop state dump, display gate log, and the `OnQuestEvent` event-type diagnostic.
+
+### Version 2.18.20 (April 2026)
+- Cleanup: removed diagnostic debug logging from `UIErrorsFrame.AddMessage` hook
+  (`InitEventHooks`) added during 2.18.17–2.18.19 investigation.
+
+### Version 2.18.19 (April 2026)
+- Bug fix: "Objective Complete" suppression still failed after 2.18.18. Root cause:
+  Retail sends the message as `"Objective Complete."` (with a trailing period). The
+  comparison target `"objective complete"` (no period) never matched. Fix: strip a
+  trailing period from the message before the case-insensitive comparison using
+  `msg:match("^(.-)%.?$")`.
+
+### Version 2.18.18 (April 2026)
+- Bug fix: "Objective Complete" suppression did not work on Retail. Root cause:
+  `UIErrorsFrame:GetScript("OnEvent")` returns nil on Retail (the handler is defined in
+  XML, not Lua), so `InitEventHooks` exited immediately without installing any hook.
+  Fix: replaced the `GetScript("OnEvent")` / `SetScript` pattern with a direct
+  `UIErrorsFrame.AddMessage` replacement hook. `AddMessage` is the common display path
+  on all WoW version families regardless of how the event reached the frame (event
+  handler, direct call, XML, etc.). The suppression logic is unchanged: count-based
+  objective text is suppressed via `AQL:IsQuestObjectiveText`, and the standalone
+  "Objective Complete" string is matched case-insensitively against
+  `QUEST_WATCH_OBJECTIVE_COMPLETE` (nil on Retail) with fallback `"objective complete"`.
+
+### Version 2.18.17 (April 2026)
+- Bug fix: "Objective Complete" WoW notification still appeared when SQ's own
+  objective-complete banner was enabled. Root cause: `QUEST_WATCH_OBJECTIVE_COMPLETE`
+  is nil in TBC Classic, and the fallback `"Objective Complete"` used an exact
+  case-sensitive match. TBC sends `"Objective complete"` (lowercase c). Fix: replaced
+  the exact-match check with a case-insensitive comparison against the WoW global when
+  present, falling back to `"objective complete"`. Also checks `messageType` (arg1) in
+  addition to `msg` (arg2) since the text arg position varies by WoW build. Added
+  debug-mode logging of all `UI_INFO_MESSAGE` events through `UIErrorsFrame` (visible
+  when SQ debug is enabled) to aid future diagnosis.
+
+### Version 2.18.16 (April 2026)
+- Bug fix: WoW's "Objective Complete" notification was not suppressed when SQ's own
+  objective-complete banner was enabled. The existing `UI_INFO_MESSAGE` hook only
+  suppressed count-based objective text (e.g. "Tainted Ooze killed: 10/10") and only
+  when `objective_progress` was on. Two fixes in `InitEventHooks`: (1) count-based
+  objective text suppression now also fires when `objective_complete` is enabled (not
+  only `objective_progress`); (2) added a second check that suppresses the standalone
+  "Objective Complete" string (WoW global `QUEST_WATCH_OBJECTIVE_COMPLETE`) when
+  `objective_complete` is enabled. Both checks are gated on `displayOwn` being true.
+
+### Version 2.18.15 (April 2026)
+- Bug fix: "Everyone has completed" banner fired immediately when the first player
+  completed a quest on the second (or later) run, even though other party members had
+  not finished yet. Root cause: `selfFinishedQuests[questID]` was set to `true` when the
+  local player completed a quest but was never cleared when the quest was abandoned and
+  re-accepted. On a subsequent run, when a remote player finished first and triggered
+  `checkAllCompleted(questID, false)`, `localDone` evaluated to `true` via the stale
+  `selfFinishedQuests` entry even though `localHasCompleted` was `false`. Fix: added
+  `selfFinishedQuests[questID] = nil` inside `OnQuestEvent` when `eventType == ET.Abandoned`,
+  clearing the record so `localDone` correctly evaluates to `false` until the local player
+  completes the quest again in the new run.
+
+### Version 2.18.14 (April 2026)
+- Bug fix: "Everyone has completed" banner fired immediately when the first player
+  completed a quest, even though other party members had not finished yet. Root cause:
+  `checkAllCompleted` checked `entry.completedQuests` when determining remote player
+  engagement. That table is populated by `SQ_RESP_COMPLETE` which sends
+  `AQL:GetCompletedQuests()` — the player's entire quest completion history. If a party
+  member had previously completed the quest (any prior session, daily reset, etc.), they
+  were counted as "engaged and done" for the current session, causing the banner to fire
+  as soon as the first player finished. Fix: removed the `completedQuests` lookup from
+  the remote-engagement check entirely. Only `entry.quests` (active quests this session)
+  is used to determine whether a player is engaged with the quest.
+
+### Version 2.18.13 (April 2026)
+- Bug fix: "Everyone has completed" banner was not visible for the last player to finish
+  a quest. Root cause: `RaidWarningFrame` holds at most ~2 messages; when three banners
+  fire in the same Lua frame (objective "4/4", "You have completed", "Everyone has
+  completed"), the third message is dropped. Fix: `displayBanner` for "Everyone has
+  completed" is now deferred by 2 seconds via `SQWowAPI.TimerAfter`. The banner fires
+  after the quest-finished and objective-complete banners have cleared the queue, making
+  it the prominent final notification. The chat message (when applicable) is still sent
+  immediately since the chat system does not share the RaidWarningFrame queue.
+
+### Version 2.18.12 (April 2026)
+- Bug fix: "Everyone has completed" banner fired prematurely as soon as the first player
+  completed a quest, even when no other party member had finished yet. Root cause: in
+  `checkAllCompleted`, `anyEngaged` was initialized to `localEngaged` (true when the
+  local player just completed). If no remote player's quest data was found in
+  `PlayerQuests`, the remote loop left `anyEngaged = true` (from the initialization) and
+  the `if not anyEngaged then return end` guard did not suppress the banner. Fix: added
+  `anyRemoteEngaged` flag (initialized to false) that is set to true inside the remote
+  loop only when a party member is found engaged with the same quest. The guard now
+  requires both `anyEngaged` and `anyRemoteEngaged` — the banner only fires when at
+  least one remote party member was also engaged with the quest and all such members
+  are done.
+
+### Version 2.18.11 (April 2026)
+- Bug fix: Party and Shared tabs showed "Complete" status text for quests with numeric
+  objectives (kill/collect/interact) when all objectives were fulfilled, instead of
+  showing fully-filled progress bars. Root cause: `AddPlayerRow` in `RowFactory.lua`
+  applied the `isComplete → "Complete"` text branch to all complete quests regardless
+  of objective type. Fix: added `isNoObjectiveQuest` guard to the `isComplete` branch,
+  matching the existing guard on the `"In Progress"` branch. Quests with numeric
+  objectives now always render bars; "Complete" text only shows for quests with no
+  trackable numeric objectives (talk-to-NPC, go-to-location, etc.).
+
+### Version 2.18.10 (April 2026)
+- Bug fix: "Everyone has completed" banner suppressed when both players finish
+  near-simultaneously. Root cause: `checkAllCompleted` is called twice per completion
+  event — once with `localHasCompleted=true` (own AQL callback) and once with
+  `localHasCompleted=false` (triggered by the remote player's incoming `SQ_UPDATE`).
+  On the second call, `AQL:GetQuest(questID).isComplete` may still be `false` if the
+  AQL cache hasn't settled yet (or in `/aql fire` testing, where the cache is never
+  updated). The local-done check then fails and the banner is suppressed even though
+  the local player did complete the quest. Fix: `selfFinishedQuests` module-level table
+  in `Announcements.lua` records any questID for which `checkAllCompleted` fired with
+  `localHasCompleted=true`. The `localDone` check now includes `selfFinishedQuests[questID]`
+  so subsequent remote-triggered calls always see the local player as done.
+
+### Version 2.18.9 (April 2026)
+- Feature: `/sq diagnose` console window now persists geometry across sessions. Window
+  position (TOPLEFT), size, and input/output split fraction are stored in
+  `char.frameState.console` (AceDB char scope) and restored the next time `/sq diagnose`
+  is opened. Position is saved on drag-stop, size on resize-grip mouse-up, and split
+  fraction when the separator bar is released.
+- Feature: PageUp / PageDown scroll the input and output panes of the `/sq diagnose`
+  console while keeping keyboard focus, so scrolling no longer interrupts typing or
+  text selection. Shift+PageUp/Down additionally extends the text selection: uses the
+  click anchor (set when the user clicks in the pane) and estimates characters per page
+  from the EditBox line height and scroll-frame viewport height, then calls HighlightText
+  to extend the selection to the new cursor position.
+- Fix: all four `.toc` files (TBC, Mainline, Classic, Mists) now stay in sync on every
+  version bump. Classic and Mists were last updated at 2.17.10 and have been brought
+  forward to the current version.
+
+### Version 2.18.8 (April 2026)
+- Bug fix: "Everyone has completed" banner never fired in cross-realm parties on Retail
+  due to three compounding issues in `Core/Communications.lua`:
+  1. **Self-filter** (`OnCommReceived`): `UnitFullName("player")` returns nil realm on
+     Retail even inside a cross-realm party, but CHAT_MSG_ADDON includes the realm suffix
+     for all senders.  The self-filter now falls back to `GetNormalizedRealmName()` when
+     UnitFullName returns a nil or empty realm, so own PARTY loopback messages (e.g.
+     `"Leannae-Hakkar"`) are correctly suppressed instead of creating a self-stub with
+     `hasSocialQuest=false`.
+  2. **PARTY /reload recovery** (`SQ_INIT` handler): after the reloading player broadcasts
+     `SQ_INIT` to PARTY, existing members never received `GROUP_ROSTER_UPDATE` (they never
+     saw the player leave), so `OnMemberJoined` never fired and no whisper was sent back.
+     PARTY is now included in the jittered-whisper-response path alongside RAID and
+     INSTANCE_CHAT, with a 1–4 s delay.  `OnMemberJoined`'s direct send stamps
+     `lastInitSent` so the 15-second cooldown suppresses any duplicate on fresh joins.
+  3. **`hasSocialQuest` in `SQ_RESP_COMPLETE`**: a player responding to `SQ_REQ_COMPLETED`
+     proves they have SocialQuest installed.  The handler now sets `entry.hasSocialQuest =
+     true` and `entry.dataProvider` so `checkAllCompleted`'s suppression gate
+     (`not hasSocialQuest and not dataProvider`) cannot fire for them even if the normal
+     `SQ_INIT` exchange was delayed.
+
+### Version 2.18.7 (April 2026)
+- Bug fix: Ctrl+C in the `/sq diagnose` output pane still opened the Character window.
+  Root cause identified: WoW fires `OnKeyDown` with `key = "LCTRL"` (or `"RCTRL"`) the
+  moment the user holds Ctrl, *before* "C" is pressed. The previous handler had no guard
+  for modifier keys, so `ClearFocus()` was called on the LCTRL event, stripping C-level
+  focus from the EditBox. When "C" then arrived, no EditBox owned focus and the game
+  keybinding fired instead. Fix: modifier keys (`LCTRL/RCTRL/LSHIFT/RSHIFT/LALT/RALT`)
+  now call `SetPropagateKeyboardInput(false)` and return early without clearing focus.
+  `Ctrl+A` / `Ctrl+C` likewise call `SetPropagateKeyboardInput(false)` explicitly so
+  WoW's native EditBox copy/select-all runs at the C level. All other keys propagate
+  normally and release focus as before.
+
+### Version 2.18.6 (April 2026)
+- Bug fix: Ctrl+C in the `/sq diagnose` console output pane opened the Character window
+  instead of copying selected text. Root cause: `SetPropagateKeyboardInput(false)` on the
+  child EditBox only blocks Lua-frame propagation, not WoW's C-level game keybinding system.
+  Fix: the main console frame now calls `f:EnableKeyboard(true)` and installs an `OnKeyDown`
+  handler that calls `self:SetPropagateKeyboardInput(not sqEditFocused)`. A `sqEditFocused`
+  flag is toggled by `OnEditFocusGained`/`OnEditFocusLost` on both EditBoxes. When either
+  EditBox owns keyboard focus the main frame blocks game keybindings (Ctrl+C, etc.); when
+  neither does, keybindings propagate normally so chat and other UI shortcuts are unaffected.
+- Bug fix: clicking anywhere in the input pane (including empty space below the text) now
+  gives the input EditBox keyboard focus. The input ScrollFrame now has `EnableMouse(true)`
+  and an `OnMouseDown` that forwards `SetFocus()` to the EditBox, so a left-click anywhere
+  in the input area places the cursor rather than only responding when clicking directly
+  on existing text.
+
+### Version 2.18.5 (April 2026)
+- Feature: `/sq diagnose` now opens a persistent interactive Lua console window instead of
+  the old read-only copyable text popup. The window has: an input pane (multiline EditBox,
+  Tab inserts 2 spaces) for typing Lua code; a draggable separator bar between input and
+  output; an output pane (ScrollFrame + FontString) showing captured results; Run and Clear
+  buttons in the title bar. Clicking Run executes the input as Lua via `loadstring`/`pcall`,
+  temporarily redirects the global `print` to capture output lines (shown in yellow), and
+  wraps each run with `--[[ SQ-RUN-START ]]--` / `--[[ SQ-RUN-END ]]--` markers. Compile
+  and runtime errors shown in red. The window is draggable, resizable (resize grip at
+  bottom-right), clamped to screen, TOOLTIP strata (always on top), and toggles on repeated
+  `/sq diagnose`. The output pane pre-populates with the same group-state snapshot the old
+  popup showed, in grey. Frame persists as `SQConsoleFrame` global for the session.
+
+### Version 2.18.4 (April 2026)
+- Bug fix: "Everyone has completed" banner never fired on Retail when both party members
+  completed their quest. Root cause: on Retail, `UnitName("partyN")` returns a nil realm
+  for same-realm players, while AceComm message senders include the realm suffix
+  (`"Name-Realm"`). This caused two separate `PlayerQuests` entries per player — a ghost
+  stub under `"Name"` (created by `GroupComposition` and `OnUnitQuestLogChanged`) and a
+  full-data entry under `"Name-Realm"` (created from the AceComm sender). The ghost stub
+  has `hasSocialQuest=false` and no `dataProvider`, so `checkAllCompleted`'s suppression
+  gate (`if not entry.hasSocialQuest and not entry.dataProvider then return end`) fired on
+  it, preventing the "Everyone completed" message. Fix: `GroupComposition.lua` and
+  `GroupData.lua` now call `SQWowAPI.UnitFullName` instead of `SQWowAPI.UnitName` when
+  building the player key for `PlayerQuests`. On Retail, `UnitFullName` returns
+  `"Name", "Realm"` even for same-realm players, matching the AceComm sender format. On
+  TBC/Classic/MoP, `UnitFullName` behaves identically to `UnitName` (realm is nil for all
+  players) — no behavior change on those versions.
+
+### Version 2.18.3 (April 2026)
+- Bug fix: chain header label in Party and Shared tabs showed the title of the current
+  quest step rather than the chain's root quest name, causing the label to change as
+  players turned in quests and advanced steps (regression on Retail). Both tabs now use
+  `AQL:GetQuestInfo(chainID)` to resolve the step-1 title at chain-entry creation time,
+  matching the fix already in place in MineTab since 2.6.0.
+
+### Version 2.18.2 (April 2026)
+- Bug fix: "Everyone has completed" banner failed to fire on Retail when party members
+  held variant questIDs for the same logical quest. Two fixes in `checkAllCompleted`:
+  (1) Remote player quest lookup now falls back to a direct questID match when title
+  resolution fails (`triggerTitle = nil`) or when `qdata.title` was not stored — this
+  ensures the player who sent ET.Finished is always found as engaged. (2) Local player
+  engagement detection now also scans `AQL:GetAllQuests()` by title when `AQL:GetQuest`
+  returns nil for the triggering questID — correctly identifies the local player's
+  variant quest on Retail. Verbose debug logging added to `checkAllCompleted` (fires
+  when debug.enabled) to capture triggerTitle, localEngaged/Done, and per-remote-player
+  engagement when troubleshooting future issues.
+
+### Version 2.18.1 (April 2026)
+- Feature: No-objective quest status display. Quests with no numeric X/Y objectives
+  (travel, talk-to-NPC, exploration) now show per-player status in Party and Shared tabs
+  using a two-column layout: player name left, status text left-aligned at bar start
+  position. Three states: "Finished" (quest turned in, green), "Complete" (objectives
+  met not yet turned in, green), "In Progress" (no objectives, not yet done, dimmed).
+  Mine tab title row gains an `(In Progress)` badge at lowest priority (after `(Complete)`
+  and `(Group)`).
+- Refactor: `hasCompleted` and `isComplete` player rows now use `renderStatusRow` for
+  consistent two-column layout. Single-string fallback preserved when `nameColumnWidth`
+  is nil.
+- i18n: new locale keys `Finished`, `In Progress`, `(In Progress)` in all 12 locales.
+  Removed `%s FINISHED` format-string key (superseded by standalone `Finished`).
+
+### Version 2.18.0 (April 2026 — Improvements branch)
+- Bug fix: "Everyone has completed" banner now fires correctly when party members hold
+  Retail variant questIDs for the same logical quest (same title, different numeric ID
+  per race/class character type). `checkAllFinished` renamed to `checkAllCompleted`
+  throughout. Remote player matching now uses quest title comparison (`qdata.title`)
+  rather than exact questID lookup, so variant questIDs are correctly detected as the
+  same quest.
+- Bug fix: Party tab no longer shows duplicate rows for Retail variant questIDs of the
+  same ungrouped (non-chain) quest. Entries are merged by title via new `mergePlayers`
+  deduplication helper that prefers real quest-data rows over "needsShare" placeholders.
+- Bug fix: Shared tab no longer requires both players to have the identical questID for
+  a quest to appear. Title-based merge of `questEngaged` entries means variant questIDs
+  of the same quest now combine their player counts, correctly reaching the 2+ threshold.
+- Language cleanup: all internal debug messages and comments around the "everyone done"
+  check updated from "finished" to "completed" for consistency with the displayed
+  `L["Everyone has completed: %s"]` string.
+- Requires: AQL 3.3.0 (`GetQuestAliasKey`, `AreQuestsAliases` available; `checkAllCompleted`
+  uses `AQL:GetQuestTitle` for cross-source title resolution).
+
+### Version 2.17.19 (April 2026 — Improvements branch)
+- Bug fix: spurious `QuestMapFrame_ShowQuestDetails` re-fires after `QuestMapFrame_CloseQuestDetails` during back-navigation. Blizzard calls ShowQuestDetails immediately after CloseQuestDetails as part of its own bookkeeping, re-setting `_retailDetailQuestID` in the same game frame and causing the toggle-close to misfire on the next SQ click. Fix: `_retailDetailClosedAt` records the `GetTime()` of the last CloseQuestDetails call; ShowQuestDetails hook ignores any call within 100ms of it. That window is far longer than the same-frame spurious Blizzard fire, and far shorter than any human re-click.
+
+### Version 2.17.18 (April 2026 — Improvements branch)
+- Bug fix: toggle-close in `openQuestLogToQuest` (RowFactory.lua) now uses hook-based tracking instead of `AQL:IsQuestDetailShown()`. On Retail, `QuestModelScene:IsVisible()` (the basis of `IsQuestDetailShown`) remains true even when the quest list is showing — the Retail quest log uses a split-pane layout where the model scene stays visible regardless of which panel is active. The fix: `hooksecurefunc` on `QuestMapFrame_ShowQuestDetails` sets `_retailDetailQuestID = questID` when details are confirmed shown; `hooksecurefunc` on `QuestMapFrame_CloseQuestDetails` (if present) and `WorldMapFrame:OnHide` clear it. The toggle-close condition on Retail is now `IsQuestLogShown() AND _retailDetailQuestID == questID`. On TBC/Classic, the original `GetSelectedQuestLogEntryId() == questID` check is preserved (still correct on those versions).
+
+### Version 2.17.17 (April 2026 — Improvements branch)
+- Superseded by 2.17.18. Added `AQL:IsQuestDetailShown()` to toggle-close condition; did not work because `QuestModelScene:IsVisible()` does not distinguish detail-panel-active from quest-list-showing on Retail.
+
+### Version 2.17.16 (April 2026 — Improvements branch)
+- Cleanup: removed orphaned `local SQWowUI = SocialQuestWowUI` declaration from `UI/RowFactory.lua`. This local was added when implementing the (now-removed) SQ bypass for quest detail navigation and was never referenced after the bypass was deleted.
+
+### Version 2.17.15 (April 2026 — Improvements branch)
+- Reverted 2.17.14's toggle change. Using `AQL:GetCurrentlyOpenQuestId()` (AQL-tracked state) is incorrect: if the player opens the quest log from the tracker, a keybind, or any other source, the tracked questID is stale and the toggle fires on the wrong quest. The toggle check is restored to `AQL:GetSelectedQuestLogEntryId() == questID` (observable UI state). On Retail this depends on `WowQuestAPI.ShowQuestDetails` establishing the visual selection — the toggle-close gracefully degrades to a no-op until that unverified Retail API is resolved.
+
+### Version 2.17.13 (April 2026 — Improvements branch)
+- Bug fix: clicking a quest title in the SQ group window opened the quest log but did not navigate to or select that quest's detail panel. `openQuestLogToQuest` in `RowFactory.lua` used two deprecated AQL APIs — `AQL:GetSelectedQuestId()` replaced with `AQL:GetSelectedQuestLogEntryId()` and `AQL:SetQuestLogSelection(logIndex)` replaced with `AQL:OpenQuestLogById(questID)`. The Retail detail-panel navigation gap is fixed in AQL 3.2.7 (`WowQuestAPI.ShowQuestDetails` + `OpenQuestLogByIndex` update). Also fixed a nil dereference: `AQL:GetQuest(questID).zone` now nil-safe.
+
+### Version 2.17.12 (April 2026 — Improvements branch)
+- Bug fix (follow-up to 2.17.11): `BuildRemoteObjectives` reformatted count-first objective text (`"X/Y Description"`) into count-last (`"Description: X/Y"`), causing the local player's bar to show `"8/8 Blackrock Spy slain"` while remote players showed `"Blackrock Spy slain: 8/8"`. Fixed by detecting which format was matched and reconstructing in the same format — count-first stays count-first, count-last stays count-last.
+
+### Version 2.17.11 (April 2026 — Improvements branch)
+- Bug fix: remote player objective bar text showed the local player's stale count instead of the remote player's actual progress. Two root causes: (1) `BuildRemoteObjectives` in `TabUtils.lua` only recognised WoW's count-last objective text format (`"Description: X/Y"`) when stripping the embedded count before substituting the remote player's value; Retail's `C_QuestLog.GetQuestObjectives` returns count-first format (`"X/Y Description"`) which didn't match the pattern, so the verbatim stale text was used. Fixed by trying the count-first pattern `"^%d+/%d+%s+(.+)$"` as a fallback, with a final safety net of count-only text when neither pattern matches but an embedded count is detected. (2) `OnUpdateReceived` in `GroupData.lua` stored `objectives[i].isFinished` directly from the wire as an integer (0 or 1) — in Lua `0` is truthy, so RowFactory's `obj.isFinished and "completed" or "active"` coloured every freshly-accepted quest bar green immediately. Fixed by converting `obj.isFinished = obj.isFinished == 1` in a loop before storing, matching the fix already applied to `OnInitReceived` in 2.12.17.
+
+### Version 2.17.10 (April 2026 — Improvements branch)
+- Bug fix: `chainStepEntries` declared at wrong scope in `PartyTab:BuildTree` — shared across all zones, so a chainID appearing in multiple zones caused Zone B to silently merge players into Zone A's entry and drop the step from Zone B's chain. Fixed by replacing `local chainStepEntries = {}` (before the questID loop) with `local chainStepEntriesByZone = {}`, initializing a per-zone sub-table on first use inside the loop. Added nil guard on `ciEntry.step` before using it as a table key, falling back to an unconditional `table.insert` when step is nil.
+
+### Version 2.17.9 (April 2026 — Improvements branch)
+- Refactor (Retail): `SocialQuestTabUtils.GetChainInfoForQuestID` removed. All call sites in
+  PartyTab and SharedTab replaced with direct `AQL:GetChainInfo(questID)` calls. The provider
+  fallthrough logic is now handled inside `AQL:GetChainInfo` itself (AQL 3.2.6), making the
+  SocialQuest wrapper redundant. Party tab and Shared tab step deduplication replaced: the
+  previous title+zone heuristic merge (2.17.8) is superseded by step-number keying
+  `chainStepEntries[chainID][stepNum]` — since AQL now returns the same chainID and step for
+  all Retail variant questIDs of the same logical quest, the key is unambiguous and O(1).
+
+### Version 2.17.8 (April 2026 — Improvements branch)
+- Bug fix (Retail): Party tab duplicated same-quest entries when two players had different race/class variant questIDs for the same logical quest (e.g. questID 28763 and 28766 for "Beating Them Back!"). Both were correctly grouped under the same `chainID` after AQL 3.2.4 fixes, but still appeared as two separate step entries under the same chain header — each with only one player's progress rows. Fix: when inserting an entry into `zone.chains[chainID].steps` (or `zone.quests`), check if an entry with the same title AND zone already exists. If so, merge the new entry's `players` array into the existing entry instead of adding a duplicate. Title+zone matching prevents false positives from unrelated quests with coincidentally identical names in different zones. Same merge applied to ungrouped quests in `zone.quests`.
+
+### Version 2.17.7 (April 2026 — Improvements branch)
+- Diagnostic: two additions to pinpoint why SQ addon messages are not received on Retail. (1) Raw independent `CHAT_MSG_ADDON` frame registered in `OnEnable` — fires for every SQ-prefixed message that WoW delivers, completely bypassing AceComm. When `debug.enabled` is true, prints `[SQ][CHAT_MSG_ADDON] prefix= dist= sender=` directly to chat. If this fires, WoW delivered the event; if not, prefix registration is failing and messages go to `CHAT_MSG_ADDON_FILTERED` instead. (2) `/sq diagnose` now reports `C_ChatInfo.IsAddonMessagePrefixRegistered` status for all 8 SQ prefixes (Retail only).
+
+### Version 2.17.6 (April 2026 — Improvements branch)
+- Bug fix: SQ party communication completely broken on Retail — `memberSet` and `PlayerQuests` always empty despite being in a party. Root cause: on Retail, `GROUP_ROSTER_UPDATE` fires before `OnEnable` registers for it. The existing fallback (`PLAYER_LOGIN` → `OnPlayerLogin` → `OnGroupRosterUpdate`) also never fires because `PLAYER_LOGIN` has already been consumed by the time `OnEnable` registers for it. Result: group state was never bootstrapped; `memberSet` stays empty; all send/receive paths silently fail because no stubs exist. Fix: call `SocialQuestGroupComposition:OnGroupRosterUpdate()` directly at the end of `OnEnable()`. This runs immediately after all initialization, correctly detects any existing group, and works regardless of prior event ordering. Removed dead `PLAYER_LOGIN` event registration and `OnPlayerLogin` handler from both `SocialQuest.lua` and `GroupComposition.lua`.
+
+### Version 2.17.5 (April 2026 — Improvements branch)
+- Diagnostic: added `/sq diagnose` slash command. Prints runtime group state unconditionally (no debug.enabled gate): IsInRaid, PARTY_CATEGORY_HOME/INSTANCE values, IsInGroup results for both categories, GetActiveChannel result, GetNumGroupMembers, UnitFullName/UnitName for player, UnitName for each party slot, GroupComposition.memberSet contents, PlayerQuests keys with hasSocialQuest/dataProvider, debug.enabled, party.transmit, and zone-suppress status. Used to pinpoint which layer of the send/receive pipeline is failing on Retail.
+
+### Version 2.17.4 (April 2026 — Improvements branch)
+- Diagnostic attempt: SQ_UPDATE and all other AceComm prefixes not received on Retail. Attempted fix was a no-op: changing `LibStub("AceComm-3.0"):RegisterComm(prefix, callback)` to `SocialQuest:RegisterComm(prefix, callback)` — both write to the same `AceComm.callbacks.events` table (the library mixin copies its callback table to the addon object at embed time), so receive behavior was unchanged. Root cause at this point was still unidentified; the actual cause was found in 2.17.8 (`AQL:GetQuestTitle`/`AQL:GetQuestInfo` calling non-existent `GetQuestInfo` WoW global on Retail).
+
+### Version 2.17.3 (April 2026 — Improvements branch)
+- Bug fix: Party communication completely broken — banners never fired for other players and quest data never appeared in Party/Shared tabs. Root cause: `GetActiveChannel()` in `Communications.lua` and `currentGroupType()` in `GroupComposition.lua` both checked `IsInGroup(PARTY_CATEGORY_INSTANCE)` before `IsInGroup(PARTY_CATEGORY_HOME)`. If `LE_PARTY_CATEGORY_INSTANCE` is nil in the WoW environment (possible on TBC), `IsInGroup(nil)` degrades to `IsInGroup()` which returns truthy for any group including a home party — so a normal party was classified as a Battleground and messages were sent to `INSTANCE_CHAT` instead of `PARTY`. Both checks now nil-guard `PARTY_CATEGORY_INSTANCE` before using it.
+
+### Version 2.17.2 (March 2026 — Improvements branch)
+- Bug fix: `GroupFrame.lua:318` crashed on Retail with "Couldn't find inherited node 'TabButtonTemplate'" — `TabButtonTemplate` was removed in Retail. Added `SocialQuestWowUI.TabButtonTemplate` constant to `Core/WowUI.lua` that returns `"PanelTabButtonTemplate"` on Retail and `"TabButtonTemplate"` on all other versions. `GroupFrame.lua` `makeTab` now uses `SQWowUI.TabButtonTemplate`.
+
+### Version 2.17.1 (March 2026 — Improvements branch)
+- Bug fix (port from AQL3Compat): `BuildEngagedSet(nil)` in `TabUtils.lua` now nil-checks `_GetCurrentPlayerEngagedQuests` before calling it, falling back to `AQL:GetAllQuests()` + `AQL:GetCompletedQuests()`. Eight remaining standalone `AQL:_GetCurrentPlayerEngagedQuests()` direct calls in `MineTab.lua`, `PartyTab.lua`, and `SharedTab.lua` replaced with `SocialQuestTabUtils.BuildEngagedSet(nil)`.
+- Bug fix (port from AQL3Compat): SocialQuest group members incorrectly shown as Questie bridge users due to a race condition where the joining player's `SQ_INIT` PARTY broadcast arrived before `GROUP_ROSTER_UPDATE` created their `PlayerQuests` stub. `OnInitReceived` dropped the message; the Questie bridge then hydrated them at t+4s. Fix: `Communications.lua` creates the stub via `OnMemberJoined` for non-whisper SQ_INIT when the sender has no existing entry.
+
+### Version 2.17.0 (March 2026 — Improvements branch)
+- Feature: Multi-version WoW support infrastructure. `Core/WowAPI.lua` now derives `IS_CLASSIC_ERA`, `IS_TBC`, `IS_MOP`, `IS_RETAIL` booleans from `GetBuildInfo()` at load time. Three companion TOC files added: `SocialQuest_Classic.toc` (Interface 11508), `SocialQuest_Mists.toc` (Interface 50503), `SocialQuest_Mainline.toc` (Interface 120001). `QuestLogPushQuest` routes to `C_QuestLog.PushQuestToParty(questID)` on Retail; call site updated to pass `entry.questID`. `GetRaidRosterInfo` routes to `C_RaidRoster.GetRaidRosterInfo` on Retail. `MAX_QUEST_LOG_ENTRIES` constant (35 Retail / 25 others) replaces hardcoded `25` in the quest-log-full check. `RACE_ID` and `CLASS_ID` numeric reference tables added for documentation purposes.
+- Refactor: `RACE_BITS` and `CLASS_BITS` lookup tables removed from `PartyTab.lua`. Race/class eligibility now uses the numeric raceID/classID (third return from `UnitRace`/`UnitClass`) with `2^(id-1)` — correct for all WoW versions and Retail allied races, no maintenance required.
+- Refactor: `SocialQuestTabUtils.BuildEngagedSet(playerName)` consolidates four copies of the inline engaged-set construction pattern across `MineTab.lua`, `PartyTab.lua`, `SharedTab.lua`, and `Announcements.lua`. `appendChainStep` in `Announcements.lua` now accepts an optional `sender` parameter so remote quest banners show the sender's own chain step.
+- Refactor: All 9 direct `C_Timer.After` calls in `Core/QuestieBridge.lua` replaced with `SQWowAPI.TimerAfter`, consistent with the single-owner-of-WoW-globals policy.
+- Feature: Retail tooltip hook. `UI/Tooltips.lua` `Initialize` uses `TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Quest, ...)` on Retail; falls back to `hooksecurefunc(ItemRefTooltip, "SetHyperlink")` on all other versions.
 
 ### Version 2.15.0 (March 2026 — Improvements branch)
 - Feature: `&` same-key AND operator in the advanced filter language. A single filter label can now express multiple conditions on the same key: `type=dungeon&gather` (dungeon quests with gather objectives), `level>=55&<=62` (level range), `title=dragon&slayer` (title contains both words). The key is written once; operator is inherited by subsequent fragments when omitted. `&` and `|` may not be combined in the same expression (`MIXED_AND_OR` error). `compound_and` descriptor type added to `FilterParser`; all four `Matches*` helpers in `TabUtils` handle it recursively. `FilterState` and `HeaderLabel` unchanged.

@@ -7,46 +7,6 @@ PartyTab = {}
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 local SQWowAPI = SocialQuestWowAPI
 
--- Maps UnitRace() second return value (English race string) to Questie requiredRaces bitmask bits.
--- "Scourge" is the English race file name for Undead in TBC.
--- Goblin (256) included as a stub: follows the sequential raceKeys pattern (index 9 → bit 256).
--- Post-Cataclysm allied races (Worgen, Pandaren, Nightborne, etc.) are intentionally absent:
--- their bitmask values in the retail Questie DB are non-contiguous and unverified — including
--- wrong values would produce incorrect eligibility results. Add them when retail support is
--- implemented and the values are confirmed. Missing entries are gracefully skipped (nil check).
-local RACE_BITS = {
-    ["Human"]    = 1,
-    ["Orc"]      = 2,
-    ["Dwarf"]    = 4,
-    ["NightElf"] = 8,
-    ["Scourge"]  = 16,   -- UnitRace returns "Scourge" for Undead
-    ["Tauren"]   = 32,
-    ["Gnome"]    = 64,
-    ["Troll"]    = 128,
-    ["Goblin"]   = 256,  -- Cataclysm; stub for future retail support
-    ["BloodElf"] = 512,
-    ["Draenei"]  = 1024,
-}
-
--- Maps UnitClass() second return value (English class token) to Questie requiredClasses bitmask bits.
--- All 13 classes included. DK/Monk/DemonHunter/Evoker are stubs for future retail support:
--- UnitClass never returns their tokens in TBC so these entries are unreachable and harmless.
-local CLASS_BITS = {
-    ["WARRIOR"]     = 1,
-    ["PALADIN"]     = 2,
-    ["HUNTER"]      = 4,
-    ["ROGUE"]       = 8,
-    ["PRIEST"]      = 16,
-    ["DEATHKNIGHT"] = 32,    -- WotLK; stub for retail support
-    ["SHAMAN"]      = 64,
-    ["MAGE"]        = 128,
-    ["WARLOCK"]     = 256,
-    ["MONK"]        = 512,   -- MoP; stub for retail support
-    ["DRUID"]       = 1024,
-    ["DEMONHUNTER"] = 2048,  -- Legion; stub for retail support
-    ["EVOKER"]      = 4096,  -- Dragonflight; stub for retail support
-}
-
 ------------------------------------------------------------------------
 -- Private helpers
 ------------------------------------------------------------------------
@@ -81,21 +41,23 @@ local function isEligibleForShare(questID, playerData, unitToken)
     -- Checks 2-5 require a live unit token; skip for offline players.
     if unitToken then
         -- Check 2: wrong race.
+        -- UnitRace returns (localizedName, englishName, raceID). The numeric raceID
+        -- maps to Questie's requiredRaces bitmask via bit.lshift(1, raceID-1)
+        -- (equivalent to 2^(raceID-1) but faster — integer shift vs float exponentiation).
         if reqs and reqs.requiredRaces then
-            local _, raceEn = SQWowAPI.UnitRace(unitToken)
-            local raceBit = raceEn and RACE_BITS[raceEn]
-            if raceBit and bit.band(reqs.requiredRaces, raceBit) == 0 then
+            local raceId = select(3, SQWowAPI.UnitRace(unitToken))
+            if raceId and bit.band(reqs.requiredRaces, bit.lshift(1, raceId - 1)) == 0 then
                 return { eligible = false, reason = { code = "wrong_race" } }
             end
         end
 
         -- Check 3: wrong class.
-        -- CLASS_BITS includes all retail classes as stubs; DK/Monk/DH/Evoker never
-        -- match in TBC since UnitClass never returns those tokens there.
+        -- UnitClass returns (localizedName, classToken, classID). The numeric classID
+        -- maps to Questie's requiredClasses bitmask via bit.lshift(1, classID-1)
+        -- (equivalent to 2^(classID-1) but faster — integer shift vs float exponentiation).
         if reqs and reqs.requiredClasses then
-            local _, classToken = SQWowAPI.UnitClass(unitToken)
-            local classBit = classToken and CLASS_BITS[classToken]
-            if classBit and bit.band(reqs.requiredClasses, classBit) == 0 then
+            local classId = select(3, SQWowAPI.UnitClass(unitToken))
+            if classId and bit.band(reqs.requiredClasses, bit.lshift(1, classId - 1)) == 0 then
                 return { eligible = false, reason = { code = "wrong_class" } }
             end
         end
@@ -117,12 +79,12 @@ local function isEligibleForShare(questID, playerData, unitToken)
         end
     end
 
-    -- Check 6: quest log full (TBC cap is 25 quests).
+    -- Check 6: quest log full.
     local questCount = 0
     if playerData.quests then
         for _ in pairs(playerData.quests) do questCount = questCount + 1 end
     end
-    if questCount >= 25 then
+    if questCount >= SQWowAPI.MAX_QUEST_LOG_ENTRIES then
         return { eligible = false, reason = { code = "quest_log_full" } }
     end
 
@@ -198,7 +160,9 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
     -- Local player row (always first when local player has any stake).
     local myInfo = AQL:GetQuest(questID)
     if myInfo then
-        local ci = myInfo.chainInfo
+        local chainResult  = myInfo.chainInfo
+        local localEngaged = SocialQuestTabUtils.BuildEngagedSet(nil)
+        local ci = SocialQuestTabUtils.SelectChain(chainResult, localEngaged)
         table.insert(players, {
             name           = L["(You)"],
             isMe           = true,
@@ -207,8 +171,8 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
             needsShare     = false,
             isComplete     = myInfo.isComplete or false,
             objectives     = SocialQuestTabUtils.BuildLocalObjectives(myInfo),
-            step           = ci and ci.knownStatus == AQL.ChainStatus.Known and ci.step       or nil,
-            chainLength    = ci and ci.knownStatus == AQL.ChainStatus.Known and ci.length     or nil,
+            step           = ci and ci.step or nil,
+            chainLength    = ci and ci.length or nil,
         })
     elseif AQL:HasCompletedQuest(questID) then
         table.insert(players, {
@@ -240,8 +204,9 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
                 dataProvider   = playerData.dataProvider,
             })
         elseif hasQuest then
-            local pquest = playerData.quests[questID]
-            local pCI    = SocialQuestTabUtils.GetChainInfoForQuestID(questID)
+            local pquest      = playerData.quests[questID]
+            local pChainResult = AQL:GetChainInfo(questID)
+            local pCI = SocialQuestTabUtils.SelectChain(pChainResult, SocialQuestTabUtils.BuildEngagedSet(playerName))
             table.insert(players, {
                 name           = playerName,
                 isMe           = false,
@@ -250,8 +215,8 @@ local function buildPlayerRowsForQuest(questID, localHasIt)
                 needsShare     = false,
                 isComplete     = pquest.isComplete or false,
                 objectives     = SocialQuestTabUtils.BuildRemoteObjectives(pquest, myInfo),
-                step           = pCI.knownStatus == AQL.ChainStatus.Known and pCI.step   or nil,
-                chainLength    = pCI.knownStatus == AQL.ChainStatus.Known and pCI.length or nil,
+                step           = pCI and pCI.step or nil,
+                chainLength    = pCI and pCI.length or nil,
                 dataProvider   = playerData.dataProvider,
             })
         elseif shareable then
@@ -301,11 +266,52 @@ function PartyTab:BuildTree(filterTable)
         end
     end
 
-    local tree     = { zones = {} }
-    local orderIdx = 0
+    -- Build questID → classID lookup from remote players' quest entries.
+    -- Used by GetZoneForQuestID to resolve class-name zone headers for remote
+    -- players' class quests, where AQL's provider returns geographic zone instead.
+    local questClassIDs = {}
+    for _, playerData in pairs(SocialQuestGroupData.PlayerQuests) do
+        if playerData.quests then
+            for questID, qentry in pairs(playerData.quests) do
+                if qentry.classID and not questClassIDs[questID] then
+                    questClassIDs[questID] = qentry.classID
+                end
+            end
+        end
+    end
+
+    local tree                = { zones = {} }
+    local orderIdx            = 0
+    local chainStepEntriesByZone = {}
+    local questsByTitleByZone    = {}   -- zoneName → {title → entry} for ungrouped quest dedup
+    local chainTitleToIDByZone   = {}   -- zoneName → {chainTitle → canonical chainID} for alias dedup
+
+    -- Merges source players into target, deduplicating by player name.
+    -- When a player appears in both lists, the entry with real quest data is
+    -- preferred over a "needsShare" placeholder row (which is only added when
+    -- the local player has a shareable quest and the remote player lacks it by
+    -- exact-ID lookup — the variant case produces this false placeholder).
+    local function mergePlayers(target, source)
+        local byName = {}
+        for i, p in ipairs(target) do
+            byName[p.name] = i
+        end
+        for _, p in ipairs(source) do
+            local idx = byName[p.name]
+            if idx then
+                -- Player already present. Prefer the entry with real quest data.
+                if target[idx].needsShare and not p.needsShare then
+                    target[idx] = p
+                end
+            else
+                table.insert(target, p)
+                byName[p.name] = #target
+            end
+        end
+    end
 
     for questID in pairs(allQuestIDs) do
-        local zoneName = SocialQuestTabUtils.GetZoneForQuestID(questID)
+        local zoneName = SocialQuestTabUtils.GetZoneForQuestID(questID, questClassIDs[questID])
         local filtered = filterTable and filterTable.autoZone and zoneName ~= filterTable.autoZone
         if not filtered then
             if not tree.zones[zoneName] then
@@ -320,7 +326,7 @@ function PartyTab:BuildTree(filterTable)
             local zone = tree.zones[zoneName]
 
             local localInfo    = AQL:GetQuest(questID)
-            local ci           = localInfo and localInfo.chainInfo or SocialQuestTabUtils.GetChainInfoForQuestID(questID)
+            local ci           = AQL:GetChainInfo(questID)
             local localHasIt   = localInfo ~= nil
 
             local entry = {
@@ -350,28 +356,122 @@ function PartyTab:BuildTree(filterTable)
                 end
             end
 
-            if ci.knownStatus == AQL.ChainStatus.Known and ci.chainID then
-                local chainID = ci.chainID
+            if not chainStepEntriesByZone[zoneName] then chainStepEntriesByZone[zoneName] = {} end
+            local chainStepEntries = chainStepEntriesByZone[zoneName]
+
+            local buildEngaged = SocialQuestTabUtils.BuildEngagedSet(nil)
+            local ciEntry = SocialQuestTabUtils.SelectChain(ci, buildEngaged)
+            if ciEntry and ciEntry.chainID then
+                local chainID = ciEntry.chainID
                 if not zone.chains[chainID] then
-                    zone.chains[chainID] = { title = entry.title, steps = {} }
+                    -- chainID is always the questID of step 1; resolve its title for a
+                    -- stable chain label regardless of which step the player is currently on.
+                    local step1Info  = AQL:GetQuestInfo(chainID)
+                    local chainTitle = (step1Info and step1Info.title) or entry.title
+                    -- Alias normalization (Retail/MoP): if a chain with the same step-1 title
+                    -- already exists under a different chainID (another alias), redirect so
+                    -- all players merge into one chain block instead of two.
+                    if SQWowAPI.IS_RETAIL or SQWowAPI.IS_MOP then
+                        if not chainTitleToIDByZone[zoneName] then
+                            chainTitleToIDByZone[zoneName] = {}
+                        end
+                        local canonID = chainTitleToIDByZone[zoneName][chainTitle]
+                        if canonID then
+                            chainID = canonID  -- redirect; zone.chains[canonID] already exists
+                        else
+                            chainTitleToIDByZone[zoneName][chainTitle] = chainID
+                            zone.chains[chainID] = { title = chainTitle, steps = {} }
+                        end
+                    else
+                        zone.chains[chainID] = { title = chainTitle, steps = {} }
+                    end
                 end
-                if ci.step == 1 then
-                    zone.chains[chainID].title = entry.title
+                if ciEntry.step then
+                    if not chainStepEntries[chainID] then chainStepEntries[chainID] = {} end
+                    local existing = chainStepEntries[chainID][ciEntry.step]
+                    if existing then
+                        -- Variant questID for an already-recorded step: merge players only.
+                        for _, p in ipairs(entry.players) do
+                            table.insert(existing.players, p)
+                        end
+                    else
+                        -- First questID seen at this step: record and insert.
+                        chainStepEntries[chainID][ciEntry.step] = entry
+                        table.insert(zone.chains[chainID].steps, entry)
+                    end
+                else
+                    table.insert(zone.chains[chainID].steps, entry)
                 end
-                table.insert(zone.chains[chainID].steps, entry)
             else
-                table.insert(zone.quests, entry)
+                -- Ungrouped quest: group by title to merge Retail variant questIDs.
+                -- (Non-chain quests with the same title are the same logical quest.)
+                if not questsByTitleByZone[zoneName] then
+                    questsByTitleByZone[zoneName] = {}
+                end
+                local titleKey  = entry.title
+                local existing  = questsByTitleByZone[zoneName][titleKey]
+                if existing then
+                    mergePlayers(existing.players, entry.players)
+                    -- Recompute hasShareableMembers — dedup may have removed needsShare rows.
+                    existing.hasShareableMembers = false
+                    for _, pl in ipairs(existing.players) do
+                        if pl.needsShare then existing.hasShareableMembers = true; break end
+                    end
+                    -- Prefer the local player's entry data (logIndex, questID) for interactions.
+                    if entry.logIndex and not existing.logIndex then
+                        existing.questID    = entry.questID
+                        existing.logIndex   = entry.logIndex
+                        existing.isComplete = entry.isComplete
+                        existing.isFailed   = entry.isFailed
+                        existing.isTracked  = entry.isTracked
+                    end
+                else
+                    questsByTitleByZone[zoneName][titleKey] = entry
+                    table.insert(zone.quests, entry)
+                end
+            end
+        end
+    end
+
+    -- Alias post-processing: on Retail and MoP Classic, an ungrouped entry whose title
+    -- matches an existing chain step was produced by a variant questID that failed chain
+    -- resolution. Merge its players into the matching step and remove it from zone.quests.
+    if SQWowAPI.IS_RETAIL or SQWowAPI.IS_MOP then
+        for _, zone in pairs(tree.zones) do
+            if next(zone.quests) and next(zone.chains) then
+                local remaining = {}
+                for _, entry in ipairs(zone.quests) do
+                    local merged = false
+                    for _, searchZone in pairs(tree.zones) do
+                        for _, chainEntry in pairs(searchZone.chains) do
+                            for _, stepEntry in ipairs(chainEntry.steps) do
+                                if stepEntry.title == entry.title then
+                                    mergePlayers(stepEntry.players, entry.players)
+                                    merged = true
+                                    break
+                                end
+                            end
+                            if merged then break end
+                        end
+                        if merged then break end
+                    end
+                    if not merged then table.insert(remaining, entry) end
+                end
+                zone.quests = remaining
             end
         end
     end
 
     -- Sort chain steps ascending.
+    local sortEngaged = SocialQuestTabUtils.BuildEngagedSet(nil)
     for _, zone in pairs(tree.zones) do
         for _, chain in pairs(zone.chains) do
             table.sort(chain.steps, function(a, b)
-                local aS = a.chainInfo and a.chainInfo.step or 0
-                local bS = b.chainInfo and b.chainInfo.step or 0
-                return aS < bS
+                local aResult = a.chainInfo
+                local bResult = b.chainInfo
+                local aci = SocialQuestTabUtils.SelectChain(aResult, sortEngaged)
+                local bci = SocialQuestTabUtils.SelectChain(bResult, sortEngaged)
+                return (aci and aci.step or 0) < (bci and bci.step or 0)
             end)
         end
     end
@@ -400,8 +500,10 @@ function PartyTab:BuildTree(filterTable)
             if ft.zone   and not T.MatchesStringFilter(entry.zone,  ft.zone)   then return false end
             if ft.title  and not T.MatchesStringFilter(entry.title, ft.title)  then return false end
             if ft.level  and not T.MatchesNumericFilter(entry.level, ft.level) then return false end
-            if ft.step   and not T.MatchesNumericFilter(
-                    entry.chainInfo and entry.chainInfo.step, ft.step)          then return false end
+            local chainStep = nil
+            local sci = SocialQuestTabUtils.SelectChain(entry.chainInfo, sortEngaged)
+            chainStep = sci and sci.step
+            if ft.step   and not T.MatchesNumericFilter(chainStep, ft.step)     then return false end
             if ft.group  and not T.MatchesEnumFilter(mapGroup(entry), ft.group) then return false end
             if ft.type   and not T.MatchesTypeFilter(entry, ft.type)  then return false end
             if ft.shareable and not T.MatchesEnumFilter(
@@ -493,7 +595,7 @@ function PartyTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTabl
                 if not AQL:IsQuestIdShareable(entry.questID) then return end
                 local prev = AQL:GetQuestLogSelection()
                 AQL:SetQuestLogSelection(entry.logIndex)
-                SQWowAPI.QuestLogPushQuest()
+                SQWowAPI.QuestLogPushQuest(entry.questID)
                 AQL:SetQuestLogSelection(prev)
             end,
         }

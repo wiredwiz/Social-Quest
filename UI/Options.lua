@@ -3,7 +3,6 @@
 
 local L = LibStub("AceLocale-3.0"):GetLocale("SocialQuest")
 local SQWowAPI = SocialQuestWowAPI
-local lastResyncTime = 0
 
 SocialQuestOptions = {}
 
@@ -329,10 +328,35 @@ function SocialQuestOptions:Initialize()
                 },
             },
 
+            tooltips = {
+                type  = "group",
+                name  = L["Tooltips"],
+                order = 10,
+                args  = {
+                    enhance = toggle(L["Enhance Questie/Blizzard tooltips"],
+                        L["Append party progress to existing quest tooltips. Adds party member status below Questie's or WoW's tooltip."],
+                        { "tooltips", "enhance" }, 1),
+                    replaceBlizzard = toggle(L["Replace Blizzard quest tooltips"],
+                        L["When clicking a quest link, show SocialQuest's full tooltip instead of WoW's basic tooltip."],
+                        { "tooltips", "replaceBlizzard" }, 2),
+                    replaceQuestie  = {
+                        type     = "toggle",
+                        name     = L["Replace Questie quest tooltips"],
+                        desc     = L["When clicking a questie link, show SocialQuest's full tooltip instead of Questie's tooltip. Not available when Questie is not installed."],
+                        order    = 3,
+                        disabled = function() return QuestieLoader == nil end,
+                        get      = function(info) return db.tooltips.replaceQuestie end,
+                        set      = function(info, v)
+                            db.tooltips.replaceQuestie = v
+                        end,
+                    },
+                },
+            },
+
             debug = {
                 type  = "group",
                 name  = L["Debug"],
-                order = 10,
+                order = 11,
                 args  = {
                     enabled = toggle(L["Enable debug mode"],
                         L["Print internal debug messages to the chat frame. Useful for diagnosing comm issues or event flow problems."],
@@ -343,13 +367,9 @@ function SocialQuestOptions:Initialize()
                         desc     = L["Request a fresh quest snapshot from all current group members. Disabled for 30 seconds after each use."],
                         order    = 2,
                         hidden   = function() return not db.debug.enabled end,
-                        disabled = function() return SQWowAPI.GetTime() - lastResyncTime < 30 end,
+                        disabled = function() return SocialQuestComm:IsResyncOnCooldown() end,
                         func     = function()
-                            lastResyncTime = SQWowAPI.GetTime()
-                            SocialQuestComm:SendResyncRequest()
-                            SocialQuest:ScheduleTimer(function()
-                                LibStub("AceConfigRegistry-3.0"):NotifyChange("SocialQuest")
-                            end, 30)
+                            SocialQuestComm:ResyncAll()
                         end,
                     },
                     testBanners = {

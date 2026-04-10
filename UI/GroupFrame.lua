@@ -315,7 +315,7 @@ local function createFrame()
 
     -- Tab buttons.
     local function makeTab(id, label, offsetX)
-        local tab = CreateFrame("Button", "SocialQuestTab_" .. id, f, "TabButtonTemplate")
+        local tab = CreateFrame("Button", "SocialQuestTab_" .. id, f, SQWowUI.TabButtonTemplate)
         tab:SetPoint("TOPLEFT", f, "TOPLEFT", offsetX, -24)
         tab:SetText(label)
         tab:SetScript("OnClick", function()
@@ -594,6 +594,7 @@ local function applyFrameState(f)
         f:ClearAllPoints()
         f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", fs.frameX, fs.frameY)
     end
+    SQWowUI.ClampFrameToScreen(f)
 end
 
 ------------------------------------------------------------------------

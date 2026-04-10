@@ -36,7 +36,8 @@ SocialQuestGroupComposition.GroupType = GroupType
 local function currentGroupType()
     if SQWowAPI.IsInRaid() then
         return GroupType.Raid
-    elseif SQWowAPI.IsInGroup(SQWowAPI.PARTY_CATEGORY_INSTANCE) then
+    elseif SQWowAPI.PARTY_CATEGORY_INSTANCE
+       and SQWowAPI.IsInGroup(SQWowAPI.PARTY_CATEGORY_INSTANCE) then
         return GroupType.Battleground
     elseif SQWowAPI.IsInGroup(SQWowAPI.PARTY_CATEGORY_HOME) then
         return GroupType.Party
@@ -109,7 +110,7 @@ function SocialQuestGroupComposition:OnGroupRosterUpdate()
         newMembers[selfName] = true
         local count = SQWowAPI.GetNumGroupMembers()
         for i = 1, count - 1 do  -- count includes self; partyX units are non-self members
-            local name, realm = SQWowAPI.UnitName("party" .. i)
+            local name, realm = SQWowAPI.UnitFullName("party" .. i)
             if name then
                 local fullName = normalize(name, realm)
                 newMembers[fullName] = true
@@ -172,9 +173,3 @@ function SocialQuestGroupComposition:OnGroupRosterUpdate()
     self.lastGroupType   = groupType
 end
 
--- On login/reload, memberSet is empty. Running the diff against empty
--- state fires OnSelfJoinedGroup then OnMemberJoined for each current
--- member — the correct bootstrap behavior.
-function SocialQuestGroupComposition:OnPlayerLogin()
-    self:OnGroupRosterUpdate()
-end

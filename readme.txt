@@ -1,8 +1,8 @@
 ================================================================================
   SocialQuest
-  Social quest coordination for World of Warcraft: The Burning Crusade
-  Anniversary
-  Interface: 20505
+  Social quest coordination for World of Warcraft (all active versions)
+  Supports: Classic Era (11508), TBC Anniversary (20505),
+            MoP Classic (50503), Retail (120001)
 ================================================================================
 
 Social Quest lets players in a party, raid, or guild coordinate quest progress
@@ -103,6 +103,24 @@ locally on each player's client.
   Clicking a quest title opens the quest log to that entry (clicking it again
   when it is already shown closes the log).
 
+  The Party tab shows a [Share] button on quests you can share with group
+  members who need them. Members who are ineligible show a specific reason
+  (e.g. "level too low", "wrong class") instead of a generic label.
+
+  Advanced Filter Language
+  -------------------------
+  A search bar at the top of the window filters all tabs by quest or chain
+  title. Press Enter in the search bar to submit a structured filter expression.
+  Active filters appear as dismissible labels. Examples:
+
+    level>=60              — quests at or above level 60
+    zone=Elwynn|Deadmines  — quests in Elwynn Forest or Deadmines
+    status=incomplete      — quests with unfinished objectives
+    type=dungeon           — dungeon quests
+    shareable=yes          — quests you can currently share with a party member
+
+  Click the [?] button in the search bar header for the full syntax reference.
+
   Tooltip Enhancement
   -------------------
   When you hover over a quest in your quest log, Social Quest adds a section
@@ -117,13 +135,6 @@ locally on each player's client.
   Social Quest notifies you in your chat frame when someone begins or 
   stops following you.
 
-  Flight Path Discovery
-  ---------------------
-  When you open the taxi map and have unlocked a new flight path node,
-  Social Quest broadcasts the discovery to your party. Party members see a
-  banner notification showing which flight path was found. Prior discoveries
-  are remembered per-character across sessions so only genuinely new nodes
-  are announced.
 
   Questie Integration
   --------------------
@@ -147,6 +158,7 @@ locally on each player's client.
 
   /sq             Toggle the group quest window open or closed.
   /sq config      Open the configuration panel.
+  /sq sync        Request a fresh quest snapshot from all group members.
 
   A key binding is also available under Options → Key Bindings → AddOns →
   Social Quest → "Toggle Social Quest Window".
