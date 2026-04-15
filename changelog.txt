@@ -1,6 +1,25 @@
 SocialQuest Changelog
 =====================
 
+Version 2.25.2 (April 2026)
+- New Feature: Window font size — scale all text and row heights in the quest
+  content area to your preference. Five presets from Very Small to Very Large
+  are available in /sq config → Social Quest Window. The search bar, filters,
+  and window frame are unaffected.
+
+Version 2.25.1 (April 2026)
+- New Feature: Do Not Disturb mode — suppress all SQ banner notifications with
+  a single toggle. Chat announcements continue as normal. Toggle instantly with
+  /sq dnd or find the checkbox in /sq config → General. When DND is still active
+  after a login or /reload, a brief reminder banner appears 5 seconds later so
+  you don't forget it's on. The setting persists across sessions.
+
+Version 2.25.0 (April 2026)
+- New Feature: Zone headers in the group window now show the number of quests
+  grouped under each zone — e.g. "Hellfire Peninsula (7)". The count reflects
+  only the quests currently visible after all filters are applied. Toggle via
+  /sq config → Social Quest Window → "Show quest count in zone headers".
+
 Version 2.24.0 (April 2026)
 - New Feature: Class quests now appear under the correct class-name zone header
   (e.g. "Warrior", "Priest") in the Party and Shared tabs. Previously, class

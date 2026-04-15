@@ -163,7 +163,7 @@ The text would not need to persist after the window is gone.  Ideally it would b
 provided a little "x" button inside on the right edge that when clicked, would clear the text
 (as many modern UI's do), but that is not necessary.
 
-### 13. Do-Not-Disturb toggle
+### ~~13. Do-Not-Disturb toggle~~ (*DONE*)
 
 **The gap:** Sometimes a player wants to focus — during a difficult pull, a boss fight, or just a stretch of solo grinding — and SQ banner notifications become noise rather than signal. There is currently no way to silence them without diving into the config panel and disabling individual event toggles.
 
@@ -199,7 +199,7 @@ provided a little "x" button inside on the right edge that when clicked, would c
 
 **Implementation notes:** `questInfo.timerSeconds ~= nil` reliably identifies a timed quest; when a timed quest fails it is almost certainly due to timer expiry, so append `L["time limit expired"]` in that case. Escort-quest detection is less reliable in the TBC API — `GetQuestTagInfo(questID)` returns a tag type that may include escort quests; verify at implementation time whether this is available via AQL or WoW API and only append the escort reason if a confirmed check exists, otherwise omit it. The failure reason is appended in `Announcements.lua` inside `OnQuestEvent` (for chat) and `OnOwnQuestEvent` (for own banner) before `appendChainStep`. For the remote case, `questInfo.timerSeconds` is already serialized in `SQ_UPDATE` payloads and available at `OnRemoteQuestEvent`. New locale keys: `L["time limit expired"]` and optionally `L["escort target died"]`. New debug test entry in `Options.lua` alongside the existing `failed` test button.
 
-### 17. Font size setting for the SQ window
+### ~~17. Font size setting for the SQ window~~ (*DONE*)
 
 **The gap:** Players with small monitors, high-DPI displays, or accessibility needs can't adjust how much content fits in the SQ window. The only option today is to resize the window itself — which changes the *amount* of visible space, not the *density* of information within it. A player who wants to see twice as many quest rows without scrolling has no path forward.
 
@@ -311,7 +311,7 @@ The panel is a standard `BasicFrameTemplate` frame registered in `UISpecialFrame
 
 ---
 
-### 19. Zone quest count in group frame headers
+### ~~19. Zone quest count in group frame headers~~ (*DONE*)
 
 **The gap:** Zone section headers in the group quest window show only the zone name. When scanning a tab with many zones, there is no at-a-glance indicator of how many quests are grouped under each header — the player must visually count rows or expand/collapse sections to gauge the density.
 
@@ -392,13 +392,13 @@ The panel is a standard `BasicFrameTemplate` frame registered in `UISpecialFrame
 | 10 | ~~Group quest ready-check~~ | — | — | No plans to implement |
 | 11 | Flyout settings panel | Medium | Medium | No |
 | 12 | ~~Search/filter bar~~ | — | — | *DONE* |
-| 13 | Do-Not-Disturb toggle | Very low | Medium | No |
+| 13 | ~~Do-Not-Disturb toggle~~ | — | — | *DONE* |
 | 14 | ~~Quest log hover tooltip~~ | — | — | *DONE* |
 | 15 | ~~`/sq sync` slash command~~ | — | — | *DONE* |
 | 16 | Quest failure reason | Very low | Medium | No |
-| 17 | Font size setting | Low | Medium | No |
+| 17 | ~~Font size setting~~ | — | — | *DONE* |
 | 18 | ~~Advanced filter language~~ | — | — | *DONE* |
-| 19 | Zone quest count in headers | Very low | Low | No |
+| 19 | ~~Zone quest count in headers~~ | — | — | *DONE* |
 | 20 | Friend online/offline banners | Low | Medium | No |
 | 21 | Quest suggested level in window | Very low | Low | No |
 | 22 | Zone grouping display toggles | Medium | High | No |

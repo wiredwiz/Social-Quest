@@ -403,7 +403,7 @@ function SocialQuest:OnPlayerEnteringWorld()
         if SocialQuest.db and SocialQuest.db.profile.doNotDisturb then
             SQWowUI.AddRaidNotice(
                 "SocialQuest: Do Not Disturb is ON — banners are suppressed.",
-                { r = 1, g = 0.75, b = 0 }
+                { r = 0.337, g = 0.706, b = 0.914 }
             )
         end
     end)
@@ -973,6 +973,7 @@ SocialQuest:RegisterChatCommand("sq", function(input)
         SocialQuest:Print("Unknown command '" .. cmd .. "'. Usage:")
         SocialQuest:Print("  /sq — open the SocialQuest window")
         SocialQuest:Print("  /sq config — open settings")
+        SocialQuest:Print("  /sq dnd — toggle Do Not Disturb (suppress banners)")
         SocialQuest:Print("  /sq sync — request a fresh quest snapshot from all group members")
     end
 end)

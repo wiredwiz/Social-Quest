@@ -51,6 +51,7 @@
   |---|---|
   | `/sq` | Toggle the group quest window open/closed |
   | `/sq config` | Open the settings panel |
+  | `/sq dnd` | Toggle Do Not Disturb — suppress all SQ banner notifications |
   | `/sq sync` | Request a fresh quest snapshot from all group members |
  
   ---
@@ -148,9 +149,19 @@
 
   ### Navigating the Window
 
-  Click any **zone header** to collapse or expand that zone's quests. When more than one zone is
-  present, **Expand All** and **Collapse All** buttons appear at the top of the tab. Collapse
-  state is saved per tab and persists across sessions.
+  Click any **zone header** to collapse or expand that zone's quests. Zone headers optionally
+  show a quest count in parentheses — e.g. **Hellfire Peninsula (7)** — so you can gauge zone
+  density at a glance without expanding. Toggle this in `/sq config` → Social Quest Window →
+  **Show quest count in zone headers** (on by default).
+
+  When more than one zone is present, **Expand All** and **Collapse All** buttons appear at the
+  top of the tab. Collapse state is saved per tab and persists across sessions.
+
+  The **Window font size** setting in `/sq config` → Social Quest Window scales all text and row
+  heights in the quest content area — zone headers, chain headers, quest titles, player rows, and
+  progress bars. Five presets are available: Very Small (70%), Small (85%), Normal (100%),
+  Large (115%), and Very Large (130%). The search bar, filter labels, and tab buttons are
+  unaffected. The window frame size does not change.
 
   Each quest row has a **[?] button** that opens a small popup with the quest's Wowhead URL.
   Select all and copy (`Ctrl+A`, `Ctrl+C`) to grab the link.
@@ -307,6 +318,7 @@
   | Show received events | On | Master toggle for all incoming banners. Turn off to silence all group notifications at once without changing per-channel settings. |
   | Colorblind Mode | Off | Switches all banner colors and status indicators to the Okabe-Ito colorblind-friendly palette. Not needed if WoW's built-in Colorblind Mode (Interface Options → Accessibility) is already enabled — SocialQuest detects that setting automatically. |
   | Show banners for your own quest events | Off | Disabled by default. When enabled, your own quest events also appear as on-screen banners. |
+  | Do Not Disturb | Off | Suppresses all SQ banner notifications instantly. Chat announcements are unaffected. Toggle quickly with `/sq dnd`. When active at login or reload, an amber reminder banner appears 5 seconds after entering the world so you don't forget it's on. |
 
   ## Accessibility — Color Vision
 

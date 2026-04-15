@@ -98,6 +98,18 @@ locally on each player's client.
               shareable, the member has not completed it, and you have completed
               any prerequisite in the chain).
 
+  Zone section headers optionally show a parenthetical quest count — e.g.
+  "Hellfire Peninsula (7)" — so you can gauge zone density without expanding.
+  Toggle via /sq config → Social Quest Window → "Show quest count in zone
+  headers" (on by default). The count is filter-aware; it reflects only quests
+  visible after all active filters are applied.
+
+  A "Window font size" setting scales all text and row heights in the content
+  area (zone headers, quest titles, player rows, progress bars). Five presets
+  from Very Small (70%) to Very Large (130%). The search bar, filter labels,
+  and tab buttons are unaffected, and the window frame does not resize.
+  Configure via /sq config → Social Quest Window → "Window font size".
+
   Zone sections in the window can be collapsed by clicking the zone header.
   Collapsed/expanded state and scroll position are saved per-tab per-character.
   Clicking a quest title opens the quest log to that entry (clicking it again
@@ -158,6 +170,7 @@ locally on each player's client.
 
   /sq             Toggle the group quest window open or closed.
   /sq config      Open the configuration panel.
+  /sq dnd         Toggle Do Not Disturb — suppress all SQ banner notifications.
   /sq sync        Request a fresh quest snapshot from all group members.
 
   A key binding is also available under Options → Key Bindings → AddOns →
@@ -190,6 +203,12 @@ tab.
   Colorblind Mode                           (default: OFF)
       Uses colorblind-friendly colors for all banners and UI text. Not needed
       if the game client's own colorblind mode is already enabled.
+
+  Do Not Disturb                            (default: OFF)
+      Suppresses all SQ banner notifications. Chat announcements are
+      unaffected. Toggle quickly with /sq dnd without opening the config
+      panel. When DND is still on at login or reload, a sky-blue reminder
+      banner appears 5 seconds after entering the world.
 
   Show banners for your own quest events    (default: OFF)
       Enables the "Own Quest Banners" sub-group below.
