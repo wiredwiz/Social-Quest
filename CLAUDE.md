@@ -231,6 +231,14 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.25.1 (April 2026)
+- Feature: Do-Not-Disturb mode (Feature 13). Toggle `/sq dnd` or use the
+  "Do Not Disturb" checkbox in `/sq config` → General to suppress all SQ banner
+  notifications. Chat announcements are unaffected. When DND is on at login or
+  reload, an amber reminder banner appears 5 seconds after entering the world.
+  Setting persists in the AceDB profile across sessions. Implemented via an
+  early-return guard at the top of `displayBanner` in `Core/Announcements.lua`.
+
 ### Version 2.25.0 (April 2026)
 - Feature: zone quest count in group frame zone headers (Feature 19). Each zone
   section header in the Mine, Party, and Shared tabs now optionally shows a

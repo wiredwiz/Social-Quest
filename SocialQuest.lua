@@ -324,6 +324,7 @@ function SocialQuest:GetDefaults()
                 autoFilterZone     = false,
                 zoneQuestCount     = true,
             },
+            doNotDisturb = false,
             minimap = { hide = false },
             -- LibDBIcon writes minimapPos into this table automatically when dragged.
         },
@@ -394,6 +395,17 @@ function SocialQuest:OnPlayerEnteringWorld()
     self:Debug("Zone", "Zone transition detected — suppressing AQL callbacks for 3 s")
     SocialQuestWindowFilter:Reset()
     SocialQuestGroupFrame:RestoreAfterTransition()
+    -- Remind the player if DND mode is still on. Fires after the 3s suppression
+    -- window and after the initial quest log re-announce has settled.
+    -- Calls SQWowUI.AddRaidNotice directly (bypasses the DND guard in displayBanner).
+    SQWowAPI.TimerAfter(5, function()
+        if SocialQuest.db and SocialQuest.db.profile.doNotDisturb then
+            SQWowUI.AddRaidNotice(
+                "SocialQuest: Do Not Disturb is ON — banners are suppressed.",
+                { r = 1, g = 0.75, b = 0 }
+            )
+        end
+    end)
 end
 
 -- ZONE_CHANGED_NEW_AREA fires on seamless overland zone-border crossings (e.g. riding
@@ -945,6 +957,14 @@ SocialQuest:RegisterChatCommand("sq", function(input)
         else
             SQConsoleFrame:Show()
             SQConsoleFrame:Raise()
+        end
+    elseif cmd == "dnd" then
+        local db = SocialQuest.db.profile
+        db.doNotDisturb = not db.doNotDisturb
+        if db.doNotDisturb then
+            SocialQuest:Print("SocialQuest Do Not Disturb: ON — banners suppressed.")
+        else
+            SocialQuest:Print("SocialQuest Do Not Disturb: OFF — banners enabled.")
         end
     elseif cmd == "" then
         SocialQuestGroupFrame:Toggle()

@@ -158,6 +158,7 @@ end
 ------------------------------------------------------------------------
 
 local function displayBanner(msg, eventType)
+    if SocialQuest.db.profile.doNotDisturb then return end
     local color = SocialQuestColors.GetEventColor(eventType)
     local colorInfo = color and { r = color.r, g = color.g, b = color.b }
                    or { r = 1, g = 1, b = 0 }

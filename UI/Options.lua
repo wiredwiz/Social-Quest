@@ -195,6 +195,16 @@ function SocialQuestOptions:Initialize()
                         end,
                     },
                     ownDisplayEvents = ownDisplayEventsGroup(),
+                    doNotDisturb = {
+                        type  = "toggle",
+                        name  = "Do Not Disturb",
+                        desc  = "Suppress all SQ banner notifications. Chat announcements are unaffected. Toggle quickly with /sq dnd.",
+                        order = 6,
+                        get   = function(info) return db.doNotDisturb end,
+                        set   = function(info, value)
+                            db.doNotDisturb = value
+                        end,
+                    },
                 },
             },
 
