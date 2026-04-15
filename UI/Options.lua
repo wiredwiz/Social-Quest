@@ -325,6 +325,17 @@ function SocialQuestOptions:Initialize()
                             SocialQuestGroupFrame:RequestRefresh()
                         end,
                     },
+                    zoneQuestCount = {
+                        type  = "toggle",
+                        name  = "Show quest count in zone headers",
+                        desc  = "Append the number of quests in each zone section to its header label (e.g. 'Hellfire Peninsula (7)').",
+                        order = 3,
+                        get   = function(info) return db.window.zoneQuestCount end,
+                        set   = function(info, value)
+                            db.window.zoneQuestCount = value
+                            SocialQuestGroupFrame:RequestRefresh()
+                        end,
+                    },
                 },
             },
 

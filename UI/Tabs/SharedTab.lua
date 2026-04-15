@@ -522,7 +522,15 @@ function SharedTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTab
         local zoneName    = zone.name
         local isCollapsed = tabCollapsedZones[zoneName] == true
 
-        y = rowFactory.AddZoneHeader(contentFrame, y, zoneName, isCollapsed, function()
+        local questCount = #zone.quests
+        for _, chain in pairs(zone.chains) do
+            questCount = questCount + #chain.steps
+        end
+        local headerLabel = SocialQuest.db.profile.window.zoneQuestCount
+            and (zoneName .. " (" .. questCount .. ")")
+            or zoneName
+
+        y = rowFactory.AddZoneHeader(contentFrame, y, headerLabel, isCollapsed, function()
             SocialQuestGroupFrame:ToggleZone("shared", zoneName)
         end)
 

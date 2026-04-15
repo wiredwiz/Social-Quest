@@ -57,14 +57,15 @@ function SocialQuest:Debug() end
 function SocialQuest:ScheduleRepeatingTimer(fn, delay) return {} end
 function SocialQuest:Print() end
 
--- BuildQuestLink now returns plain text [[level] Quest Name (questID)] on all versions.
--- No |H codes are sent through SendChatMessage. The chat filter in Tooltips.lua
--- converts the marker to |Hsocialquest:| locally on each receiving client.
+-- BuildQuestLink now returns plain text [[level] Quest Name {questID}] on all versions.
+-- Curly braces are used as the questID delimiter so ChatFrame_AddMessageEventFilter
+-- in Tooltips.lua can reliably detect and convert the marker to |Hsocialquest:|
+-- locally on each receiving client (parentheses could appear in quest names).
 dofile("Core/Announcements.lua")
 local B = SocialQuestAnnounce._BuildQuestLink
 
-assert_eq("basic",         B(337, "Wanted: Hogger", 10),  "[[10] Wanted: Hogger (337)]")
-assert_eq("nil_level",     B(100, "A Quest",         nil), "[[0] A Quest (100)]")
+assert_eq("basic",         B(337, "Wanted: Hogger", 10),  "[[10] Wanted: Hogger {337}]")
+assert_eq("nil_level",     B(100, "A Quest",         nil), "[[0] A Quest {100}]")
 assert_eq("nil_questID",   B(nil, "A Quest",           5), nil)
 assert_eq("nil_name",      B(337, nil,                 5), nil)
 
@@ -74,8 +75,8 @@ SocialQuestWowAPI.IS_TBC    = false
 dofile("Core/Announcements.lua")
 B = SocialQuestAnnounce._BuildQuestLink
 
-assert_eq("retail_basic",  B(337, "Wanted: Hogger", 40),  "[[40] Wanted: Hogger (337)]")
-assert_eq("retail_nil_lv", B(337, "Wanted: Hogger", nil), "[[0] Wanted: Hogger (337)]")
+assert_eq("retail_basic",  B(337, "Wanted: Hogger", 40),  "[[40] Wanted: Hogger {337}]")
+assert_eq("retail_nil_lv", B(337, "Wanted: Hogger", nil), "[[0] Wanted: Hogger {337}]")
 
 -- ── Result ────────────────────────────────────────────────────────────────────
 if failures == 0 then

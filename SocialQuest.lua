@@ -322,6 +322,7 @@ function SocialQuest:GetDefaults()
             window = {
                 autoFilterInstance = true,
                 autoFilterZone     = false,
+                zoneQuestCount     = true,
             },
             minimap = { hide = false },
             -- LibDBIcon writes minimapPos into this table automatically when dragged.

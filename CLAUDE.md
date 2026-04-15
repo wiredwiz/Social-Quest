@@ -231,6 +231,14 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.25.0 (April 2026)
+- Feature: zone quest count in group frame zone headers (Feature 19). Each zone
+  section header in the Mine, Party, and Shared tabs now optionally shows a
+  parenthetical quest count (e.g. "Hellfire Peninsula (7)"). The count is
+  filter-aware — it reflects only the quests rendered after all active filters
+  are applied. Toggle via `/sq config` → Social Quest Window → "Show quest count
+  in zone headers" (default on). No new locale strings required.
+
 ### Version 2.24.0 (April 2026)
 - Feature: class quest zone resolution. Remote players' class quests now appear
   under the correct localized class-name zone header ("Warrior", "Priest", etc.)
