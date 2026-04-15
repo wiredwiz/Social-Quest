@@ -231,6 +231,15 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.25.2 (April 2026)
+- Feature: content area font scale (Feature 17). A "Window font size" dropdown in
+  `/sq config` → Social Quest Window scales all text and row heights in the scrollable
+  quest content area (zone headers, chain headers, quest titles, player name rows,
+  objective progress bars). Five presets: Very Small (0.7×) through Very Large (1.3×).
+  The fixed header strip (search bar, filter labels, tab buttons) and window frame size
+  are unaffected. Scale is pushed from `GroupFrame:Refresh()` via `RowFactory.SetScale`
+  before each render. New helpers: `RowFactory.SetScale`, `ScaledHeight`, `ScaledSize`.
+
 ### Version 2.25.1 (April 2026)
 - Feature: Do-Not-Disturb mode (Feature 13). Toggle `/sq dnd` or use the
   "Do Not Disturb" checkbox in `/sq config` → General to suppress all SQ banner

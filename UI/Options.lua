@@ -346,6 +346,24 @@ function SocialQuestOptions:Initialize()
                             SocialQuestGroupFrame:RequestRefresh()
                         end,
                     },
+                    windowFontScale = {
+                        type   = "select",
+                        name   = "Window font size",
+                        desc   = "Scale the text and row heights in the quest content area. Does not affect the search bar or filter labels.",
+                        order  = 4,
+                        values = {
+                            [0.7]  = "Very Small",
+                            [0.85] = "Small",
+                            [1.0]  = "Normal",
+                            [1.15] = "Large",
+                            [1.3]  = "Very Large",
+                        },
+                        get    = function(info) return db.window.windowFontScale end,
+                        set    = function(info, value)
+                            db.window.windowFontScale = value
+                            SocialQuestGroupFrame:RequestRefresh()
+                        end,
+                    },
                 },
             },
 

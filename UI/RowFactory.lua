@@ -19,6 +19,37 @@ function RowFactory.SetContentWidth(w)
     CONTENT_WIDTH = w
 end
 
+-- Current content scale factor. Set by GroupFrame:Refresh() via SetScale()
+-- before the active tab renders. Affects all content-area row heights and font sizes.
+-- Does NOT affect the fixed header strip (search bar, filter labels, tabs).
+local _scale = 1.0
+
+-- Called by GroupFrame:Refresh() before each render.
+function RowFactory.SetScale(factor)
+    _scale = factor or 1.0
+end
+
+-- Returns base height scaled to the current factor, floored to a whole pixel.
+function RowFactory.ScaledHeight(base)
+    return math.floor(base * _scale)
+end
+
+-- Returns baseSize scaled to the current factor. Minimum 6pt to stay legible.
+function RowFactory.ScaledSize(baseSize)
+    return math.max(6, math.floor(baseSize * _scale))
+end
+
+-- Applies the current scale to a FontString's point size.
+-- Call after CreateFontString so the inherited font size is already set.
+-- No-op when GetFont() returns nil (e.g. newly-created strings with no text).
+local function applyFontScale(fs)
+    if _scale == 1.0 then return end  -- fast-path: nothing to do at normal scale
+    local face, sz, flags = fs:GetFont()
+    if face and sz then
+        fs:SetFont(face, RowFactory.ScaledSize(sz), flags)
+    end
+end
+
 -- Returns the fully-resolved display name for a playerEntry.
 -- Appends the bridge nameTag suffix when dataProvider is set.
 -- Call this instead of building the name inline anywhere name display is needed.
@@ -156,10 +187,11 @@ end
 -- Zone/category header row with [+]/[-] collapse toggle.
 -- onToggle() is called on button click (no arguments).
 function RowFactory.AddZoneHeader(contentFrame, y, zoneName, isCollapsed, onToggle)
-    local C = SocialQuestColors
+    local C    = SocialQuestColors
+    local rowH = RowFactory.ScaledHeight(ROW_H)
 
     local toggleBtn = CreateFrame("Button", nil, contentFrame)
-    toggleBtn:SetSize(22, ROW_H)
+    toggleBtn:SetSize(22, rowH)
     toggleBtn:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", 0, -y)
     toggleBtn:SetText(isCollapsed and "[+]" or "[-]")
     toggleBtn:SetNormalFontObject("GameFontNormalSmall")
@@ -170,27 +202,30 @@ function RowFactory.AddZoneHeader(contentFrame, y, zoneName, isCollapsed, onTogg
 
     local label = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     label:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", 24, -y)
-    label:SetSize(CONTENT_WIDTH - 24, ROW_H)
+    label:SetSize(CONTENT_WIDTH - 24, rowH)
     label:SetJustifyH("LEFT")
     label:SetJustifyV("MIDDLE")
     label:SetText(C.header .. zoneName .. C.reset)
+    applyFontScale(label)
 
-    return y + ROW_H + 4
+    return y + rowH + 4
 end
 
 -- Chain group label row (indented, cyan).
 function RowFactory.AddChainHeader(contentFrame, y, chainTitle, indent)
-    local C = SocialQuestColors
-    local x = indent or 0
+    local C    = SocialQuestColors
+    local x    = indent or 0
+    local rowH = RowFactory.ScaledHeight(ROW_H)
 
     local label = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     label:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
-    label:SetSize(CONTENT_WIDTH - x, ROW_H)
+    label:SetSize(CONTENT_WIDTH - x, rowH)
     label:SetJustifyH("LEFT")
     label:SetJustifyV("MIDDLE")
     label:SetText(C.chain .. chainTitle .. C.reset)
+    applyFontScale(label)
 
-    return y + ROW_H + 2
+    return y + rowH + 2
 end
 
 -- Quest row.
@@ -205,10 +240,11 @@ end
 function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     local C = SocialQuestColors
     local x = indent or 0
+    local rowH = RowFactory.ScaledHeight(ROW_H)
 
     -- [?] Wowhead link button.
     local linkBtn = CreateFrame("Button", nil, contentFrame)
-    linkBtn:SetSize(22, ROW_H)
+    linkBtn:SetSize(22, rowH)
     linkBtn:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
     linkBtn:SetText("[?]")
     linkBtn:SetNormalFontObject("GameFontNormalSmall")
@@ -277,10 +313,11 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
 
     local titleFs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     titleFs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
-    titleFs:SetSize(math.max(titleWidth, 20), ROW_H)
+    titleFs:SetSize(math.max(titleWidth, 20), rowH)
     titleFs:SetJustifyH("LEFT")
     titleFs:SetJustifyV("MIDDLE")
     titleFs:SetText(colorCode .. titleText .. "|r")
+    applyFontScale(titleFs)
 
     -- Invisible click overlay: always created on all three tabs.
     -- Left-click opens the Quest Log (only when player has the quest: logIndex non-nil).
@@ -301,17 +338,18 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
     if badgeText ~= "" then
         local badge = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         badge:SetPoint("TOPRIGHT", contentFrame, "TOPRIGHT", -8, -y)
-        badge:SetSize(badgeWidth, ROW_H)
+        badge:SetSize(badgeWidth, rowH)
         badge:SetJustifyH("RIGHT")
         badge:SetJustifyV("MIDDLE")
         badge:SetText(badgeText)
+        applyFontScale(badge)
     end
 
     -- Share button (right-aligned, to the left of the badge).
     -- UIPanelButtonTemplate gives the standard WoW button look (same as quest log Accept/Decline).
     if callbacks and callbacks.onShare then
         local shareBtn = CreateFrame("Button", nil, contentFrame, "UIPanelButtonTemplate")
-        shareBtn:SetSize(52, ROW_H + 2)
+        shareBtn:SetSize(52, rowH + 2)
         -- Position: right-aligned, shifted left by badge + 4px gap (when badge present).
         local rightOffset = -(8 + badgeWidth + (badgeWidth > 0 and 4 or 0))
         shareBtn:SetPoint("TOPRIGHT", contentFrame, "TOPRIGHT", rightOffset, -y + 1)
@@ -325,7 +363,7 @@ function RowFactory.AddQuestRow(contentFrame, y, questEntry, indent, callbacks)
         shareBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     end
 
-    return y + ROW_H + 2
+    return y + rowH + 2
 end
 
 -- Objective row. Yellow = incomplete, green = complete.
@@ -349,29 +387,33 @@ end
 -- when nameColumnWidth is nil (e.g. Mine tab peer rows called without a name column).
 -- color: a WoW color escape sequence string (e.g. C.unknown or GetUIColor("completed")).
 local function renderStatusRow(contentFrame, y, x, nameColumnWidth, displayName, statusText, color)
+    local rowH = RowFactory.ScaledHeight(ROW_H)
     local C = SocialQuestColors
     if nameColumnWidth then
         local barX = x + nameColumnWidth + 4
         local nameFs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         nameFs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
-        nameFs:SetSize(nameColumnWidth, ROW_H)
+        nameFs:SetSize(nameColumnWidth, rowH)
         nameFs:SetJustifyH("LEFT")
         nameFs:SetJustifyV("MIDDLE")
         nameFs:SetText(C.white .. displayName .. C.reset)
+        applyFontScale(nameFs)
         local statusFs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         statusFs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", barX, -y)
-        statusFs:SetSize(CONTENT_WIDTH - barX - 4, ROW_H)
+        statusFs:SetSize(CONTENT_WIDTH - barX - 4, rowH)
         statusFs:SetJustifyH("LEFT")
         statusFs:SetJustifyV("MIDDLE")
         statusFs:SetText(color .. statusText .. C.reset)
+        applyFontScale(statusFs)
     else
         local fs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         fs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
         fs:SetWidth(CONTENT_WIDTH - x - 4)
         fs:SetJustifyH("LEFT")
         fs:SetText(C.white .. displayName .. C.reset .. " " .. color .. statusText .. C.reset)
+        applyFontScale(fs)
     end
-    return y + ROW_H + 2
+    return y + rowH + 2
 end
 
 -- Player row. Display priority (first matching wins):
@@ -388,6 +430,7 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent, nameColum
     local C    = SocialQuestColors
     local x    = indent or 0
     local displayName = RowFactory.GetDisplayName(playerEntry)
+    local rowH = RowFactory.ScaledHeight(ROW_H)
 
     if playerEntry.hasCompleted then
         return renderStatusRow(contentFrame, y, x, nameColumnWidth, displayName,
@@ -403,7 +446,8 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent, nameColum
         fs:SetWidth(CONTENT_WIDTH - x - 4)
         fs:SetJustifyH("LEFT")
         fs:SetText(C.unknown .. string.format(L["%s Needs it Shared"], displayName) .. C.reset)
-        return y + ROW_H + 2
+        applyFontScale(fs)
+        return y + rowH + 2
 
     elseif playerEntry.ineligReason then
         -- Player is not eligible to receive the quest — show the specific reason in muted amber.
@@ -421,7 +465,8 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent, nameColum
         fs:SetWidth(CONTENT_WIDTH - x - 4)
         fs:SetJustifyH("LEFT")
         fs:SetText(amber .. displayName .. "|r " .. amber .. "[" .. reasonText .. "]|r")
-        return y + ROW_H + 2
+        applyFontScale(fs)
+        return y + rowH + 2
 
     elseif playerEntry.hasSocialQuest and isNoObjectiveQuest(playerEntry.objectives) then
         -- Quest has no numeric objectives and is not yet complete: nothing to track.
@@ -435,7 +480,8 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent, nameColum
         fs:SetWidth(CONTENT_WIDTH - x - 4)
         fs:SetJustifyH("LEFT")
         fs:SetText(C.unknown .. string.format(L["%s (no data)"], displayName) .. C.reset)
-        return y + ROW_H + 2
+        applyFontScale(fs)
+        return y + rowH + 2
 
     else
         local objectives = playerEntry.objectives or {}
@@ -446,7 +492,8 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent, nameColum
             fs:SetWidth(CONTENT_WIDTH - x - 4)
             fs:SetJustifyH("LEFT")
             fs:SetText(C.white .. displayName .. C.reset)
-            return y + ROW_H + 2
+            applyFontScale(fs)
+            return y + rowH + 2
         end
 
         -- One row per objective.
@@ -462,10 +509,11 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent, nameColum
                 -- Name label (left column).
                 local nameFs = contentFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
                 nameFs:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", x, -y)
-                nameFs:SetSize(nameColumnWidth, ROW_H)
+                nameFs:SetSize(nameColumnWidth, rowH)
                 nameFs:SetJustifyH("LEFT")
                 nameFs:SetJustifyV("MIDDLE")
                 nameFs:SetText(C.white .. displayName .. C.reset)
+                applyFontScale(nameFs)
 
                 if barWidth > 0 then
                     -- Wrapper frame provides a 1px solid border by being 1px larger on each
@@ -473,7 +521,7 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent, nameColum
                     -- the edges of the inset StatusBar, creating the border appearance.
                     local borderFrame = CreateFrame("Frame", nil, contentFrame)
                     borderFrame:SetPoint("TOPLEFT", contentFrame, "TOPLEFT", barX - 1, -y + 1)
-                    borderFrame:SetSize(barWidth + 2, ROW_H + 2)
+                    borderFrame:SetSize(barWidth + 2, rowH + 2)
 
                     local borderBg = borderFrame:CreateTexture(nil, "BACKGROUND")
                     borderBg:SetTexture("Interface\\Buttons\\WHITE8X8")
@@ -505,16 +553,17 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent, nameColum
                         :gsub("|c%x%x%x%x%x%x%x%x([^|]*)", "%1")
                     local textFs = statusBar:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
                     textFs:SetPoint("LEFT", statusBar, "LEFT", 4, 0)
-                    textFs:SetSize(barWidth - 8, ROW_H)
+                    textFs:SetSize(barWidth - 8, rowH)
                     textFs:SetJustifyH("LEFT")
                     textFs:SetJustifyV("MIDDLE")
                     textFs:SetMaxLines(1)
                     textFs:SetShadowOffset(1, -1)
                     textFs:SetShadowColor(0, 0, 0, 1)
                     textFs:SetText(C.white .. plainText .. C.reset)
+                    applyFontScale(textFs)
                 end
 
-                y = y + ROW_H + 6
+                y = y + rowH + 6
             else
                 -- Plain text fallback (original behavior).
                 local clr = obj.isFinished and SocialQuestColors.GetUIColor("completed") or C.active
@@ -523,6 +572,7 @@ function RowFactory.AddPlayerRow(contentFrame, y, playerEntry, indent, nameColum
                 fs:SetWidth(CONTENT_WIDTH - x - 4)
                 fs:SetJustifyH("LEFT")
                 fs:SetText(C.white .. displayName .. C.reset .. " " .. clr .. (obj.text or "") .. C.reset)
+                applyFontScale(fs)
                 y = y + fs:GetStringHeight() + 2
             end
         end

@@ -252,9 +252,9 @@ function MineTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTable
         end)
 
         if not isCollapsed then
-            local QUEST_INDENT = 16
-            local PEER_INDENT  = 32
-            local OBJ_INDENT   = 32
+            local QUEST_INDENT = RowFactory.ScaledHeight(16)
+            local PEER_INDENT  = RowFactory.ScaledHeight(32)
+            local OBJ_INDENT   = RowFactory.ScaledHeight(32)
 
             -- Sort chainIDs numerically ascending.
             local sortedChainIDs = {}

@@ -657,6 +657,7 @@ function SocialQuestGroupFrame:Refresh()
     -- the only clean way to discard old rows without leaking them).
     local contentW = math.floor(frame:GetWidth() - 40)
     RowFactory.SetContentWidth(contentW)
+    RowFactory.SetScale(SocialQuest.db.profile.window.windowFontScale)
     if frame.content then frame.content:Hide() end
     frame.content = CreateFrame("Frame", nil, frame.scrollFrame)
     frame.content:SetSize(contentW, 1)

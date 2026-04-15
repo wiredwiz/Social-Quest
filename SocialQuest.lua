@@ -323,6 +323,7 @@ function SocialQuest:GetDefaults()
                 autoFilterInstance = true,
                 autoFilterZone     = false,
                 zoneQuestCount     = true,
+                windowFontScale    = 1.0,
             },
             doNotDisturb = false,
             minimap = { hide = false },

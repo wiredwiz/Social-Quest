@@ -624,9 +624,9 @@ function PartyTab:Render(contentFrame, rowFactory, tabCollapsedZones, filterTabl
         end)
 
         if not isCollapsed then
-            local QUEST_INDENT  = 16
-            local PLAYER_INDENT = 32
-            local OBJ_INDENT    = 48
+            local QUEST_INDENT  = RowFactory.ScaledHeight(16)
+            local PLAYER_INDENT = RowFactory.ScaledHeight(32)
+            local OBJ_INDENT    = RowFactory.ScaledHeight(48)
 
             local sortedChainIDs = {}
             for chainID in pairs(zone.chains) do
