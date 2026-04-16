@@ -129,6 +129,9 @@ function SocialQuest:OnEnable()
     self:RegisterEvent("ZONE_CHANGED_NEW_AREA",   "OnZoneChangedNewArea")
     self:RegisterEvent("PLAYER_CONTROL_GAINED",   "OnPlayerControlGained")
     self:RegisterEvent("PLAYER_LEAVING_WORLD",    "OnPlayerLeavingWorld")
+    self:RegisterEvent("BN_FRIEND_ACCOUNT_ONLINE",  "OnBnFriendOnline")
+    self:RegisterEvent("BN_FRIEND_ACCOUNT_OFFLINE", "OnBnFriendOffline")
+    self:RegisterEvent("FRIENDLIST_UPDATE",          "OnFriendListUpdate")
 
     -- Register AQL callbacks.
     -- Dot-notation is required: AQL is the target in CallbackHandler, so
@@ -311,6 +314,11 @@ function SocialQuest:GetDefaults()
                 announceFollowing = true,
                 announceFollowed  = true,
             },
+            friendPresence = {
+                enabled     = true,
+                showOnline  = true,
+                showOffline = true,
+            },
             debug = {
                 enabled = false,
             },
@@ -385,6 +393,18 @@ function SocialQuest:OnPlayerLeavingWorld()
     SocialQuestGroupFrame:OnLeavingWorld()
 end
 
+function SocialQuest:OnBnFriendOnline(event, bnetIDAccount)
+    SocialQuestFriendPresence:OnBnFriendOnline(bnetIDAccount)
+end
+
+function SocialQuest:OnBnFriendOffline(event, bnetIDAccount)
+    SocialQuestFriendPresence:OnBnFriendOffline(bnetIDAccount)
+end
+
+function SocialQuest:OnFriendListUpdate()
+    SocialQuestFriendPresence:OnFriendListUpdate()
+end
+
 -- PLAYER_ENTERING_WORLD fires on every zone transition (including hearthing and /reload).
 -- AQL rebuilds its quest snapshot immediately afterward and fires AQL_QUEST_ACCEPTED /
 -- AQL_QUEST_FINISHED / etc. for every quest already in the log.  Suppress announces and
@@ -407,6 +427,7 @@ function SocialQuest:OnPlayerEnteringWorld()
             )
         end
     end)
+    SocialQuestFriendPresence:Initialize()
 end
 
 -- ZONE_CHANGED_NEW_AREA fires on seamless overland zone-border crossings (e.g. riding
