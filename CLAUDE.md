@@ -61,6 +61,7 @@ spanning AQL and SQ:
 | `Core\GroupData.lua` | `SocialQuestGroupData` | Owns `PlayerQuests` table. Populated from SQ AceComm messages and bridge modules. Stores numeric-only data — no quest titles or objective text from remote players. Each entry has a `dataProvider` field (`DataProviders.SocialQuest`, `DataProviders.Questie`, or `nil` for stubs). |
 | `Core\Communications.lua` | `SocialQuestComm` | All AceComm send/receive. Manages sync protocol, jitter timers, and per-sender cooldowns. |
 | `Core\Announcements.lua` | `SocialQuestAnnounce` | All chat announcements (outbound) and banner notifications (inbound). Drives throttle queue, Questie suppression, UIErrorsFrame hook. |
+| `Core\FriendPresence.lua` | `SocialQuestFriendPresence` | Tracks BattleTag (BN) and traditional friend presence. Fires `SocialQuestAnnounce:OnFriendOnline`/`OnFriendOffline` on `BN_FRIEND_ACCOUNT_ONLINE`/`OFFLINE` and `FRIENDLIST_UPDATE`. `Initialize()` called from `OnPlayerEnteringWorld` to seed baseline state without firing banners. |
 | `Core\BridgeRegistry.lua` | `SocialQuestBridgeRegistry` | Thin lifecycle manager for data-provider bridges. Holds registered bridges; `EnableAll()` hydrates then enables each available bridge on group join; `DisableAll()` suspends processing on leave; `GetNameTag(provider)` returns the display icon for a provider. |
 | `Core\QuestieBridge.lua` | `QuestieBridge` | Questie bridge implementation. Hooks `QuestieComms.data:RegisterTooltip` (fires after all packet-insertion paths populate `remoteQuestLogs`) and `QuestieComms.data:RemoveQuestFromPlayer` via `hooksecurefunc`. `_active` flag gates processing; `_hookInstalled` prevents duplicate hooks. Registers itself with `BridgeRegistry` at load time. |
 
@@ -230,6 +231,16 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 ---
 
 ## Version History
+
+### Version 2.26.0 (April 2026)
+- Feature: `Core/FriendPresence.lua` module (`SocialQuestFriendPresence`). Tracks
+  BattleTag (BN) and traditional friend presence. On `BN_FRIEND_ACCOUNT_ONLINE`/
+  `OFFLINE`, fires `SocialQuestAnnounce:OnFriendOnline`/`OnFriendOffline` for friends
+  who enter/leave WoW. On `FRIENDLIST_UPDATE`, diffs the connected traditional friends
+  list against a snapshot to detect login/logout events, suppressing names already
+  covered by the BN path (`bnCharNames` cross-check). `Initialize()` populates baseline
+  state on `PLAYER_ENTERING_WORLD` without firing any banners. Registered in all five
+  TOC files immediately after `Core\Announcements.lua`. All TOC files brought to 2.26.0.
 
 ### Version 2.25.2 (April 2026)
 - Feature: content area font scale (Feature 17). A "Window font size" dropdown in
