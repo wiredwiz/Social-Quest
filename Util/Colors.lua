@@ -25,6 +25,8 @@ SocialQuestColors.event = {
     objective_complete = { r = 0.4,   g = 1,     b = 0.4   },  -- lime   (#66FF66)
     all_complete       = { r = 1,     g = 0,     b = 0.8   },  -- magenta (#FF00CC)
     follow             = { r = 1,     g = 0.85,  b = 0.6   },  -- warm tan (#FFD999)
+    friend_online      = { r = 0,     g = 0.867, b = 0.267 },  -- medium green  (#00DD44)
+    friend_offline     = { r = 0.533, g = 0.533, b = 0.533 },  -- grey          (#888888)
 }
 
 SocialQuestColors.eventCB = {
@@ -37,6 +39,8 @@ SocialQuestColors.eventCB = {
     objective_complete = { r = 0.800, g = 0.475, b = 0.655 },  -- reddish purple (#CC79A7)
     all_complete       = { r = 0.0,   g = 0.447, b = 0.698 },  -- blue   (#0072B2, Okabe-Ito)
     follow             = { r = 0.941, g = 0.894, b = 0.259 },  -- Okabe-Ito yellow (#F0E442)
+    friend_online      = { r = 0,     g = 0.620, b = 0.451 },  -- Okabe-Ito teal  (#009E73)
+    friend_offline     = { r = 0.533, g = 0.533, b = 0.533 },  -- grey (unchanged; universally distinguishable)
 }
 
 SocialQuestColors.cbUI = {
