@@ -806,6 +806,40 @@ function SocialQuestAnnounce:TestFollowNotification()
 end
 
 ------------------------------------------------------------------------
+-- Friend presence notifications
+------------------------------------------------------------------------
+
+function SocialQuestAnnounce:OnFriendOnline(battleTagName, charName, level, className)
+    local charDesc = (level and className)
+        and (charName .. " " .. level .. " " .. className)
+        or  charName
+    local msg = battleTagName
+        and string.format(L["%s (%s) Online"], battleTagName, charDesc)
+        or  string.format(L["%s Online"], charDesc)
+    displayBanner(msg, "friend_online")
+end
+
+function SocialQuestAnnounce:OnFriendOffline(battleTagName, charName, level, className)
+    local charDesc = (level and className)
+        and (charName .. " " .. level .. " " .. className)
+        or  charName
+    local msg = battleTagName
+        and string.format(L["%s (%s) Offline"], battleTagName, charDesc)
+        or  string.format(L["%s Offline"], charDesc)
+    displayBanner(msg, "friend_offline")
+end
+
+function SocialQuestAnnounce:TestFriendOnline()
+    local name = SQWowAPI.UnitName("player") or "TestPlayer"
+    SocialQuestAnnounce:OnFriendOnline("TestBattleTag", name, UnitLevel("player") or 60, "Warrior")
+end
+
+function SocialQuestAnnounce:TestFriendOffline()
+    local name = SQWowAPI.UnitName("player") or "TestPlayer"
+    SocialQuestAnnounce:OnFriendOffline("TestBattleTag", name, UnitLevel("player") or 60, "Warrior")
+end
+
+------------------------------------------------------------------------
 -- Whisper friends helper
 ------------------------------------------------------------------------
 
