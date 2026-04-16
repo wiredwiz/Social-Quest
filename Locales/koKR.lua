@@ -346,3 +346,25 @@ L["Location:"]                                        = "위치:"
 L["(Dungeon)"]                                        = "(던전)"
 L["(Raid)"]                                           = "(공격대)"
 L["(Group %d+)"]                                      = "(그룹 %d+)"
+
+-- Core/Announcements.lua — friend presence banners
+-- %s = character description (e.g. "Arthas 60 Paladin") or "BattleTagName (charDesc)"
+L["%s Online"]                              = "%s 접속"
+L["%s Offline"]                             = "%s 접속 종료"
+L["%s (%s) Online"]                         = "%s (%s) 접속"
+L["%s (%s) Offline"]                        = "%s (%s) 접속 종료"
+
+-- UI/Options.lua — Friend Notifications section
+L["Friend Notifications"]                   = "친구 알림"
+L["Enable friend notifications"]            = "친구 알림 활성화"
+L["Show online banners"]                    = "접속 알림 배너 표시"
+L["Show offline banners"]                   = "접속 종료 알림 배너 표시"
+L["Show a banner when a friend logs into or out of WoW."]  = "친구가 WoW에 접속하거나 종료할 때 배너를 표시합니다."
+L["Show a banner when a friend logs into WoW."]            = "친구가 WoW에 접속할 때 배너를 표시합니다."
+L["Show a banner when a friend logs out of WoW."]          = "친구가 WoW를 종료할 때 배너를 표시합니다."
+
+-- UI/Options.lua — Friend Notifications debug buttons
+L["Test Friend Online"]                     = "친구 접속 테스트"
+L["Display a demo friend online banner."]   = "친구 접속 데모 배너를 표시합니다."
+L["Test Friend Offline"]                    = "친구 접속 종료 테스트"
+L["Display a demo friend offline banner."]  = "친구 접속 종료 데모 배너를 표시합니다."

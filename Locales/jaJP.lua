@@ -346,3 +346,25 @@ L["Location:"]                                        = "場所："
 L["(Dungeon)"]                                        = "(ダンジョン)"
 L["(Raid)"]                                           = "(レイド)"
 L["(Group %d+)"]                                      = "(グループ %d+)"
+
+-- Core/Announcements.lua — friend presence banners
+-- %s = character description (e.g. "Arthas 60 Paladin") or "BattleTagName (charDesc)"
+L["%s Online"]                              = "%s がログインしました"
+L["%s Offline"]                             = "%s がログアウトしました"
+L["%s (%s) Online"]                         = "%s (%s) がログインしました"
+L["%s (%s) Offline"]                        = "%s (%s) がログアウトしました"
+
+-- UI/Options.lua — Friend Notifications section
+L["Friend Notifications"]                   = "フレンド通知"
+L["Enable friend notifications"]            = "フレンド通知を有効にする"
+L["Show online banners"]                    = "ログインバナーを表示"
+L["Show offline banners"]                   = "ログアウトバナーを表示"
+L["Show a banner when a friend logs into or out of WoW."]  = "フレンドがWoWにログインまたはログアウトしたときにバナーを表示します。"
+L["Show a banner when a friend logs into WoW."]            = "フレンドがWoWにログインしたときにバナーを表示します。"
+L["Show a banner when a friend logs out of WoW."]          = "フレンドがWoWからログアウトしたときにバナーを表示します。"
+
+-- UI/Options.lua — Friend Notifications debug buttons
+L["Test Friend Online"]                     = "フレンドログインテスト"
+L["Display a demo friend online banner."]   = "フレンドログインのデモバナーを表示します。"
+L["Test Friend Offline"]                    = "フレンドログアウトテスト"
+L["Display a demo friend offline banner."]  = "フレンドログアウトのデモバナーを表示します。"

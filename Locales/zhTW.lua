@@ -346,3 +346,25 @@ L["Location:"]                                        = "地點："
 L["(Dungeon)"]                                        = "(地城)"
 L["(Raid)"]                                           = "(團隊)"
 L["(Group %d+)"]                                      = "(組隊 %d+)"
+
+-- Core/Announcements.lua — friend presence banners
+-- %s = character description (e.g. "Arthas 60 Paladin") or "BattleTagName (charDesc)"
+L["%s Online"]                              = "%s 上線"
+L["%s Offline"]                             = "%s 下線"
+L["%s (%s) Online"]                         = "%s（%s）上線"
+L["%s (%s) Offline"]                        = "%s（%s）下線"
+
+-- UI/Options.lua — Friend Notifications section
+L["Friend Notifications"]                   = "好友通知"
+L["Enable friend notifications"]            = "啟用好友通知"
+L["Show online banners"]                    = "顯示上線橫幅"
+L["Show offline banners"]                   = "顯示下線橫幅"
+L["Show a banner when a friend logs into or out of WoW."]  = "當好友登入或登出《魔獸世界》時顯示橫幅通知。"
+L["Show a banner when a friend logs into WoW."]            = "當好友登入《魔獸世界》時顯示橫幅通知。"
+L["Show a banner when a friend logs out of WoW."]          = "當好友登出《魔獸世界》時顯示橫幅通知。"
+
+-- UI/Options.lua — Friend Notifications debug buttons
+L["Test Friend Online"]                     = "測試好友上線"
+L["Display a demo friend online banner."]   = "顯示好友上線示範橫幅。"
+L["Test Friend Offline"]                    = "測試好友下線"
+L["Display a demo friend offline banner."]  = "顯示好友下線示範橫幅。"

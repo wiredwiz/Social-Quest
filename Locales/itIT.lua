@@ -345,3 +345,25 @@ L["Location:"]                                        = "Zona:"
 L["(Dungeon)"]                                        = "(Istanza)"
 L["(Raid)"]                                           = "(Incursione)"
 L["(Group %d+)"]                                      = "(Gruppo %d+)"
+
+-- Core/Announcements.lua — friend presence banners
+-- %s = character description (e.g. "Arthas 60 Paladin") or "BattleTagName (charDesc)"
+L["%s Online"]                              = "%s online"
+L["%s Offline"]                             = "%s offline"
+L["%s (%s) Online"]                         = "%s (%s) online"
+L["%s (%s) Offline"]                        = "%s (%s) offline"
+
+-- UI/Options.lua — Friend Notifications section
+L["Friend Notifications"]                   = "Notifiche amici"
+L["Enable friend notifications"]            = "Abilita notifiche amici"
+L["Show online banners"]                    = "Mostra avvisi di accesso"
+L["Show offline banners"]                   = "Mostra avvisi di disconnessione"
+L["Show a banner when a friend logs into or out of WoW."]  = "Mostra un avviso quando un amico accede o esce da WoW."
+L["Show a banner when a friend logs into WoW."]            = "Mostra un avviso quando un amico accede a WoW."
+L["Show a banner when a friend logs out of WoW."]          = "Mostra un avviso quando un amico esce da WoW."
+
+-- UI/Options.lua — Friend Notifications debug buttons
+L["Test Friend Online"]                     = "Test amico online"
+L["Display a demo friend online banner."]   = "Mostra un avviso dimostrativo per amico online."
+L["Test Friend Offline"]                    = "Test amico offline"
+L["Display a demo friend offline banner."]  = "Mostra un avviso dimostrativo per amico offline."

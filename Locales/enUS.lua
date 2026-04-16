@@ -382,3 +382,25 @@ L["Location:"]                                        = true
 L["(Dungeon)"]                                        = true
 L["(Raid)"]                                           = true
 L["(Group %d+)"]                                      = true
+
+-- Core/Announcements.lua — friend presence banners
+-- %s = character description (e.g. "Arthas 60 Paladin") or "BattleTagName (charDesc)"
+L["%s Online"]                              = true
+L["%s Offline"]                             = true
+L["%s (%s) Online"]                         = true
+L["%s (%s) Offline"]                        = true
+
+-- UI/Options.lua — Friend Notifications section
+L["Friend Notifications"]                   = true
+L["Enable friend notifications"]            = true
+L["Show online banners"]                    = true
+L["Show offline banners"]                   = true
+L["Show a banner when a friend logs into or out of WoW."]  = true
+L["Show a banner when a friend logs into WoW."]            = true
+L["Show a banner when a friend logs out of WoW."]          = true
+
+-- UI/Options.lua — Friend Notifications debug buttons
+L["Test Friend Online"]                     = true
+L["Display a demo friend online banner."]   = true
+L["Test Friend Offline"]                    = true
+L["Display a demo friend offline banner."]  = true
