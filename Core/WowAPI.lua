@@ -117,6 +117,9 @@ function SocialQuestWowAPI.IsInInstance()       return IsInInstance()       end
 -- these, update only this file.
 SocialQuestWowAPI.PARTY_CATEGORY_HOME     = LE_PARTY_CATEGORY_HOME
 SocialQuestWowAPI.PARTY_CATEGORY_INSTANCE = LE_PARTY_CATEGORY_INSTANCE
+-- BNET_CLIENT_WOW is "WoW" on all supported versions; string fallback guards
+-- against environments (unit tests, future Classic builds) where the global is absent.
+SocialQuestWowAPI.BNET_CLIENT_WOW         = BNET_CLIENT_WOW or "WoW"
 
 SocialQuestWowAPI.MAX_QUEST_LOG_ENTRIES = SocialQuestWowAPI.IS_RETAIL and 35 or 25
 

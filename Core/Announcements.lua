@@ -810,9 +810,12 @@ end
 ------------------------------------------------------------------------
 
 function SocialQuestAnnounce:OnFriendOnline(battleTagName, charName, level, className)
-    local charDesc = (level and className)
-        and (charName .. " " .. level .. " " .. className)
-        or  charName
+    local charDesc = charName
+        and ((level and className)
+            and (charName .. " " .. level .. " " .. className)
+            or  charName)
+        or  battleTagName
+        or  "Unknown"
     local msg = battleTagName
         and string.format(L["%s (%s) Online"], battleTagName, charDesc)
         or  string.format(L["%s Online"], charDesc)
@@ -820,9 +823,12 @@ function SocialQuestAnnounce:OnFriendOnline(battleTagName, charName, level, clas
 end
 
 function SocialQuestAnnounce:OnFriendOffline(battleTagName, charName, level, className)
-    local charDesc = (level and className)
-        and (charName .. " " .. level .. " " .. className)
-        or  charName
+    local charDesc = charName
+        and ((level and className)
+            and (charName .. " " .. level .. " " .. className)
+            or  charName)
+        or  battleTagName
+        or  "Unknown"
     local msg = battleTagName
         and string.format(L["%s (%s) Offline"], battleTagName, charDesc)
         or  string.format(L["%s Offline"], charDesc)

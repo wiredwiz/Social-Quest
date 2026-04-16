@@ -30,7 +30,7 @@ function SocialQuestFriendPresence:Initialize()
     for i = 1, numBN do
         local info = SQWowAPI.BNGetFriendInfoByIndex(i)
         if info and info.isOnline and info.charName
-                and (info.clientProgram == BNET_CLIENT_WOW or info.clientProgram == "WoW") then
+                and (info.clientProgram == SQWowAPI.BNET_CLIENT_WOW) then
             bnCharNames[info.charName] = true
         end
     end
@@ -59,7 +59,7 @@ function SocialQuestFriendPresence:OnBnFriendOnline(bnetIDAccount)
 
     local info = SQWowAPI.BNGetFriendInfoByID(bnetIDAccount)
     if not info then return end
-    if info.clientProgram ~= BNET_CLIENT_WOW and info.clientProgram ~= "WoW" then return end
+    if info.clientProgram ~= SQWowAPI.BNET_CLIENT_WOW then return end
 
     local displayName = stripBattleTag(info.battleTagName)
     local charName    = info.charName
@@ -110,7 +110,7 @@ function SocialQuestFriendPresence:OnFriendListUpdate()
     for i = 1, numBN do
         local info = SQWowAPI.BNGetFriendInfoByIndex(i)
         if info and info.isOnline and info.charName
-                and (info.clientProgram == BNET_CLIENT_WOW or info.clientProgram == "WoW") then
+                and (info.clientProgram == SQWowAPI.BNET_CLIENT_WOW) then
             bnCharNames[info.charName] = true
         end
     end
