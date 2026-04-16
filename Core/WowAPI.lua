@@ -47,6 +47,59 @@ end
 function SocialQuestWowAPI.IsFriend(name)                         return C_FriendList.IsFriend(name)            end
 function SocialQuestWowAPI.GetNumFriends()                        return C_FriendList.GetNumFriends()           end
 function SocialQuestWowAPI.GetFriendInfoByIndex(index)            return C_FriendList.GetFriendInfoByIndex(index) end
+
+function SocialQuestWowAPI.BNGetNumFriends()
+    if BNGetNumFriends then return BNGetNumFriends() end
+    return 0
+end
+
+-- Returns a table: { battleTagName, charName, level, className, clientProgram, bnetIDAccount, isOnline }
+-- Tries C_BattleNet.GetFriendAccountInfo first (available on all versions tested),
+-- falls back to BNGetFriendInfo positional returns.
+function SocialQuestWowAPI.BNGetFriendInfoByIndex(index)
+    if C_BattleNet and C_BattleNet.GetFriendAccountInfo then
+        local info = C_BattleNet.GetFriendAccountInfo(index)
+        if info then
+            local ga = info.gameAccountInfo
+            return {
+                battleTagName = info.accountName,
+                charName      = ga and ga.characterName,
+                level         = ga and ga.characterLevel,
+                className     = ga and ga.className,
+                clientProgram = ga and ga.clientProgram,
+                bnetIDAccount = info.bnetAccountID,
+                isOnline      = info.isOnline,
+            }
+        end
+    end
+    if BNGetFriendInfo then
+        -- positional: presenceName, battleTag, isBTPresence, toonName, toonID,
+        --             client, isOnline, lastOnline, isAFK, isDND, ...
+        local presenceName, battleTag, _, toonName, _, client, isOnline = BNGetFriendInfo(index)
+        return {
+            battleTagName = battleTag or presenceName,
+            charName      = toonName,
+            level         = nil,
+            className     = nil,
+            clientProgram = client,
+            isOnline      = isOnline,
+        }
+    end
+    return nil
+end
+
+function SocialQuestWowAPI.BNGetFriendInfoByID(bnetIDAccount)
+    -- Iterate to find by ID; no direct by-ID API is guaranteed on all versions.
+    local n = SocialQuestWowAPI.BNGetNumFriends()
+    for i = 1, n do
+        local info = SocialQuestWowAPI.BNGetFriendInfoByIndex(i)
+        if info and info.bnetIDAccount == bnetIDAccount then
+            return info
+        end
+    end
+    return nil
+end
+
 function SocialQuestWowAPI.TimerAfter(delay, fn)                   C_Timer.After(delay, fn)                      end
 function SocialQuestWowAPI.GetRealZoneText()   return GetRealZoneText()   end
 function SocialQuestWowAPI.GetSubZoneText()     return GetSubZoneText()    end
