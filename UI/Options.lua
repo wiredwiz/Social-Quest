@@ -306,6 +306,35 @@ function SocialQuestOptions:Initialize()
                 },
             },
 
+            friendPresence = {
+                type  = "group",
+                name  = L["Friend Notifications"],
+                order = 8,
+                args  = {
+                    enabled = toggle(
+                        L["Enable friend notifications"],
+                        L["Show a banner when a friend logs into or out of WoW."],
+                        { "friendPresence", "enabled" }
+                    ),
+                    showOnline = {
+                        type     = "toggle",
+                        name     = L["Show online banners"],
+                        desc     = L["Show a banner when a friend logs into WoW."],
+                        get      = function(info) return db.friendPresence.showOnline end,
+                        set      = function(info, v) db.friendPresence.showOnline = v end,
+                        disabled = function() return not db.friendPresence.enabled end,
+                    },
+                    showOffline = {
+                        type     = "toggle",
+                        name     = L["Show offline banners"],
+                        desc     = L["Show a banner when a friend logs out of WoW."],
+                        get      = function(info) return db.friendPresence.showOffline end,
+                        set      = function(info, v) db.friendPresence.showOffline = v end,
+                        disabled = function() return not db.friendPresence.enabled end,
+                    },
+                },
+            },
+
             window = {
                 type  = "group",
                 name  = L["Social Quest Window"],
@@ -482,6 +511,18 @@ function SocialQuestOptions:Initialize()
                                 name   = L["Test Follow Notification"],
                                 desc   = L["Display a demo follow notification banner showing the 'started following you' message."],
                                 func   = function() SocialQuestAnnounce:TestFollowNotification() end,
+                            },
+                            testFriendOnline = {
+                                type = "execute",
+                                name = L["Test Friend Online"],
+                                desc = L["Display a demo friend online banner."],
+                                func = function() SocialQuestAnnounce:TestFriendOnline() end,
+                            },
+                            testFriendOffline = {
+                                type = "execute",
+                                name = L["Test Friend Offline"],
+                                desc = L["Display a demo friend offline banner."],
+                                func = function() SocialQuestAnnounce:TestFriendOffline() end,
                             },
                         },
                     },
