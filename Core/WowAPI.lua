@@ -54,8 +54,8 @@ function SocialQuestWowAPI.BNGetNumFriends()
 end
 
 -- Returns a table: { battleTagName, charName, level, className, clientProgram, bnetIDAccount, isOnline }
--- Tries C_BattleNet.GetFriendAccountInfo first (available on all versions tested),
--- falls back to BNGetFriendInfo positional returns.
+-- Tries C_BattleNet.GetFriendAccountInfo first (confirmed available on TBC 20505 and Retail).
+-- TODO: verify Classic Era (11xxx) — BNGetFriendInfo fallback handles it if absent.
 function SocialQuestWowAPI.BNGetFriendInfoByIndex(index)
     if C_BattleNet and C_BattleNet.GetFriendAccountInfo then
         local info = C_BattleNet.GetFriendAccountInfo(index)
@@ -75,13 +75,17 @@ function SocialQuestWowAPI.BNGetFriendInfoByIndex(index)
     if BNGetFriendInfo then
         -- positional: presenceName, battleTag, isBTPresence, toonName, toonID,
         --             client, isOnline, lastOnline, isAFK, isDND, ...
-        local presenceName, battleTag, _, toonName, _, client, isOnline = BNGetFriendInfo(index)
+        local presenceName, battleTag, _, toonName, toonID, client, isOnline = BNGetFriendInfo(index)
         return {
             battleTagName = battleTag or presenceName,
             charName      = toonName,
             level         = nil,
             className     = nil,
             clientProgram = client,
+            -- TODO: verify that BNGetFriendInfo toonID (position 5) maps to the same
+            -- numeric space as C_BattleNet bnetAccountID. On TBC, C_BattleNet is available
+            -- so this path is a fallback only; the ID mapping is unverified on Classic Era.
+            bnetIDAccount = toonID,
             isOnline      = isOnline,
         }
     end
