@@ -831,12 +831,12 @@ end
 
 function SocialQuestAnnounce:TestFriendOnline()
     local name = SQWowAPI.UnitName("player") or "TestPlayer"
-    SocialQuestAnnounce:OnFriendOnline("TestBattleTag", name, UnitLevel("player") or 60, "Warrior")
+    SocialQuestAnnounce:OnFriendOnline("TestBattleTag", name, SQWowAPI.UnitLevel("player") or 60, "Warrior")
 end
 
 function SocialQuestAnnounce:TestFriendOffline()
     local name = SQWowAPI.UnitName("player") or "TestPlayer"
-    SocialQuestAnnounce:OnFriendOffline("TestBattleTag", name, UnitLevel("player") or 60, "Warrior")
+    SocialQuestAnnounce:OnFriendOffline("TestBattleTag", name, SQWowAPI.UnitLevel("player") or 60, "Warrior")
 end
 
 ------------------------------------------------------------------------
