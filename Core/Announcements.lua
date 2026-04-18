@@ -825,6 +825,7 @@ end
 SocialQuestAnnounce._buildFriendDesc = buildFriendDesc
 
 function SocialQuestAnnounce:OnFriendOnline(battleTagName, charName, level, className, location)
+    if not SocialQuest.db.profile.enabled then return end
     local charDesc = buildFriendDesc(charName, level, className, location)
         or  battleTagName
         or  "Unknown"
@@ -835,6 +836,7 @@ function SocialQuestAnnounce:OnFriendOnline(battleTagName, charName, level, clas
 end
 
 function SocialQuestAnnounce:OnFriendOffline(battleTagName, charName, level, className, location)
+    if not SocialQuest.db.profile.enabled then return end
     local charDesc = buildFriendDesc(charName, level, className, location)
         or  battleTagName
         or  "Unknown"
