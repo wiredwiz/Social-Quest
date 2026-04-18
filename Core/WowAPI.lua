@@ -66,6 +66,7 @@ function SocialQuestWowAPI.BNGetFriendInfoByIndex(index)
                 charName      = ga and ga.characterName,
                 level         = ga and ga.characterLevel,
                 className     = ga and ga.className,
+                areaName      = ga and ga.areaName,
                 clientProgram = ga and ga.clientProgram,
                 bnetIDAccount = info.bnetAccountID,
                 isOnline      = info.isOnline,
