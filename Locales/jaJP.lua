@@ -353,6 +353,8 @@ L["%s Online"]                              = "%s がログインしました"
 L["%s Offline"]                             = "%s がログアウトしました"
 L["%s (%s) Online"]                         = "%s (%s) がログインしました"
 L["%s (%s) Offline"]                        = "%s (%s) がログアウトしました"
+L["Level %d"]                               = "レベル%d"
+L["in %s"]                                  = "%sにて"
 
 -- UI/Options.lua — Friend Notifications section
 L["Friend Notifications"]                   = "フレンド通知"

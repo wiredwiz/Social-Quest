@@ -352,6 +352,8 @@ L["%s Online"]                              = "%s en ligne"
 L["%s Offline"]                             = "%s hors ligne"
 L["%s (%s) Online"]                         = "%s (%s) en ligne"
 L["%s (%s) Offline"]                        = "%s (%s) hors ligne"
+L["Level %d"]                               = "Niveau %d"
+L["in %s"]                                  = "à %s"
 
 -- UI/Options.lua — Friend Notifications section
 L["Friend Notifications"]                   = "Notifications d'amis"

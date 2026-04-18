@@ -389,6 +389,11 @@ L["%s Online"]                              = true
 L["%s Offline"]                             = true
 L["%s (%s) Online"]                         = true
 L["%s (%s) Offline"]                        = true
+-- Sub-phrase keys for buildFriendDesc in Core/Announcements.lua.
+-- Used to localize "Level N" and "in ZoneName" inside character descriptions.
+-- Languages with suffix-style location (koKR: "%s에서", jaJP: "%sにて") place %s first.
+L["Level %d"]                               = true
+L["in %s"]                                  = true
 
 -- UI/Options.lua — Friend Notifications section
 L["Friend Notifications"]                   = true
