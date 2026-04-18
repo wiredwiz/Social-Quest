@@ -53,7 +53,7 @@ function SocialQuestWowAPI.BNGetNumFriends()
     return 0
 end
 
--- Returns a table: { battleTagName, charName, level, className, clientProgram, bnetIDAccount, isOnline }
+-- Returns a table: { battleTagName, charName, level, className, areaName, clientProgram, bnetIDAccount, isOnline }
 -- Tries C_BattleNet.GetFriendAccountInfo first (confirmed available on TBC 20505 and Retail).
 -- TODO: verify Classic Era (11xxx) — BNGetFriendInfo fallback handles it if absent.
 function SocialQuestWowAPI.BNGetFriendInfoByIndex(index)
