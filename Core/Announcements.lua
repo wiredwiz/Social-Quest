@@ -809,26 +809,34 @@ end
 -- Friend presence notifications
 ------------------------------------------------------------------------
 
-function SocialQuestAnnounce:OnFriendOnline(battleTagName, charName, level, className)
-    local charDesc = charName
-        and ((level and className)
-            and (charName .. " " .. level .. " " .. className)
-            or  charName)
-        or  battleTagName
-        or  "Unknown"
+-- Builds the character description part of a friend presence banner.
+-- Returns nil when charName is nil (caller falls back to battleTagName or "Unknown").
+local function buildFriendDesc(charName, level, className, location)
+    if not charName then return nil end
+    local desc = charName
+    if level and className then
+        desc = desc .. " " .. string.format(L["Level %d"], level) .. " " .. className
+    end
+    if location then
+        desc = desc .. " " .. string.format(L["in %s"], location)
+    end
+    return desc
+end
+
+function SocialQuestAnnounce:OnFriendOnline(battleTagName, charName, level, className, location)
+    local charDesc = buildFriendDesc(charName, level, className, location)
+        or battleTagName
+        or "Unknown"
     local msg = battleTagName
         and string.format(L["%s (%s) Online"], battleTagName, charDesc)
         or  string.format(L["%s Online"], charDesc)
     displayBanner(msg, "friend_online")
 end
 
-function SocialQuestAnnounce:OnFriendOffline(battleTagName, charName, level, className)
-    local charDesc = charName
-        and ((level and className)
-            and (charName .. " " .. level .. " " .. className)
-            or  charName)
-        or  battleTagName
-        or  "Unknown"
+function SocialQuestAnnounce:OnFriendOffline(battleTagName, charName, level, className, location)
+    local charDesc = buildFriendDesc(charName, level, className, location)
+        or battleTagName
+        or "Unknown"
     local msg = battleTagName
         and string.format(L["%s (%s) Offline"], battleTagName, charDesc)
         or  string.format(L["%s Offline"], charDesc)
@@ -836,13 +844,15 @@ function SocialQuestAnnounce:OnFriendOffline(battleTagName, charName, level, cla
 end
 
 function SocialQuestAnnounce:TestFriendOnline()
-    local name = SQWowAPI.UnitName("player") or "TestPlayer"
-    SocialQuestAnnounce:OnFriendOnline("TestBattleTag", name, SQWowAPI.UnitLevel("player") or 60, "Warrior")
+    local name     = SQWowAPI.UnitName("player") or "TestPlayer"
+    local location = SQWowAPI.GetRealZoneText() or "Ironforge"
+    SocialQuestAnnounce:OnFriendOnline("TestBattleTag", name, SQWowAPI.UnitLevel("player") or 60, "Warrior", location)
 end
 
 function SocialQuestAnnounce:TestFriendOffline()
-    local name = SQWowAPI.UnitName("player") or "TestPlayer"
-    SocialQuestAnnounce:OnFriendOffline("TestBattleTag", name, SQWowAPI.UnitLevel("player") or 60, "Warrior")
+    local name     = SQWowAPI.UnitName("player") or "TestPlayer"
+    local location = SQWowAPI.GetRealZoneText() or "Ironforge"
+    SocialQuestAnnounce:OnFriendOffline("TestBattleTag", name, SQWowAPI.UnitLevel("player") or 60, "Warrior", location)
 end
 
 ------------------------------------------------------------------------
