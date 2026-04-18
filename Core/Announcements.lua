@@ -825,8 +825,8 @@ end
 
 function SocialQuestAnnounce:OnFriendOnline(battleTagName, charName, level, className, location)
     local charDesc = buildFriendDesc(charName, level, className, location)
-        or battleTagName
-        or "Unknown"
+        or  battleTagName
+        or  "Unknown"
     local msg = battleTagName
         and string.format(L["%s (%s) Online"], battleTagName, charDesc)
         or  string.format(L["%s Online"], charDesc)
@@ -835,8 +835,8 @@ end
 
 function SocialQuestAnnounce:OnFriendOffline(battleTagName, charName, level, className, location)
     local charDesc = buildFriendDesc(charName, level, className, location)
-        or battleTagName
-        or "Unknown"
+        or  battleTagName
+        or  "Unknown"
     local msg = battleTagName
         and string.format(L["%s (%s) Offline"], battleTagName, charDesc)
         or  string.format(L["%s Offline"], charDesc)
