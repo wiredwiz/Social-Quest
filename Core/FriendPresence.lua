@@ -9,7 +9,7 @@ local db
 
 -- { [charName] = { level = N, className = "ClassName", area = "ZoneName" } }  connected traditional friends
 local knownFriends   = {}
--- { [bnetIDAccount] = { battleTagName, charName, level, className, location } }  BN friends shown online this session
+-- { [bnetIDAccount] = { battleTagName = "Name", charName = "Char", level = N, className = "Class", location = "Zone" } }  BN friends shown online this session
 local bnShownOnline  = {}
 -- { [charName] = true }  character names of BN friends currently in WoW
 local bnCharNames    = {}
