@@ -232,6 +232,17 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.27.0 (April 2026)
+- Feature: friend online/offline banner messages now include Level, class, and current
+  zone for richer context. Format: `CharName Level N ClassName in ZoneName Online` (or
+  `BattleTagName (CharName Level N ClassName in ZoneName) Online` for BN friends).
+  Graceful degradation: level/class omitted on Classic Era BN fallback path; location
+  omitted when friend is at character select or zone is unavailable. New locale keys
+  `Level %d` and `in %s` added to all 12 locale files with natural WoW-appropriate
+  translations. `buildFriendDesc` helper added to `Core/Announcements.lua`. `areaName`
+  field added to `BNGetFriendInfoByIndex` return struct in `Core/WowAPI.lua`.
+  `Core/FriendPresence.lua` updated to cache and pass location on all code paths.
+
 ### Version 2.26.0 (April 2026)
 - Feature: `Core/FriendPresence.lua` module (`SocialQuestFriendPresence`). Tracks
   BattleTag (BN) and traditional friend presence. On `BN_FRIEND_ACCOUNT_ONLINE`/
