@@ -822,6 +822,7 @@ local function buildFriendDesc(charName, level, className, location)
     end
     return desc
 end
+SocialQuestAnnounce._buildFriendDesc = buildFriendDesc
 
 function SocialQuestAnnounce:OnFriendOnline(battleTagName, charName, level, className, location)
     local charDesc = buildFriendDesc(charName, level, className, location)

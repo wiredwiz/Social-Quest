@@ -78,6 +78,15 @@ B = SocialQuestAnnounce._BuildQuestLink
 assert_eq("retail_basic",  B(337, "Wanted: Hogger", 40),  "[[40] Wanted: Hogger {337}]")
 assert_eq("retail_nil_lv", B(337, "Wanted: Hogger", nil), "[[0] Wanted: Hogger {337}]")
 
+-- ── buildFriendDesc ───────────────────────────────────────────────────────────
+local BFD = SocialQuestAnnounce._buildFriendDesc
+
+assert_eq("bfd_full",       BFD("Arthas", 60, "Warrior", "Ironforge"),   "Arthas Level 60 Warrior in Ironforge")
+assert_eq("bfd_no_loc",     BFD("Arthas", 60, "Warrior", nil),           "Arthas Level 60 Warrior")
+assert_eq("bfd_no_lv_cls",  BFD("Arthas", nil, nil, "Ironforge"),        "Arthas in Ironforge")
+assert_eq("bfd_name_only",  BFD("Arthas", nil, nil, nil),                "Arthas")
+assert_eq("bfd_nil_name",   BFD(nil, 60, "Warrior", "Ironforge"),        nil)
+
 -- ── Result ────────────────────────────────────────────────────────────────────
 if failures == 0 then
     print("Announcements_test: all tests passed")

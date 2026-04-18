@@ -46,6 +46,7 @@ function SocialQuestWowAPI.QuestLogPushQuest(questID)
 end
 function SocialQuestWowAPI.IsFriend(name)                         return C_FriendList.IsFriend(name)            end
 function SocialQuestWowAPI.GetNumFriends()                        return C_FriendList.GetNumFriends()           end
+-- Returns FriendInfo: { name, level, className, area (zone name), connected, status, mobile }
 function SocialQuestWowAPI.GetFriendInfoByIndex(index)            return C_FriendList.GetFriendInfoByIndex(index) end
 
 function SocialQuestWowAPI.BNGetNumFriends()
