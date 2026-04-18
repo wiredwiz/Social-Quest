@@ -1,5 +1,5 @@
 -- Core/FriendPresence.lua
--- Tracks BattleTag and traditional friend presence.
+-- Tracks BattleTag (BN) and traditional friend presence.
 -- Fires banner notifications via SocialQuestAnnounce when friends log in/out of WoW.
 
 SocialQuestFriendPresence = {}
@@ -7,9 +7,9 @@ SocialQuestFriendPresence = {}
 local SQWowAPI = SocialQuestWowAPI
 local db
 
--- { [charName] = { level = N, className = "ClassName" } }  connected traditional friends
+-- { [charName] = { level = N, className = "ClassName", area = "ZoneName" } }  connected traditional friends
 local knownFriends   = {}
--- { [bnetIDAccount] = { battleTagName, charName, level, className } }  BN friends shown online this session
+-- { [bnetIDAccount] = { battleTagName, charName, level, className, location } }  BN friends shown online this session
 local bnShownOnline  = {}
 -- { [charName] = true }  character names of BN friends currently in WoW
 local bnCharNames    = {}
@@ -40,7 +40,7 @@ function SocialQuestFriendPresence:Initialize()
     for i = 1, numFriends do
         local info = SQWowAPI.GetFriendInfoByIndex(i)
         if info and info.connected then
-            knownFriends[info.name] = { level = info.level, className = info.className }
+            knownFriends[info.name] = { level = info.level, className = info.className, area = info.area }
         end
     end
 
@@ -65,6 +65,7 @@ function SocialQuestFriendPresence:OnBnFriendOnline(bnetIDAccount)
     local charName    = info.charName
     local level       = info.level
     local className   = info.className
+    local location    = info.areaName
 
     if charName then
         bnCharNames[charName] = true
@@ -74,9 +75,10 @@ function SocialQuestFriendPresence:OnBnFriendOnline(bnetIDAccount)
         charName      = charName,
         level         = level,
         className     = className,
+        location      = location,
     }
 
-    SocialQuestAnnounce:OnFriendOnline(displayName, charName, level, className)
+    SocialQuestAnnounce:OnFriendOnline(displayName, charName, level, className, location)
 end
 
 -- Fires when BN_FRIEND_ACCOUNT_OFFLINE fires for a BattleNet friend.
@@ -85,18 +87,19 @@ function SocialQuestFriendPresence:OnBnFriendOffline(bnetIDAccount)
     if not bnShownOnline[bnetIDAccount] then return end
 
     -- Use cached data — BNGetFriendInfoByID may return nil when already offline
-    local cached  = bnShownOnline[bnetIDAccount]
+    local cached      = bnShownOnline[bnetIDAccount]
     local displayName = cached.battleTagName
     local charName    = cached.charName
     local level       = cached.level
     local className   = cached.className
+    local location    = cached.location
 
     bnShownOnline[bnetIDAccount] = nil
     if charName then
         bnCharNames[charName] = nil
     end
 
-    SocialQuestAnnounce:OnFriendOffline(displayName, charName, level, className)
+    SocialQuestAnnounce:OnFriendOffline(displayName, charName, level, className, location)
 end
 
 -- Fires when FRIENDLIST_UPDATE fires.
@@ -121,7 +124,7 @@ function SocialQuestFriendPresence:OnFriendListUpdate()
     for i = 1, numFriends do
         local info = SQWowAPI.GetFriendInfoByIndex(i)
         if info and info.connected then
-            currentFriends[info.name] = { level = info.level, className = info.className }
+            currentFriends[info.name] = { level = info.level, className = info.className, area = info.area }
         end
     end
 
@@ -129,7 +132,7 @@ function SocialQuestFriendPresence:OnFriendListUpdate()
     if db.friendPresence.enabled and db.friendPresence.showOnline then
         for name, data in pairs(currentFriends) do
             if not knownFriends[name] and not bnCharNames[name] then
-                SocialQuestAnnounce:OnFriendOnline(nil, name, data.level, data.className)
+                SocialQuestAnnounce:OnFriendOnline(nil, name, data.level, data.className, data.area)
             end
         end
     end
@@ -138,7 +141,7 @@ function SocialQuestFriendPresence:OnFriendListUpdate()
     if db.friendPresence.enabled and db.friendPresence.showOffline then
         for name, data in pairs(knownFriends) do
             if not currentFriends[name] and not bnCharNames[name] then
-                SocialQuestAnnounce:OnFriendOffline(nil, name, data.level, data.className)
+                SocialQuestAnnounce:OnFriendOffline(nil, name, data.level, data.className, data.area)
             end
         end
     end
