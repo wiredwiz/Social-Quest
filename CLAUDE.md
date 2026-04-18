@@ -232,6 +232,13 @@ Enable via `/sq config` → Debug tab. Debug messages appear in the default chat
 
 ## Version History
 
+### Version 2.28.0 (April 2026)
+- Fix: offline banner messages no longer include `in ZoneName`. WoW reports location
+  as "Unknown" when a friend logs off, making the location meaningless. `OnFriendOffline`
+  calls in `Core/FriendPresence.lua` now omit the location argument; `buildFriendDesc`
+  in `Core/Announcements.lua` already handles `nil` location gracefully by omitting the
+  "in" clause. The `L["in %s"]` locale key remains (still used by online messages).
+
 ### Version 2.27.0 (April 2026)
 - Feature: friend online/offline banner messages now include Level, class, and current
   zone for richer context. Format: `CharName Level N ClassName in ZoneName Online` (or

@@ -99,7 +99,7 @@ function SocialQuestFriendPresence:OnBnFriendOffline(bnetIDAccount)
         bnCharNames[charName] = nil
     end
 
-    SocialQuestAnnounce:OnFriendOffline(displayName, charName, level, className, location)
+    SocialQuestAnnounce:OnFriendOffline(displayName, charName, level, className)
 end
 
 -- Fires when FRIENDLIST_UPDATE fires.
@@ -141,7 +141,7 @@ function SocialQuestFriendPresence:OnFriendListUpdate()
     if db.friendPresence.enabled and db.friendPresence.showOffline then
         for name, data in pairs(knownFriends) do
             if not currentFriends[name] and not bnCharNames[name] then
-                SocialQuestAnnounce:OnFriendOffline(nil, name, data.level, data.className, data.area)
+                SocialQuestAnnounce:OnFriendOffline(nil, name, data.level, data.className)
             end
         end
     end
