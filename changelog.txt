@@ -1,6 +1,30 @@
 SocialQuest Changelog
 =====================
 
+Version 2.28.0 (April 2026)
+- Bug fix: offline friend banners no longer include the location. When a friend
+  logs out, WoW reports the zone as "Unknown", making the location meaningless.
+  The "in ZoneName" part is now omitted from all offline notifications. Online
+  banners are unaffected and continue to show the current zone.
+
+Version 2.27.0 (April 2026)
+- Improvement: friend online/offline banners now include the friend's level,
+  class, and current zone. Format: "CharName Level N ClassName in ZoneName
+  Online" (or "BattleTagName (CharName Level N ClassName in ZoneName) Online"
+  for BattleTag friends). On Classic Era clients where level and class are not
+  available via the BattleNet API, only the character name is shown. When a
+  friend is at character select, the zone is omitted gracefully. The "Level"
+  and "in" words are localized across all 12 supported languages.
+
+Version 2.26.0 (April 2026)
+- New Feature: friend online/offline banner notifications. When a BattleTag
+  friend logs into WoW, or when a traditional friend logs in or out, a banner
+  appears on screen. Login format: "BattleTagName (CharName) Online" (or just
+  "CharName Online" for non-BattleTag friends). Logout uses "Offline". Two new
+  toggles in /sq config → General: "Show friend login notifications" and "Show
+  friend logout notifications", both on by default. New test buttons in the
+  Debug panel: "Test Friend Online" and "Test Friend Offline".
+
 Version 2.25.2 (April 2026)
 - New Feature: Window font size — scale all text and row heights in the quest
   content area to your preference. Five presets from Very Small to Very Large

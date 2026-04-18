@@ -148,6 +148,24 @@ locally on each player's client.
   stops following you.
 
 
+  Friend Presence Notifications
+  ------------------------------
+  When a BattleTag friend logs into WoW, or when a traditional (non-BattleTag)
+  friend logs in or out, Social Quest displays a banner on screen. Login banners
+  include the friend's current character name, level, class, and zone:
+
+    "Joe (EvilWarlock Level 32 Warlock in Ironforge) Online"
+    "EvilWarlock Level 32 Warlock in Ironforge Online"   (non-BattleTag)
+
+  Logout banners use the same format without the zone (WoW does not report the
+  zone reliably at logout):
+
+    "Joe (EvilWarlock Level 32 Warlock) Offline"
+
+  Two toggles in /sq config → General control these independently:
+  "Show friend login notifications" and "Show friend logout notifications".
+  Both default to on. "Level" and "in" are localized in all 12 languages.
+
   Questie Integration
   --------------------
   If Questie is installed and its quest announcement options are enabled,
@@ -421,6 +439,9 @@ tab.
                            frame.
     Test Flight Discovery — Flight path unlock banner using your character's
                             starting city as the demo location.
+    Test Friend Online     — Friend login banner using a mock BattleTag name
+                             and your current zone as the demo location.
+    Test Friend Offline    — Friend logout banner (no zone) demo.
 
 
   ============================================================

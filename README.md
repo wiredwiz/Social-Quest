@@ -441,6 +441,33 @@
 
   ---
 
+  ### Friend Presence Notifications
+
+  When a BattleTag friend logs into WoW, or when a traditional (non-BattleTag) friend logs
+  in or out, Social Quest displays a banner on screen.
+
+  Login banners include the friend's character name, level, class, and current zone:
+
+  | Case | Banner |
+  |---|---|
+  | BattleTag friend logs in | `Joe (EvilWarlock Level 32 Warlock in Ironforge) Online` |
+  | Non-BattleTag friend logs in | `EvilWarlock Level 32 Warlock in Ironforge Online` |
+  | BattleTag friend logs out | `Joe (EvilWarlock Level 32 Warlock) Offline` |
+  | Non-BattleTag friend logs out | `EvilWarlock Level 32 Warlock Offline` |
+
+  If level and class are unavailable (Classic Era BattleNet fallback), only the character name is shown.
+  If the friend is at the character select screen, the zone is omitted gracefully.
+
+  Two independent toggles in `/sq config` → General control login and logout banners separately.
+  Both default to on. The "Level" and "in" words are localized in all 12 supported languages.
+
+  | Setting | Default | Description |
+  |---|---|---|
+  | Show friend login notifications | On | Banner when a friend logs into WoW. |
+  | Show friend logout notifications | On | Banner when a friend logs out of WoW. |
+
+  ---
+
   ### Follow Notifications
 
   When one SocialQuest user auto-follows another, both players are notified via the addon comm

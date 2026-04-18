@@ -321,7 +321,7 @@ The panel is a standard `BasicFrameTemplate` frame registered in `UISpecialFrame
 
 ---
 
-### 20. Friend online/offline banners
+### ~~20. Friend online/offline banners~~ (*DONE*)
 
 **The gap:** WoW's default UI shows friend login and logout notifications only as system chat messages, easily missed in busy chat. SocialQuest already has a well-established banner system for quest events and follow notifications, but it makes no use of social presence events.
 
@@ -399,7 +399,7 @@ The panel is a standard `BasicFrameTemplate` frame registered in `UISpecialFrame
 | 17 | ~~Font size setting~~ | — | — | *DONE* |
 | 18 | ~~Advanced filter language~~ | — | — | *DONE* |
 | 19 | ~~Zone quest count in headers~~ | — | — | *DONE* |
-| 20 | Friend online/offline banners | Low | Medium | No |
+| 20 | ~~Friend online/offline banners~~ | — | — | *DONE* |
 | 21 | Quest suggested level in window | Very low | Low | No |
 | 22 | Zone grouping display toggles | Medium | High | No |
 | 23 | Quest difficulty / time-sink badging | Medium | Medium | No |
